@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2c03b510056c0eea686cf3974bc4c944, type: 3}
+  m_Name: CloudSlingshot_Impact_SoundBank
+  m_EditorClassIdentifier:
+  sounds:
+  - {fileID: 8300000, guid: afa531c918e8ce34389842573a25bdcd, type: 3}
+  - {fileID: 8300000, guid: a65abbe2c7371604899c714c68da4774, type: 3}
+  - {fileID: 8300000, guid: b9c681c632353e144997fb3cb8377ba6, type: 3}
+  - {fileID: 8300000, guid: fd56a3195c4e11148b34b2e510b008a1, type: 3}
+  - {fileID: 8300000, guid: 5e729795527d5354abe83fe70f15476e, type: 3}
+  volumeRange: {x: 0.2, y: 0.4}
+  pitchRange: {x: 0.5, y: 0.8}

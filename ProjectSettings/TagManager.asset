@@ -1,0 +1,85 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!78 &1
+TagManager:
+  serializedVersion: 2
+  tags:
+  - SceneChanger
+  - PlayerOffset
+  - GorillaTagManager
+  - GorillaTagCollider
+  - GorillaPlayer
+  - GorillaObject
+  - GorillaGameManager
+  - GorillaCosmetic
+  - projectile
+  - FxTemporaire
+  - SlingshotProjectile
+  - SlingshotProjectileTrail
+  - SlingshotProjectilePlayerImpactFX
+  - SlingshotProjectileSurfaceImpactFX
+  - BalloonPopFX
+  - WorldShareableItem
+  - HornsSlingshotProjectile
+  - HornsSlingshotProjectileTrail
+  - HornsSlingshotProjectilePlayerImpactFX
+  - HornsSlingshotProjectileSurfaceImpactFX
+  - FryingPan
+  - LeafPile_ImpactFX
+  - BalloonPopFx
+  - CloudSlingshot_Projectile
+  - CloudSlingshot_ProjectileTrail
+  - CloudSlingshot_ProjectilePlayerImpactFX
+  - CloudSlingshot_ProjectileSurfaceImpactFX
+  - SnowballProjectile
+  - SnowballProjectileImpactFX
+  - CupidBow_Projectile
+  - CupidBow_ProjectileTrail
+  - CupidBow_ProjectileSurfaceImpactFX
+  - NoCrazyCheck
+  - IceSlingshot_Projectile
+  - IceSlingshot_ProjectileSurfaceImpactFX
+  - IceSlingshot_ProjectileTrail
+  - ElfBow_Projectile
+  - ElfBow_ProjectileSurfaceImpactFX
+  - ElfBow_ProjectileTrail
+  - RenderIfSmall
+  - DeleteOnNonBetaBuild
+  - DeleteOnNonDebugBuild
+  layers:
+  - Default
+  - TransparentFX
+  - Ignore Raycast
+  - 
+  - Water
+  - UI
+  - 
+  - 
+  - Gorilla Body Collider
+  - Gorilla Object
+  - Gorilla Hand
+  - Gorilla Trigger
+  - Camera Scene Trigger
+  - Gorilla Head
+  - Gorilla Tag Collider
+  - Gorilla Boundary
+  - Gorilla Spectator
+  - Mirror
+  - GorillaInteractable
+  - GorillaFriend
+  - GorillaParticle
+  - GorillaCosmetics
+  - MirrorOnly
+  - GorillaThrowable
+  - GorillaThrowHand
+  - GorillaCosmeticParticle
+  - GorillaZone
+  - NoMirror
+  - GorillaSlingshotCollider
+  - 
+  - Prop
+  - Bake
+  m_SortingLayers:
+  - name: Default
+    uniqueID: 0
+    locked: 0

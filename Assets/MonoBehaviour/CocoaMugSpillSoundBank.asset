@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2c03b510056c0eea686cf3974bc4c944, type: 3}
+  m_Name: CocoaMugSpillSoundBank
+  m_EditorClassIdentifier:
+  sounds:
+  - {fileID: 8300000, guid: 91c4b1bd9f3ddeb4ea61cd81a6f34006, type: 3}
+  - {fileID: 8300000, guid: d1cb73932dd74ac4f82d0acab9c6b5a6, type: 3}
+  - {fileID: 8300000, guid: a72abe1f40f67314ba79dccc672dea69, type: 3}
+  - {fileID: 8300000, guid: f292c9c4b5b9d4e4790f5b0b5d15225b, type: 3}
+  volumeRange: {x: 0.2, y: 0.4}
+  pitchRange: {x: 0.8, y: 1.2}

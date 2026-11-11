@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: RocketShip_Timeline
+  m_EditorClassIdentifier: 
+  m_Version: 0
+  m_Tracks:
+  - {fileID: 11400000, guid: f0015f9a125be704db4e060074886faf, type: 2}
+  - {fileID: 11400000, guid: 8cf13c4f0a42a054da7b887f5cad64cf, type: 2}
+  - {fileID: 11400000, guid: b90d10dc129bfbc4cb0b41717fbf6384, type: 2}
+  - {fileID: 11400000, guid: 7254e4096dd50824a8e6bf0956c867b8, type: 2}
+  - {fileID: 11400000, guid: 16a5256f05ebedd47bf0283e14c045b3, type: 2}
+  m_FixedDuration: 300
+  m_EditorSettings:
+    m_Framerate: 60
+  m_DurationMode: 1
+  m_MarkerTrack: {fileID: 11400000, guid: a64705c0f9d8677498fe7883a3376ae5, type: 2}

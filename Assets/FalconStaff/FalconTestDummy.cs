@@ -1,0 +1,47 @@
+using Photon.Pun;
+using UnityEngine;
+
+// Test dummy (Sans, 2026-11-10): press the button and a brand-new player
+// rig plops into the game in front of you, for gun target practice when
+// nobody else is around.
+//
+// What it is, honestly: the game's own "Gorilla Player Networked" prefab
+// (the same prefab PhotonNetworkController instantiates per player),
+// spawned LOCALLY with plain Instantiate — no PhotonNetwork.Instantiate,
+// no new PlayFab user, no fake room member. It stands where it lands.
+// Its VRRig has myPlayer unset, so gun hits on it stop at the raycast:
+// every gun still fires, aims, and dry-runs against a real rig shape, but
+// effects that move a player (fling, creepify, spin, slip, fake lag) only
+// exist on a real client — test those with Self test mode on yourself.
+// Outfit and color systems need a live rig too. What the dummy proves:
+// your aim, your raycast, and your armed gun, solo.
+//
+// It spawns through the Resources path the game itself uses:
+// Resources/GorillaPrefabs/Gorilla Player Networked.
+public static class FalconTestDummy
+{
+    private static GameObject dummy;
+
+    public static void Toggle(Transform inFrontOf)
+    {
+        if (dummy != null)
+        {
+            Object.Destroy(dummy);
+            dummy = null;
+            return;
+        }
+        var prefab = Resources.Load<GameObject>("GorillaPrefabs/Gorilla Player Networked");
+        if (prefab == null)
+        {
+            Debug.LogError("[FalconStaff] dummy prefab not found at Resources/GorillaPrefabs/Gorilla Player Networked");
+            return;
+        }
+        Vector3 pos = inFrontOf.position + inFrontOf.forward * 2f;
+        dummy = Object.Instantiate(prefab, pos, Quaternion.identity);
+        dummy.name = "Falcon Test Dummy";
+        // A networked rig with no owner can spam errors in its update
+        // loops; strip PhotonViews so nothing tries to sync or serialize.
+        foreach (var view in dummy.GetComponentsInChildren<PhotonView>())
+            Object.Destroy(view);
+    }
+}

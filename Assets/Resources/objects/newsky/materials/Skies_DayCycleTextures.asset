@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a9145ab46b210acda5b494233b3b54c1, type: 3}
+  m_Name: Skies_DayCycleTextures
+  m_EditorClassIdentifier:
+  moments:
+  - sunnyTex: {fileID: 2800000, guid: da34818f08b66d9409c01b5086e893b0, type: 3}
+    cloudyTex: {fileID: 2800000, guid: 4f3b7d12cfc4ee64799ce8e75e6c1be8, type: 3}
+  - sunnyTex: {fileID: 2800000, guid: 56adb35163abee6469f516e8e1ebb522, type: 3}
+    cloudyTex: {fileID: 2800000, guid: 4f3b7d12cfc4ee64799ce8e75e6c1be8, type: 3}
+  - sunnyTex: {fileID: 2800000, guid: 56adb35163abee6469f516e8e1ebb522, type: 3}
+    cloudyTex: {fileID: 2800000, guid: ec4486c5271fe0f45a974dbeeb4078b2, type: 3}
+  - sunnyTex: {fileID: 2800000, guid: 4fccf4d3e0c9d2c4a85e0f1cc02d81b8, type: 3}
+    cloudyTex: {fileID: 2800000, guid: ec4486c5271fe0f45a974dbeeb4078b2, type: 3}
+  - sunnyTex: {fileID: 2800000, guid: 4fccf4d3e0c9d2c4a85e0f1cc02d81b8, type: 3}
+    cloudyTex: {fileID: 2800000, guid: ec4486c5271fe0f45a974dbeeb4078b2, type: 3}
+  - sunnyTex: {fileID: 2800000, guid: 4fccf4d3e0c9d2c4a85e0f1cc02d81b8, type: 3}
+    cloudyTex: {fileID: 2800000, guid: ec4486c5271fe0f45a974dbeeb4078b2, type: 3}
+  - sunnyTex: {fileID: 2800000, guid: 08bbfab15d02aea4ba800ec9fe4655e7, type: 3}
+    cloudyTex: {fileID: 2800000, guid: ec4486c5271fe0f45a974dbeeb4078b2, type: 3}
+  - sunnyTex: {fileID: 2800000, guid: 08bbfab15d02aea4ba800ec9fe4655e7, type: 3}
+    cloudyTex: {fileID: 2800000, guid: 4f3b7d12cfc4ee64799ce8e75e6c1be8, type: 3}
+  - sunnyTex: {fileID: 2800000, guid: da34818f08b66d9409c01b5086e893b0, type: 3}
+    cloudyTex: {fileID: 2800000, guid: 4f3b7d12cfc4ee64799ce8e75e6c1be8, type: 3}
+  - sunnyTex: {fileID: 2800000, guid: da34818f08b66d9409c01b5086e893b0, type: 3}
+    cloudyTex: {fileID: 2800000, guid: 4f3b7d12cfc4ee64799ce8e75e6c1be8, type: 3}

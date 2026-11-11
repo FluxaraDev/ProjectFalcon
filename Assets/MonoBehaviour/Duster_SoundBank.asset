@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2c03b510056c0eea686cf3974bc4c944, type: 3}
+  m_Name: Duster_SoundBank
+  m_EditorClassIdentifier:
+  sounds:
+  - {fileID: 8300000, guid: 17ccc7d20040dd3459b43300fc597147, type: 3}
+  - {fileID: 8300000, guid: aed408e9919f55b4587e7d7c2ef71134, type: 3}
+  - {fileID: 8300000, guid: 16d9d58274600ac46bc11f3ef414e141, type: 3}
+  volumeRange: {x: 0.5, y: 1}
+  pitchRange: {x: 0.8, y: 1.2}

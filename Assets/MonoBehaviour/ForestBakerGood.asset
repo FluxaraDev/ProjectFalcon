@@ -1,0 +1,173 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 499468296, guid: 00566d7905479bd394c62e1ed3491326, type: 3}
+  m_Name: ForestBakerGood
+  m_EditorClassIdentifier:
+  version: 3252
+  resultType: 0
+  materialsAndUVRects:
+  - material: {fileID: 2100000, guid: cad9600dfb29ae8498b1da6099adb778, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.5007324
+      y: 0.043701172
+      width: 0.024414062
+      height: 0.0546875
+    srcObjName: BADSmallTree
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 0
+  - material: {fileID: 2100000, guid: 09522d0c214e07b4b91f73295abf0801, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.00024414062
+      y: 0.00024414062
+      width: 0.5
+      height: 0.5
+    srcObjName: roofwood
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 0
+  - material: {fileID: 2100000, guid: 62a47c4ac95d62449bcd6def0ff5bbac, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.5007324
+      y: 0.00024414062
+      width: 0.061035156
+      height: 0.04296875
+    srcObjName: BADLadder
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 0
+  - material: {fileID: 2100000, guid: c6d2f11662c1f504799c09795dcd4b98, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.6237793
+      y: 0.00024414062
+      width: 0.0625
+      height: 0.0078125
+    srcObjName: BADLadder
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 0
+  - material: {fileID: 2100000, guid: f5b3b05c28104c545894d3eaaa7bd3cc, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.56225586
+      y: 0.00024414062
+      width: 0.061035156
+      height: 0.034423828
+    srcObjName: BADTreehouse
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 0
+  resultMaterials:
+  - combinedMaterial: {fileID: 2100000, guid: 1c9ba4d894f48e940976645089ef9af2, type: 2}
+    considerMeshUVs: 0
+    sourceMaterials:
+    - {fileID: 2100000, guid: cad9600dfb29ae8498b1da6099adb778, type: 2}
+    - {fileID: 2100000, guid: 09522d0c214e07b4b91f73295abf0801, type: 2}
+    - {fileID: 2100000, guid: 62a47c4ac95d62449bcd6def0ff5bbac, type: 2}
+    - {fileID: 2100000, guid: c6d2f11662c1f504799c09795dcd4b98, type: 2}
+    - {fileID: 2100000, guid: f5b3b05c28104c545894d3eaaa7bd3cc, type: 2}
+  resultMaterialsTexArray: []
+  doMultiMaterial: 0

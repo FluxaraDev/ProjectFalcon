@@ -1,0 +1,233 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 499468296, guid: 00566d7905479bd394c62e1ed3491326, type: 3}
+  m_Name: ForestHoliday22
+  m_EditorClassIdentifier:
+  version: 3252
+  resultType: 0
+  materialsAndUVRects:
+  - material: {fileID: 2100000, guid: 09522d0c214e07b4b91f73295abf0801, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.8833008
+      y: 0.00048828125
+      width: 0.109375
+      height: 0.026855469
+    srcObjName: Legs
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0.29788923
+      y: 0.5766172
+      width: 0.109764874
+      height: 0.02710402
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: 62a47c4ac95d62449bcd6def0ff5bbac, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.38232422
+      y: 0.22314453
+      width: 0.17578125
+      height: 0.14990234
+    srcObjName: bridge snow bottom
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: -0.011478121
+      y: -0.42305952
+      width: 1.4418789
+      height: 1.7486291
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: cad9600dfb29ae8498b1da6099adb778, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.28027344
+      y: 0.38232422
+      width: 0.11376953
+      height: 0.2866211
+    srcObjName: ramp snow bottom
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: -0.66846895
+      y: -0.8119513
+      width: 2.336938
+      height: 2.6239023
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: 09522d0c214e07b4b91f73295abf0801, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.00048828125
+      y: 0.38232422
+      width: 0.2788086
+      height: 0.1586914
+    srcObjName: Ladder (1)
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0.3146756
+      y: 0.40546295
+      width: 0.27902624
+      height: 0.15889773
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: f5b3b05c28104c545894d3eaaa7bd3cc, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.00048828125
+      y: 0.00048828125
+      width: 0.38085938
+      height: 0.38085938
+    srcObjName: Treehouse snow bottom
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: -1.2790105
+      y: -2.267749
+      width: 3.1220212
+      height: 5.535498
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: 09522d0c214e07b4b91f73295abf0801, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.00048828125
+      y: 0.5419922
+      width: 0.17578125
+      height: 0.2109375
+    srcObjName: smalltreetreehouse (1)
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0.2993821
+      y: 0.6224626
+      width: 0.1761992
+      height: 0.21103865
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: b55ee91d64bfba34a9358f7cad7184f7, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.38232422
+      y: 0.00048828125
+      width: 0.5
+      height: 0.22167969
+    srcObjName: smalltreetreehouse (2)
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: -1.6717532
+      y: -0.88082767
+      width: 5.841552
+      height: 2.7218492
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  resultMaterials:
+  - combinedMaterial: {fileID: 2100000, guid: bbce7c53ff1e2fa4fb951d2f6791fafd, type: 2}
+    considerMeshUVs: 1
+    sourceMaterials:
+    - {fileID: 2100000, guid: 09522d0c214e07b4b91f73295abf0801, type: 2}
+    - {fileID: 2100000, guid: 62a47c4ac95d62449bcd6def0ff5bbac, type: 2}
+    - {fileID: 2100000, guid: cad9600dfb29ae8498b1da6099adb778, type: 2}
+    - {fileID: 2100000, guid: 09522d0c214e07b4b91f73295abf0801, type: 2}
+    - {fileID: 2100000, guid: f5b3b05c28104c545894d3eaaa7bd3cc, type: 2}
+    - {fileID: 2100000, guid: 09522d0c214e07b4b91f73295abf0801, type: 2}
+    - {fileID: 2100000, guid: b55ee91d64bfba34a9358f7cad7184f7, type: 2}
+  resultMaterialsTexArray: []
+  doMultiMaterial: 0

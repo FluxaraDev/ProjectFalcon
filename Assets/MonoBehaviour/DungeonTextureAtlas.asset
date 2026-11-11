@@ -1,0 +1,1073 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 499468296, guid: 00566d7905479bd394c62e1ed3491326, type: 3}
+  m_Name: DungeonTextureAtlas
+  m_EditorClassIdentifier:
+  version: 3252
+  resultType: 0
+  materialsAndUVRects:
+  - material: {fileID: 2100000, guid: 18ab235fa3f773443aac03f251e631e8, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.00024414062
+      y: 0.7763672
+      width: 0.099121094
+      height: 0.08691406
+    srcObjName: BasementRoom
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0.016818315
+      y: 0.20395696
+      width: 0.7949084
+      height: 0.780321
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: e97c97e468de8e245a799cea8870f468, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.4453125
+      y: 0.44750977
+      width: 0.39941406
+      height: 0.35351562
+    srcObjName: BasementRoom_Panels
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: -2.2215693
+      y: -2.254484
+      width: 6.391588
+      height: 6.334197
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: 5fe2d4d9d24704b4b826e3a1e0574b29, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.00024414062
+      y: 0.44750977
+      width: 0.44458008
+      height: 0.32836914
+    srcObjName: BasementRoom_Wood
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: -3.9603498
+      y: -3.09661
+      width: 7.1132946
+      height: 5.879015
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: 9f64977eada8fb246b9320d0c3471b5e, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.06298828
+      y: 0.86376953
+      width: 0.030273438
+      height: 0.02709961
+    srcObjName: DungeonFunnelStairs_Prefab
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0.012831122
+      y: 0.012706729
+      width: 0.9732008
+      height: 0.97095376
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: 83d5f336e17b1ae4bbca00510b37831b, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.920166
+      y: 0.3942871
+      width: 0.030517578
+      height: 0.02734375
+    srcObjName: TV_Prefab
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0.012195252
+      y: 0.00880383
+      width: 0.98103416
+      height: 0.980181
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: ce0c1e6aeddcb2d4f9bf44fe98eb7c99, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.86499023
+      y: 0.3942871
+      width: 0.0546875
+      height: 0.028564453
+    srcObjName: BasementTable
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0.019914776
+      y: 0.021719217
+      width: 0.8770895
+      height: 0.5134851
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: ce0c1e6aeddcb2d4f9bf44fe98eb7c99, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.06298828
+      y: 0.8913574
+      width: 0.029052734
+      height: 0.025878906
+    srcObjName: BasementTableTop
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0.019914776
+      y: 0.5104992
+      width: 0.4677816
+      height: 0.4677816
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: bb75cbe67eac03147ba2d72c29be4b2f, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.22558594
+      y: 0.7763672
+      width: 0.0625
+      height: 0.052978516
+    srcObjName: BasementCouch_Prefab Variant
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0
+      y: 7.791553E-17
+      width: 1
+      height: 0.95644116
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: 49feaec055bc4c246b9e15c949181ef8, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.16259766
+      y: 0.8317871
+      width: 0.0625
+      height: 0.05493164
+    srcObjName: BasementStool_Prefab Variant
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0
+      y: -7.3002805E-17
+      width: 1
+      height: 0.9853555
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: 536a6ff99b2fae14dab222e94540d764, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.16259766
+      y: 0.7763672
+      width: 0.0625
+      height: 0.05493164
+    srcObjName: BasementLavaLamp_Emis
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0
+      y: -8.305645E-17
+      width: 1
+      height: 0.98869735
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: 31b95023b04152c40b6ede698ca9f0a2, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.00024414062
+      y: 0.86376953
+      width: 0.06225586
+      height: 0.055664062
+    srcObjName: BasementLamp_Emis
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0
+      y: -4.4118558E-17
+      width: 0.9998518
+      height: 1
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: 18d162644d3cb5e4297c01f5521dbca7, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.00024414062
+      y: 0.9199219
+      width: 0.06225586
+      height: 0.055908203
+    srcObjName: BasementShelf_Prefab Variant
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: -5.551115E-17
+      y: -5.877191E-17
+      width: 0.9962884
+      height: 1
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: a25fda09b1de0f3418dca34493b7aaf9, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.28393555
+      y: 0.93969727
+      width: 0.051513672
+      height: 0.05444336
+    srcObjName: BasementBoxLarge_Prefab Variant
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0.014474505
+      y: 0.009384735
+      width: 0.82556206
+      height: 0.9801796
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: 6054cc9d4e1c10241929a5108cf246b5, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.28393555
+      y: 0.8847656
+      width: 0.051513672
+      height: 0.05444336
+    srcObjName: BasementBoxMedium_Prefab Variant
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0.014474505
+      y: 0.009384735
+      width: 0.82556206
+      height: 0.9801796
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: 1e489ef2c110cf24eb9ab292f60fc74d, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.22558594
+      y: 0.94091797
+      width: 0.051513672
+      height: 0.0546875
+    srcObjName: BasementBoxSmall_Prefab Variant
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0.014474505
+      y: 0.009384735
+      width: 0.82556206
+      height: 0.9801796
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: bbca373c92c319144a87578d52d20b63, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.74609375
+      y: 0.3942871
+      width: 0.05859375
+      height: 0.049560547
+    srcObjName: BasementComicBox_Prefab Variant
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0.03
+      y: 0.03
+      width: 0.94
+      height: 0.890554
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: 903bb3ada2c123c41879bfff98255c57, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.16259766
+      y: 0.88720703
+      width: 0.0625
+      height: 0.0546875
+    srcObjName: BasementBookStackB_Prefab Variant
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0
+      y: 4.584353E-17
+      width: 1
+      height: 0.9776773
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: fcd730c46ee31434bb021a3f20e4361b, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.5637207
+      y: 0.3942871
+      width: 0.0625
+      height: 0.05078125
+    srcObjName: BasementBookStackA_Prefab Variant
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0
+      y: -3.2966592E-17
+      width: 1
+      height: 0.90656906
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: 84355f261ec55cc459d65914523c5c27, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.5007324
+      y: 0.3942871
+      width: 0.0625
+      height: 0.052734375
+    srcObjName: BasementShelfSmall_Prefab Variant
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0
+      y: -5.3535126E-17
+      width: 1
+      height: 0.9440288
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: d7d31f24d1c0a4d4e871d2e0dd4239e1, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.22558594
+      y: 0.829834
+      width: 0.060546875
+      height: 0.05444336
+    srcObjName: BasementCouchPillow_Prefab Variant
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0.013736576
+      y: 0.014002301
+      width: 0.97146785
+      height: 0.9730638
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: 1fa8c1721ab0c7547a18b6eec3687a48, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.626709
+      y: 0.3942871
+      width: 0.061035156
+      height: 0.049804688
+    srcObjName: BasementRug_Prefab Variant
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0.011532888
+      y: 0.011136845
+      width: 0.9780825
+      height: 0.8943741
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: 374a1440ac78f1e4789e49ee607b0ecd, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.099853516
+      y: 0.83251953
+      width: 0.06225586
+      height: 0.055908203
+    srcObjName: BasementComicBooks_Prefab Variant
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0
+      y: 4.2976003E-17
+      width: 0.99989814
+      height: 1
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: c71c58667d42d82408c481dc7c9348ab, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.099853516
+      y: 0.94506836
+      width: 0.061035156
+      height: 0.0546875
+    srcObjName: BasementRugLarge_Prefab Variant
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0.011532888
+      y: 0.011136845
+      width: 0.9780825
+      height: 0.976972
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: 948e18b0907474e4eb0d865a9d203d31, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.099853516
+      y: 0.7763672
+      width: 0.06225586
+      height: 0.055664062
+    srcObjName: BasementHeater_Prefab Variant
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 5.551115E-17
+      y: 5.795271E-17
+      width: 0.99931526
+      height: 1
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: 3c3256253df55634fb14c139281458da, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.8051758
+      y: 0.3942871
+      width: 0.059326172
+      height: 0.036865234
+    srcObjName: BasementLight
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0
+      y: 2.4947542E-07
+      width: 0.9528106
+      height: 0.66213226
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: 5a1b34d8bea7150468732f60adeaacdd, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.3359375
+      y: 0.8847656
+      width: 0.045166016
+      height: 0.055664062
+    srcObjName: BasementSocket_Prefab Variant
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0.72504485
+      height: 1
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: be621d91e32565d47b68b024870f2021, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.16259766
+      y: 0.9423828
+      width: 0.0625
+      height: 0.053955078
+    srcObjName: TorchwFlame
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0
+      y: 1.3410226E-17
+      width: 1
+      height: 0.97113216
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: d4a01d3592e1d56438571e5b403b114c, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.22558594
+      y: 0.8847656
+      width: 0.057861328
+      height: 0.055664062
+    srcObjName: BasementFuses_Prefab Variant
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0
+      y: -1.529314E-17
+      width: 0.9293327
+      height: 1
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: d99b933693b90724c8b0724ab7c67fa6, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.099853516
+      y: 0.888916
+      width: 0.060791016
+      height: 0.055664062
+    srcObjName: BasementPipes_Prefab Variant
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0.9758513
+      height: 1
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: ab2aa0237e7b8f8418e4d10b07cca279, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.9824219
+      y: 0.00024414062
+      width: 0.016113281
+      height: 0.013671875
+    srcObjName: DungeonBlockSmlA_Prefab
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0.11978373
+      y: 0
+      width: 1.0385152
+      height: 1.0000001
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: 84e558393adb89b4bae9c42799dffbbf, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.6882324
+      y: 0.3942871
+      width: 0.057373047
+      height: 0.05102539
+    srcObjName: DungeonGrateUnblocked_Prefab (1)
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0.04
+      y: 0.04
+      width: 0.92
+      height: 0.9163886
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: 3fbb2f81b4f920d42ad76e795bfe7c8f, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.9511719
+      y: 0.3942871
+      width: 0.030029297
+      height: 0.02758789
+    srcObjName: SkeletonDecoration_Skull
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: 0.0058987737
+      y: 0.0058987737
+      width: 0.9628512
+      height: 0.9862887
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: 9d4a6960d26f8a147b08950052ccd4f4, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.4453125
+      y: 0.8015137
+      width: 0.5
+      height: 0.1003418
+    srcObjName: BasementHall_DISABLE
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: -3.8817184
+      y: 0.101073556
+      width: 8.19487
+      height: 1.7997631
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: ba0e0bff116dccf4f90ef8095edc5a11, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.00024414062
+      y: 0.00024414062
+      width: 0.5
+      height: 0.44677734
+    srcObjName: BasementHall_DISABLE
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: -1.7430031
+      y: -3.8452535
+      width: 8.173641
+      height: 8.468076
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  - material: {fileID: 2100000, guid: a7e310afa6239424b9d595ea963509e1, type: 2}
+    atlasRect:
+      serializedVersion: 2
+      x: 0.5007324
+      y: 0.00024414062
+      width: 0.48120117
+      height: 0.3935547
+    srcObjName: BasementHall_Carpet_DISABLE
+    textureArraySliceIdx: -1
+    allPropsUseSameTiling: 1
+    allPropsUseSameTiling_sourceMaterialTiling:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 1
+      height: 1
+    allPropsUseSameTiling_samplingEncapsulatinRect:
+      serializedVersion: 2
+      x: -3.351339
+      y: -2.6474388
+      width: 7.7026787
+      height: 7.051404
+    propsUseDifferntTiling_srcUVsamplingRect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    tilingTreatment: 1
+  resultMaterials:
+  - combinedMaterial: {fileID: 2100000, guid: c38a349ae706d31409bf138957576ea9, type: 2}
+    considerMeshUVs: 1
+    sourceMaterials:
+    - {fileID: 2100000, guid: 18ab235fa3f773443aac03f251e631e8, type: 2}
+    - {fileID: 2100000, guid: e97c97e468de8e245a799cea8870f468, type: 2}
+    - {fileID: 2100000, guid: 5fe2d4d9d24704b4b826e3a1e0574b29, type: 2}
+    - {fileID: 2100000, guid: 9f64977eada8fb246b9320d0c3471b5e, type: 2}
+    - {fileID: 2100000, guid: 83d5f336e17b1ae4bbca00510b37831b, type: 2}
+    - {fileID: 2100000, guid: ce0c1e6aeddcb2d4f9bf44fe98eb7c99, type: 2}
+    - {fileID: 2100000, guid: ce0c1e6aeddcb2d4f9bf44fe98eb7c99, type: 2}
+    - {fileID: 2100000, guid: bb75cbe67eac03147ba2d72c29be4b2f, type: 2}
+    - {fileID: 2100000, guid: 49feaec055bc4c246b9e15c949181ef8, type: 2}
+    - {fileID: 2100000, guid: 536a6ff99b2fae14dab222e94540d764, type: 2}
+    - {fileID: 2100000, guid: 31b95023b04152c40b6ede698ca9f0a2, type: 2}
+    - {fileID: 2100000, guid: 18d162644d3cb5e4297c01f5521dbca7, type: 2}
+    - {fileID: 2100000, guid: a25fda09b1de0f3418dca34493b7aaf9, type: 2}
+    - {fileID: 2100000, guid: 6054cc9d4e1c10241929a5108cf246b5, type: 2}
+    - {fileID: 2100000, guid: 1e489ef2c110cf24eb9ab292f60fc74d, type: 2}
+    - {fileID: 2100000, guid: bbca373c92c319144a87578d52d20b63, type: 2}
+    - {fileID: 2100000, guid: 903bb3ada2c123c41879bfff98255c57, type: 2}
+    - {fileID: 2100000, guid: fcd730c46ee31434bb021a3f20e4361b, type: 2}
+    - {fileID: 2100000, guid: 84355f261ec55cc459d65914523c5c27, type: 2}
+    - {fileID: 2100000, guid: d7d31f24d1c0a4d4e871d2e0dd4239e1, type: 2}
+    - {fileID: 2100000, guid: 1fa8c1721ab0c7547a18b6eec3687a48, type: 2}
+    - {fileID: 2100000, guid: 374a1440ac78f1e4789e49ee607b0ecd, type: 2}
+    - {fileID: 2100000, guid: c71c58667d42d82408c481dc7c9348ab, type: 2}
+    - {fileID: 2100000, guid: 948e18b0907474e4eb0d865a9d203d31, type: 2}
+    - {fileID: 2100000, guid: 3c3256253df55634fb14c139281458da, type: 2}
+    - {fileID: 2100000, guid: 5a1b34d8bea7150468732f60adeaacdd, type: 2}
+    - {fileID: 2100000, guid: be621d91e32565d47b68b024870f2021, type: 2}
+    - {fileID: 2100000, guid: d4a01d3592e1d56438571e5b403b114c, type: 2}
+    - {fileID: 2100000, guid: d99b933693b90724c8b0724ab7c67fa6, type: 2}
+    - {fileID: 2100000, guid: ab2aa0237e7b8f8418e4d10b07cca279, type: 2}
+    - {fileID: 2100000, guid: 84e558393adb89b4bae9c42799dffbbf, type: 2}
+    - {fileID: 2100000, guid: 3fbb2f81b4f920d42ad76e795bfe7c8f, type: 2}
+    - {fileID: 2100000, guid: 9d4a6960d26f8a147b08950052ccd4f4, type: 2}
+    - {fileID: 2100000, guid: ba0e0bff116dccf4f90ef8095edc5a11, type: 2}
+    - {fileID: 2100000, guid: a7e310afa6239424b9d595ea963509e1, type: 2}
+  resultMaterialsTexArray: []
+  doMultiMaterial: 0
