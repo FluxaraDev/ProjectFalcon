@@ -1,0 +1,36 @@
+# Diagnostic: print the runner's real disk numbers.
+# One run answers: total disk, free before cleanup, free after the
+# standard GameCI cleanup step. No project, no Unity, runs in ~2 min.
+name: Print storage
+on: workflow_dispatch
+jobs:
+  probe-public:
+    name: Probe (as configured)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Raw numbers before cleanup
+        run: |
+          echo "=== df -h (all filesystems) ==="
+          df -h
+          echo "=== workspace mount detail ==="
+          df -h "$GITHUB_WORKSPACE" || true
+          echo "=== free on / ==="
+          df -h / | tail -1
+          echo "=== biggest preinstalled toolchains ==="
+          sudo du -sh /usr/local/lib/android /opt/ghc /opt/hostedtoolcache /usr/share/dotnet /swapfile 2>/dev/null || true
+      - name: Free disk space (standard GameCI cleanup)
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+      - name: Numbers after cleanup
+        run: |
+          echo "=== df -h after cleanup ==="
+          df -h
+          echo "=== free on / after cleanup ==="
+          df -h / | tail -1
