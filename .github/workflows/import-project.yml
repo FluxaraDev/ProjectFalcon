@@ -1,11 +1,12 @@
-# Import the Unity project into this repo.
-# Downloads a zip of the staged project (Assets + Packages +
-# ProjectSettings + .gitignore) from a direct URL, unpacks it at the
-# repo root, and commits/pushes it back in TWO chunks using the
-# workflow's own GITHUB_TOKEN. No personal token involved.
-# Chunking: push 1 = everything under Assets except Assets/Scripts;
+# Import the Unity project into this repo. (v2)
+# v2 change: the download step no longer relies on `gdown --fuzzy`
+# (v1 run failed there). It echoes the pasted URL into the log, pulls
+# the Drive file ID out of it with a regex, and downloads via the
+# canonical uc?id= form. The downloaded file is size/type checked
+# before anything else runs.
+# Commits/pushes happen in TWO chunks using the workflow's own
+# GITHUB_TOKEN: push 1 = everything except Assets/Scripts;
 # push 2 = Assets/Scripts + Packages + ProjectSettings + .gitignore.
-# Each push stays well under GitHub's 2 GB push cap.
 name: Import project
 on:
   workflow_dispatch:
@@ -32,9 +33,19 @@ jobs:
           swap-storage: true
       - name: Download project zip
         run: |
-          pip install --quiet gdown
-          gdown --fuzzy "${{ inputs.zip_url }}" -O project.zip
+          echo "Received zip_url: ${{ inputs.zip_url }}"
+          pip install --quiet "gdown==5.2.0"
+          FID=$(echo "${{ inputs.zip_url }}" | grep -oE '[A-Za-z0-9_-]{25,}' | sort -u | awk '{ if (length($0) > length(m)) m = $0 } END { print m }')
+          echo "Extracted Drive file ID: $FID"
+          gdown "https://drive.google.com/uc?id=${FID}" -O project.zip
           ls -la project.zip
+          python3 -c "
+          import os, zipfile
+          s = os.path.getsize('project.zip')
+          assert s > 900_000_000, f'zip too small: {s} bytes'
+          assert zipfile.is_zipfile('project.zip'), 'downloaded file is not a zip'
+          print(f'zip verified: {s} bytes')
+          "
       - name: Unpack at repo root
         run: |
           unzip -q project.zip -x ".github/*"
@@ -44,6 +55,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config http.postBuffer 2147483648
           git add -A -- . ':!Assets/Scripts'
           git commit -m "Import Unity project (part 1: assets)"
           git push
