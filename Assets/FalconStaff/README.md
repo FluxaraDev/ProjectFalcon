@@ -324,3 +324,22 @@ the GitHub web UI). Without it the RAVE page reports the song as missing.
 - Still open (Sans, same message): bot features from his Python
   photon bot work (rocket, track, etc.) natively in-game for staff -
   specifics being pinned down with him before building.
+
+## Round 17 (2026-11-12, build #12): name-gate deadlock + JSON role auth
+
+- **Name gate deadlock (Sans, build #11: "locks you out the computer,
+  you can't change it" - everyone).** The gate's red failure screen
+  bricked the computer, and FalconComputerFix held that screen until
+  the name was fixed - but the NAME page lives on the bricked
+  computer. Catch-22 for every default-named player. Fix: Falcon
+  failure messages are now transient (clear after the 2 s grace,
+  always); the gates still block every join and re-show the message
+  per attempt.
+- **Name save hardening:** ProcessNameState ran the CheckForBadName
+  CloudScript call BEFORE saving the name; the function does not
+  exist on the Falcon title (Azure Functions registry, not legacy
+  CloudScript). The check now runs after the save, try/catch guarded;
+  same guard on the room-code check so it can never eat a join.
+- **Role parse is now tolerant:** plain, quoted, or JSON-blob values
+  ({"falcon_role":"headadmin"}) in the falcon_role read-only data all
+  auth the same (Sans: "staff menu doesn't auth with json").

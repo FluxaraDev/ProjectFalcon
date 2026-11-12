@@ -47,11 +47,19 @@ public class FalconComputerFix : MonoBehaviour, IMatchmakingCallbacks
         if (Time.time < nextCheck) return;
         nextCheck = Time.time + 0.5f;
         if (Time.realtimeSinceStartup - FalconFailure.ShownAt < 2f) return;
-        if (FalconRave.JoinLocked) return; // solo rave still running
 
+        // Round 17: Falcon failure messages are TRANSIENT - always
+        // clear once shown. The old rule (hold the screen while the
+        // blocking condition lasts) deadlocked the name gate: the
+        // message told default-named players to change their name at
+        // the computer, while the failure screen itself bricked the
+        // computer - they could never reach the NAME page (Sans,
+        // build #11: "locks you out the computer, you can't change
+        // it", everyone affected). The gates still block every join
+        // attempt and re-show the message each time; nothing is
+        // weaker, the computer just stays usable.
         GorillaComputer gc = GorillaComputer.instance;
         if (gc == null) return;
-        if (NameIsDefault(gc.savedName)) return; // name gate still applies
 
         FalconFailure.Shown = false;
         gc.FalconClearFailureState();
@@ -64,20 +72,6 @@ public class FalconComputerFix : MonoBehaviour, IMatchmakingCallbacks
         FalconFailure.Shown = false;
         GorillaComputer gc = GorillaComputer.instance;
         if (gc != null) gc.FalconClearFailureState();
-    }
-
-    // Same rule as PhotonNetworkController's name gate.
-    private static bool NameIsDefault(string n)
-    {
-        if (string.IsNullOrEmpty(n)) return true;
-        n = n.Trim().ToLowerInvariant();
-        if (n == "gorilla") return true;
-        if (!n.StartsWith("gorilla") || n.Length <= 7) return false;
-        for (int i = 7; i < n.Length; i++)
-        {
-            if (!char.IsDigit(n[i])) return false;
-        }
-        return true;
     }
 
     public void OnFriendListUpdate(List<FriendInfo> friendList) { }

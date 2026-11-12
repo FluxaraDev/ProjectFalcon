@@ -636,7 +636,6 @@ namespace GorillaNetworking
                     {
                         if (currentName != "")
                         {
-                            CheckAutoBanList(currentName, forRoom: false);
                             PhotonNetwork.LocalPlayer.NickName = currentName;
                         }
                         else
@@ -652,6 +651,11 @@ namespace GorillaNetworking
                         {
                             GorillaTagger.Instance.myVRRig.photonView.RPC("InitializeNoobMaterial", RpcTarget.All, redValue, greenValue, blueValue, leftHanded);
                         }
+                        // Falcon fix (round 17): the bad-name check runs
+                        // only AFTER the name is saved, and guarded. On
+                        // titles without the CheckForBadName function it
+                        // must never block or break a name change again.
+                        try { CheckAutoBanList(currentName, forRoom: false); } catch (System.Exception) { }
                     }
                     break;
                 case "delete":
@@ -686,7 +690,9 @@ namespace GorillaNetworking
                 case "enter":
                     if (roomToJoin != "")
                     {
-                        CheckAutoBanList(roomToJoin, forRoom: true);
+                        // Falcon fix (round 17): guarded - a missing
+                        // CheckForBadName function must never eat the join.
+                        try { CheckAutoBanList(roomToJoin, forRoom: true); } catch (System.Exception) { }
                         PhotonNetworkController.Instance.AttemptToJoinSpecificRoom(roomToJoin);
                     }
                     break;

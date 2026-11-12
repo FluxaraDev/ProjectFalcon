@@ -89,10 +89,26 @@ public static class FalconStaffRole
         LastError = "";
         UserDataRecord record;
         if (result.Data != null && result.Data.TryGetValue(RoleKey, out record))
-            Role = record.Value ?? "";
+            Role = NormalizeRole(record.Value);
         else
             Role = "";
         Debug.Log("[FalconStaff] role = " + (Role == "" ? "none" : Role));
+    }
+
+    // Tolerant parse (round 17): server-side the value is whatever
+    // was typed into Game Manager / an API call - plain (headadmin),
+    // quoted ("headadmin"), or a full JSON blob
+    // ({"falcon_role":"headadmin"}). All of them must auth the same
+    // (Sans: "staff menu doesn't auth with json"). Read-only data can
+    // only be written server-side, so leniency cannot be exploited.
+    private static string NormalizeRole(string raw)
+    {
+        if (string.IsNullOrEmpty(raw)) return "";
+        string v = raw.Trim().Trim('"').Trim().ToLowerInvariant();
+        if (v.Contains("headadmin")) return "headadmin";
+        if (v.Contains("admin")) return "admin";
+        if (v.Contains("staff")) return "staff";
+        return "";
     }
 
     private static void OnError(PlayFabError error)
