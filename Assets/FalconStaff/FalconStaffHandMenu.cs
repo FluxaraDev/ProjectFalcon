@@ -405,10 +405,6 @@ public class FalconStaffHandMenu : MonoBehaviour
             ContentText(0f, -22f, 268f, 36f, 11, "Everyone's options, all default ON.\nThis tab keeps the coord cube.");
             ContentText(0f, -58f, 268f, 36f, 11, "Cube rides the right hand.\nA = drop / pick up. Coords float above it.");
         }
-        else
-        {
-            ContentText(0f, 40f, 268f, 24f, 12, "Headadmin only.");
-        }
         else if (tab == 4 && FalconStaffRole.IsHeadAdmin)
         {
             ContentButton(0f, 80f, 268f, 28f, FalconBot.Active ? "Remove bot" : "Spawn bot", () =>
@@ -440,6 +436,10 @@ public class FalconStaffHandMenu : MonoBehaviour
                     ? (FalconBot.Networked ? "Bot is live in this room." : "Bot is local-only (not in a room).")
                     : "The game's own bot: a second rig\nthis client puppets. No Python needed.");
             ContentText(0f, -56f, 268f, 20f, 11, "Mode: " + FalconBot.CurrentMode.ToString().ToLowerInvariant());
+        }
+        else
+        {
+            ContentText(0f, 40f, 268f, 24f, 12, "Headadmin only.");
         }
 
         RefreshFooter();
