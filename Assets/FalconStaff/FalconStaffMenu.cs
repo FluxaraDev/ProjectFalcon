@@ -239,7 +239,7 @@ public class FalconStaffMenu : MonoBehaviour
             if (GUILayout.Button("Kick gun (staff+)")) armedGun = "kick";
             if (GUILayout.Button("Disarm")) armedGun = "";
             selfTest = GUILayout.Toggle(selfTest, "Self test (guns can hit YOU)");
-            if (GUILayout.Button("Spawn test dummy")) FalconTestDummy.Toggle(transform);
+            if (GUILayout.Button("Spawn test dummy")) FalconTestDummy.Toggle();
             GUILayout.Label("Dummy: a frozen player rig for target practice. Shoot it with any gun to verify hits; effects that move a real player will not move it (it has no locomotion).");
             GUILayout.Label("Reports: as " + (FalconStaffRole.IsAdminOrHigher
                 ? "admin tier, your reports ban instantly."
