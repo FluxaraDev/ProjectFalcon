@@ -286,3 +286,24 @@ the GitHub web UI). Without it the RAVE page reports the song as missing.
   restored exactly as build #10 shipped it - Sans verified long
   arms + speed boost working. Option 1 drives FalconArmScale again.
 - Round 13's pointer beam is unaffected and stays.
+
+## Round 15 (2026-11-12, build #11): End Rave button + disco v4
+
+- **End rave button (Sans):** Troll tab now has Start rave / End rave
+  side by side. End = FalconRave.StopRaveFromMenu(): Photon event
+  211 to the rest of the lobby + local EndRave; full restore runs on
+  every client. Solo: just ends locally.
+- **Disco v4 - the map finally gets a real lever.** Build #10 verdict:
+  leaves disco'd, the map didn't respond. Root cause in
+  BetterDayNightManager: the map's custom shader reads two GLOBAL
+  textures (_GlobalDayNightLightmap1/2) + a lerp float. It does not
+  read material.color (v3's day-list writes were invisible on it) and
+  it does not evaluate dynamic lights AT ALL - so the rainbow point
+  light fallback could never have repainted the ground either.
+  v4: at BeginRave, capture the current global pair, blit-tinted
+  copies (Falcon/LightmapTint shader, disco color multiply) into
+  RenderTextures, re-point the globals every frame; EndRave hands
+  the originals back. Phase changes mid-rave are adopted as the new
+  base. The shader is anchored by a Resources material so it cannot
+  be stripped (round 13's lesson). STEP line shows "LM" when the
+  tint path is live.

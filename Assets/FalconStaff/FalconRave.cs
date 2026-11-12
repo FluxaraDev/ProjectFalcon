@@ -24,6 +24,7 @@ using Player = GorillaLocomotion.Player;
 public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
 {
     public const byte EvRaveStart = 210;
+    public const byte EvRaveEnd = 211;
 
     // Tunables ------------------------------------------------------------
     private const float RaveGravityY = -2.0f;    // stock gravity is -9.81
@@ -63,6 +64,18 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
     private Material[] dayCutoutMats = new Material[0];
     private Color[] dayCutoutBase = new Color[0];
     private int totalMats;
+
+    // Disco v4 (round 15): the map's custom shader reads the GLOBAL
+    // day/night lightmap textures - not material colors, not dynamic
+    // lights (a point light can never repaint the ground; Sans's #10
+    // verdict: leaves disco'd, map didn't). We blit-tint copies of
+    // those textures with the disco color and re-point the globals.
+    private const string LmName1 = "_GlobalDayNightLightmap1";
+    private const string LmName2 = "_GlobalDayNightLightmap2";
+    private Material tintMat;
+    private RenderTexture lmRt1, lmRt2;
+    private Texture lmOrig1, lmOrig2;
+    private bool lmOk;
 
     // Last lifecycle step, shown on the RAVE page (round 5): if a start
     // path dies mid-way again, the page says exactly how far it got.
@@ -187,6 +200,25 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
         }
     }
 
+    // Staff menu's End Rave button (Sans): kill the rave in this lobby
+    // instantly - event to everyone else, local end here.
+    public static void StopRaveFromMenu()
+    {
+        if (Instance == null) return;
+        if (!IsRaving)
+        {
+            LastResult = "NO RAVE RUNNING";
+            return;
+        }
+        if (PhotonNetwork.InRoom)
+        {
+            var options = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
+            PhotonNetwork.RaiseEvent(EvRaveEnd, null, options, SendOptions.SendReliable);
+        }
+        LastResult = "RAVE ENDED";
+        Instance.EndRave();
+    }
+
     private static void Refuse(string message)
     {
         LastResult = message;
@@ -292,6 +324,34 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
             Debug.LogError("[FalconRave] material capture failed: " + e.Message);
         }
 
+        // Capture the global lightmaps for the v4 tint. The anchor
+        // material lives in Resources so its shader survives build
+        // stripping (the Sprites/Default lesson from round 13).
+        lmOk = false;
+        try
+        {
+            Material anchor = Resources.Load<Material>("FalconLightmapTintMat");
+            if (anchor != null) tintMat = new Material(anchor);
+            else
+            {
+                Shader sh = Shader.Find("Falcon/LightmapTint");
+                if (sh != null) tintMat = new Material(sh);
+            }
+            lmOrig1 = Shader.GetGlobalTexture(LmName1);
+            lmOrig2 = Shader.GetGlobalTexture(LmName2);
+            if (tintMat != null && lmOrig1 != null && lmOrig2 != null)
+            {
+                lmRt1 = MakeTintRT(lmOrig1);
+                lmRt2 = MakeTintRT(lmOrig2);
+                lmOk = lmRt1 != null && lmRt2 != null;
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError("[FalconRave] lightmap capture failed: " + e.Message);
+            lmOk = false;
+        }
+
         if (audioSource == null)
         {
             audioSource = gameObject.AddComponent<AudioSource>();
@@ -306,7 +366,7 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
             audioSource.loop = false;
             audioSource.PlayScheduled(AudioSettings.dspTime + System.Math.Max(0.0, audioDelay));
         }
-        LastStep = (solo ? "BEGAN (SOLO)" : "BEGAN (LOBBY)") + (matsOk ? " MATS " + totalMats : " - NO MAP FX");
+        LastStep = (solo ? "BEGAN (SOLO)" : "BEGAN (LOBBY)") + (matsOk ? " MATS " + totalMats : " - NO MAP FX") + (lmOk ? " LM" : "");
         Debug.Log("[FalconRave] Rave started. Solo=" + soloRave + " Duration=" + duration);
     }
 
@@ -352,6 +412,17 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
         {
             if (dayCutoutMats[i] != null) dayCutoutMats[i].color = dayCutoutBase[i];
         }
+
+        if (lmOk)
+        {
+            // Hand the globals back to the day/night manager.
+            if (lmOrig1 != null) Shader.SetGlobalTexture(LmName1, lmOrig1);
+            if (lmOrig2 != null) Shader.SetGlobalTexture(LmName2, lmOrig2);
+        }
+        if (lmRt1 != null) { lmRt1.Release(); Destroy(lmRt1); lmRt1 = null; }
+        if (lmRt2 != null) { lmRt2.Release(); Destroy(lmRt2); lmRt2 = null; }
+        if (tintMat != null) { Destroy(tintMat); tintMat = null; }
+        lmOk = false;
 
         if (audioSource != null) audioSource.Stop();
         LastStep = "ENDED";
@@ -422,6 +493,39 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
             if (dayCutoutMats[i] != null)
                 dayCutoutMats[i].color = DiscoOver(dayCutoutBase[i], c);
         }
+        // v4: repaint the map itself through its own lighting path.
+        TintLightmaps(Color.HSVToRGB(hue, 1f, 1f));
+    }
+
+    // One frame of the v4 tint: re-point the globals at tinted copies
+    // of the CURRENT manager lightmaps. If a day/night phase change
+    // swapped the originals mid-rave, adopt the new pair as the base.
+    private void TintLightmaps(Color disco)
+    {
+        if (!lmOk) return;
+        Texture cur1 = Shader.GetGlobalTexture(LmName1);
+        if (cur1 != null && cur1 != lmRt1) lmOrig1 = cur1;
+        Texture cur2 = Shader.GetGlobalTexture(LmName2);
+        if (cur2 != null && cur2 != lmRt2) lmOrig2 = cur2;
+        if (lmOrig1 == null || lmOrig2 == null) return;
+        tintMat.SetColor("_Tint", disco);
+        Graphics.Blit(lmOrig1, lmRt1, tintMat);
+        Graphics.Blit(lmOrig2, lmRt2, tintMat);
+        Shader.SetGlobalTexture(LmName1, lmRt1);
+        Shader.SetGlobalTexture(LmName2, lmRt2);
+    }
+
+    private static RenderTexture MakeTintRT(Texture src)
+    {
+        int w = src.width, h = src.height;
+        while (w > 1024 || h > 1024) { w = Mathf.Max(1, w / 2); h = Mathf.Max(1, h / 2); }
+        var rt = new RenderTexture(w, h, 0, RenderTextureFormat.ARGB32);
+        rt.wrapMode = src.wrapMode;
+        rt.filterMode = FilterMode.Bilinear;
+        rt.useMipMap = false;
+        rt.autoGenerateMips = false;
+        rt.Create();
+        return rt;
     }
 
     // Disco color over an authored base color, with the base normalized
@@ -461,6 +565,11 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
 
     public void OnEvent(EventData photonEvent)
     {
+        if (photonEvent.Code == EvRaveEnd)
+        {
+            if (IsRaving) EndRave();
+            return;
+        }
         if (photonEvent.Code != EvRaveStart || IsRaving) return;
         double startAt = photonEvent.CustomData is double d ? d : PhotonNetwork.Time;
         double delay = startAt - PhotonNetwork.Time;

@@ -350,11 +350,16 @@ public class FalconStaffHandMenu : MonoBehaviour
         }
         else if (tab == 1 && FalconStaffRole.IsHeadAdmin)
         {
-            ContentButton(0f, 80f, 268f, 24f, "Start rave (this lobby)", () =>
+            ContentButton(-68f, 80f, 132f, 24f, "Start rave", () =>
             {
                 FalconRave.TryStartFromComputer();
                 lastAction = FalconRave.LastResult == "" ? "rave: no result" : FalconRave.LastResult.ToLowerInvariant();
                 if (lastAction.Length > 44) lastAction = lastAction.Substring(0, 44);
+            }, () => FalconRave.IsRaving ? 1 : 0);
+            ContentButton(68f, 80f, 132f, 24f, "End rave", () =>
+            {
+                FalconRave.StopRaveFromMenu();
+                lastAction = FalconRave.LastResult == "" ? "rave: no result" : FalconRave.LastResult.ToLowerInvariant();
             }, () => FalconRave.IsRaving ? 1 : 0);
             ContentButton(0f, 53f, 268f, 24f, "Spooky music (lobby)", () =>
             {
