@@ -103,13 +103,17 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
         string staff = "\nSTAFF: " + (FalconStaffRole.Role == "" ? "NONE (" + FalconStaffRole.FetchState.ToUpperInvariant() + ")" : FalconStaffRole.Role.ToUpperInvariant()) + " BTN:" + FalconStaffHandMenu.MenuButtonPresses;
         if (IsRaving)
         {
-            return "RAVE MODE\n\nTIME LEFT: " + CountdownText()
+            int s = SecondsLeft;
+            return "RAVE MODE\n\nTIME LEFT: " + (s / 60) + ":" + (s % 60).ToString("00")
                 + "\n\nLOW GRAVITY + SPEED BOOST"
                 + (soloRave ? "\nJOINING LOCKED TILL SONG ENDS" : "")
                 + "\nSTEP: " + LastStep + staff;
         }
+        // Screen budget measured from Sans's build #8 photo: ~11 lines
+        // at ~41 chars before the last line sinks behind the bezel.
+        // This layout is 10 lines with every line under 30 chars.
         return "RAVE MODE\n\nPRESS ENTER TO START\nSONG: " + SongTitle
-            + "\n\nDISCO LIGHTS - LOW GRAVITY\nSPEED BOOST - WHOLE MAP"
+            + "\nDISCO LIGHTS - LOW GRAVITY\nSPEED BOOST - WHOLE MAP"
             + "\n\nSOLO OR PRIVATE HOST ONLY"
             + "\nSTEP: " + LastStep + staff;
     }
