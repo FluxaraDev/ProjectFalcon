@@ -307,3 +307,20 @@ the GitHub web UI). Without it the RAVE page reports the song as missing.
   base. The shader is anchored by a Resources material so it cannot
   be stripped (round 13's lesson). STEP line shows "LM" when the
   tint path is live.
+
+## Round 16 (2026-11-12, build #11): self-test hardened
+
+- Sans: "No self test - I can't shoot myself with any of the troll
+  guns." Two stacked causes: in build #10 the pointer exception
+  killed menu clicks, so guns could not even be armed (fixed round
+  13); and the hit path itself - a forward physics raycast almost
+  never finds a VRRig on your own colliders, and ConePickRig's 12
+  degree cone at your own head demands near-perfect aim at your own
+  face. GunFire now checks a dedicated self cone FIRST: your own
+  head within 30 degrees and 2.5 m = FireSelf, always.
+- Fling now sustains its velocity for 0.35 s of FixedUpdates - a
+  single velocity set is overwritten by the locomotion immediately
+  and reads as "nothing happened".
+- Still open (Sans, same message): bot features from his Python
+  photon bot work (rocket, track, etc.) natively in-game for staff -
+  specifics being pinned down with him before building.

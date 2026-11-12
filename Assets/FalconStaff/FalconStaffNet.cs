@@ -111,7 +111,15 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback
     {
         Rigidbody rb = LocalBody();
         if (rb == null) yield break;
-        rb.velocity = velocity;
+        // Sustain the velocity: a single set is overwritten by the
+        // locomotion within a frame or two and the fling reads as
+        // "nothing happened" (the self-test complaint).
+        float until = Time.time + 0.35f;
+        while (Time.time < until)
+        {
+            rb.velocity = velocity;
+            yield return new WaitForFixedUpdate();
+        }
     }
 
     private IEnumerator FakeLag()

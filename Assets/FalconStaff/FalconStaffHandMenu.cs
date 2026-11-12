@@ -529,6 +529,22 @@ public class FalconStaffHandMenu : MonoBehaviour
         if (armedGun == "" || armedGun == "snowball") return;
         Transform hand = Player.Instance != null ? Player.Instance.rightHandTransform : null;
         if (hand == null) return;
+        // Self test first: a generous cone at your own head. Pointing a
+        // gun at your own body must always register (Sans, build #10:
+        // "can't shoot myself with any of the troll guns") - the
+        // physics raycast rarely finds a VRRig on your own colliders,
+        // and the tight cone pick demanded near-perfect aim at your
+        // own face.
+        VRRig ownRig = GorillaTagger.Instance != null ? GorillaTagger.Instance.offlineVRRig : null;
+        if (ownRig != null && ownRig.headMesh != null)
+        {
+            Vector3 toOwn = ownRig.headMesh.transform.position - hand.position;
+            if (toOwn.magnitude < 2.5f && Vector3.Angle(hand.forward, toOwn) < 30f)
+            {
+                FireSelf(armedGun);
+                return;
+            }
+        }
         RaycastHit hit;
         VRRig rig = null;
         if (Physics.Raycast(hand.position, hand.forward, out hit, 100f))
