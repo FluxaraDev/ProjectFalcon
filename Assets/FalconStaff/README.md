@@ -226,3 +226,20 @@ the GitHub web UI). Without it the RAVE page reports the song as missing.
   is gone; headadmins use the same ITEMS toggles as everyone.
 - **Coord cube label doubled** (canvas scale 0.0016 -> 0.0032, raised
   to y 0.26) - build #9's text was too small to read up close.
+
+## Round 11 (2026-11-12, build #11): preds camera bug - hotfix
+
+- **Build #10 broke the camera (Sans: camera under the map, model
+  above, can't walk). Root cause:** round 9's FalconPreds wrote pose
+  offsets into Player.headCollider - in this build that collider sits
+  on the MAIN CAMERA GameObject (Main Camera < TurnParent <
+  GorillaPlayer), and locomotion reads the same transform for body
+  placement. NEVER write the camera transform.
+- **Fix:** FalconPreds rewritten - no writes to any Player transform,
+  no snapshot/restore. Offsets now land on the local offline VRRig's
+  visual hand transforms only (re-derived from the tracked anchors
+  every frame, so they self-erase and cannot feed physics). Head
+  prediction removed: from a script it is impossible in this game -
+  the only head transform is the camera. Head preds = runtime/ADB.
+- Defaults unchanged (ITEMS toggles all ON); with the camera path
+  gone, default-on preds are visual-only and safe.
