@@ -350,7 +350,12 @@ public class FalconStaffHandMenu : MonoBehaviour
         }
         else if (tab == 1 && FalconStaffRole.IsHeadAdmin)
         {
-            ContentText(0f, 80f, 268f, 24f, 12, "Headadmin: guns are live.");
+            ContentButton(0f, 80f, 268f, 24f, "Start rave (this lobby)", () =>
+            {
+                FalconRave.TryStartFromComputer();
+                lastAction = FalconRave.LastResult == "" ? "rave: no result" : FalconRave.LastResult.ToLowerInvariant();
+                if (lastAction.Length > 44) lastAction = lastAction.Substring(0, 44);
+            }, () => FalconRave.IsRaving ? 1 : 0);
             ContentButton(0f, 53f, 268f, 24f, "Spooky music (lobby)", () =>
             {
                 FalconStaffNet.SendToAll(FalconStaffNet.EvSpookyMusic, new object[0]);
@@ -365,7 +370,7 @@ public class FalconStaffHandMenu : MonoBehaviour
                 float cy = 26f - 27f * (i / 2);
                 ContentButton(cx, cy, 132f, 24f, g, () => { armedGun = g; RebuildContent(); }, () => armedGun == g ? 2 : 0);
             }
-            ContentText(0f, -122f, 268f, 18f, 11, "Snowball prefab not wired in this build.");
+            ContentText(0f, -122f, 268f, 18f, 11, "Headadmin: guns are live. Snowball unwired.");
         }
         else if (tab == 2 && FalconStaffRole.IsHeadAdmin)
         {

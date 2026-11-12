@@ -67,6 +67,10 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
     // Last lifecycle step, shown on the RAVE page (round 5): if a start
     // path dies mid-way again, the page says exactly how far it got.
     public static string LastStep { get; private set; } = "IDLE";
+
+    // Outcome of the last start attempt, for the staff menu's Start Rave
+    // button (no computer screen to read refusals on in city).
+    public static string LastResult { get; private set; } = "";
     private float hue;
     private bool matsOk;
     private float nextScreenPush;
@@ -129,14 +133,12 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
         if (Instance == null) return;
         if (IsRaving)
         {
-            FalconFailure.Mark();
-            GorillaComputer.instance.UpdateFailureText("THE RAVE IS ALREADY GOING. " + CountdownText());
+            Refuse("THE RAVE IS ALREADY GOING. " + CountdownText());
             return;
         }
         if (!Instance.TryLoadClip())
         {
-            FalconFailure.Mark();
-            GorillaComputer.instance.UpdateFailureText("RAVE SONG FILE IS MISSING FROM THIS BUILD.");
+            Refuse("RAVE SONG FILE IS MISSING FROM THIS BUILD.");
             return;
         }
         if (PhotonNetwork.InRoom)
@@ -147,14 +149,12 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
             {
                 if (!PhotonNetwork.IsMasterClient)
                 {
-                    FalconFailure.Mark();
-                    GorillaComputer.instance.UpdateFailureText("ONLY THE HOST OF A PRIVATE LOBBY CAN START THE RAVE.");
+                    Refuse("ONLY THE HOST OF A PRIVATE LOBBY CAN START THE RAVE.");
                     return;
                 }
                 if (PhotonNetwork.CurrentRoom == null || PhotonNetwork.CurrentRoom.IsVisible)
                 {
-                    FalconFailure.Mark();
-                    GorillaComputer.instance.UpdateFailureText("THE RAVE ONLY WORKS SOLO OR IN A PRIVATE LOBBY.");
+                    Refuse("THE RAVE ONLY WORKS SOLO OR IN A PRIVATE LOBBY.");
                     return;
                 }
             }
@@ -167,11 +167,13 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
             // lobbies - relying on the event looping back to the sender
             // was the fragile link. The looped-back event still arrives,
             // but BeginRave no-ops while a rave is running.
+            LastResult = "RAVE STARTED";
             Instance.BeginRave(solo: false, audioDelay: 1.0);
         }
         else if (PhotonNetwork.NetworkClientState == ClientState.ConnectedToMasterServer
                  || PhotonNetwork.NetworkClientState == ClientState.Disconnected)
         {
+            LastResult = "RAVE STARTED";
             Instance.BeginRave(solo: true, audioDelay: 0.0);
         }
         else
@@ -181,9 +183,16 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
             // window let it survive into the lobby being joined - full
             // effects in a public room, no master, no server-side rave
             // (Sans's field report, 2026-11-12). Refuse until settled.
-            FalconFailure.Mark();
-            GorillaComputer.instance.UpdateFailureText("WAIT UNTIL YOU ARE ALL THE WAY IN OR OUT OF THE LOBBY TO START THE RAVE.");
+            Refuse("WAIT UNTIL YOU ARE ALL THE WAY IN OR OUT OF THE LOBBY TO START THE RAVE.");
         }
+    }
+
+    private static void Refuse(string message)
+    {
+        LastResult = message;
+        FalconFailure.Mark();
+        if (GorillaComputer.instance != null)
+            GorillaComputer.instance.UpdateFailureText(message);
     }
 
     // ---- rave lifecycle ---------------------------------------------------

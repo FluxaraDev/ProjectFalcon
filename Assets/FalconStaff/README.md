@@ -174,3 +174,18 @@ the GitHub web UI). Without it the RAVE page reports the song as missing.
   self-test toggle are gone. Headadmin guns fire when clicked, spooky
   music sends immediately, and shooting your own rig self-tests without
   arming anything first. Troll use is still webhook-logged.
+
+## Round 8 (2026-11-12, build #10): Start Rave button in the menu
+
+- Sans: city has no computer, so add a Start Rave button to the staff
+  menu. It's on the Troll tab: "Start rave (this lobby)" calls the
+  computer's own FalconRave.TryStartFromComputer() verbatim (headadmin
+  any-lobby rule included). Refusals now also land in FalconRave.
+  LastResult and show in the menu footer, since city has no screen.
+- Physical city computer clone: NOT a prop copy in this build - recon
+  of the scene found exactly ONE GorillaComputer logic component (on a
+  childless logic object under Photon Manager) shared by ~3 keyboard
+  desks (138 buttons), all binding to the singleton instance at Start.
+  A real second desk = second logic instance + rewiring a cloned desk
+  group's screen and buttons to it. Deferred pending Sans's word; his
+  spot for it: (-50.76, 16.62, -99.83).
