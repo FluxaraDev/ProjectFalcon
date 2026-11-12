@@ -56,21 +56,6 @@ namespace GorillaLocomotion
 
 		public float maxArmLength = 1f;
 
-		// Project Falcon: headadmin long arms. Multiplies the head->hand
-		// offset BEFORE the maxArmLength clamp - raising the cap alone
-		// does nothing, the physical hand never reaches it (Sans).
-		// 1 = stock reach. Set by the Falcon staff system.
-		public static float FalconArmScale = 1f;
-
-		private Vector3 ScaledHandPosition(Transform handTransform, Vector3 handOffset)
-		{
-			Vector3 raw = PositionWithOffset(handTransform, handOffset);
-			if (FalconArmScale == 1f)
-			{
-				return raw;
-			}
-			return headCollider.transform.position + (raw - headCollider.transform.position) * FalconArmScale;
-		}
 
 		public float unStickDistance = 1f;
 
@@ -437,11 +422,11 @@ namespace GorillaLocomotion
 			{
 				return headCollider.transform.position + headCollider.transform.up * -0.5f * scale;
 			}
-			if ((ScaledHandPosition(handTransform, handOffset) - headCollider.transform.position).magnitude < maxArmLength * scale)
+			if ((PositionWithOffset(handTransform, handOffset) - headCollider.transform.position).magnitude < maxArmLength * scale)
 			{
-				return ScaledHandPosition(handTransform, handOffset);
+				return PositionWithOffset(handTransform, handOffset);
 			}
-			return headCollider.transform.position + (ScaledHandPosition(handTransform, handOffset) - headCollider.transform.position).normalized * maxArmLength * scale;
+			return headCollider.transform.position + (PositionWithOffset(handTransform, handOffset) - headCollider.transform.position).normalized * maxArmLength * scale;
 		}
 
 		private Vector3 LastLeftHandPosition()
@@ -460,11 +445,11 @@ namespace GorillaLocomotion
 			{
 				return headCollider.transform.position + headCollider.transform.up * -0.5f * scale;
 			}
-			if ((ScaledHandPosition(leftHandTransform, leftHandOffset) - headCollider.transform.position).magnitude < maxArmLength * scale)
+			if ((PositionWithOffset(leftHandTransform, leftHandOffset) - headCollider.transform.position).magnitude < maxArmLength * scale)
 			{
-				return ScaledHandPosition(leftHandTransform, leftHandOffset);
+				return PositionWithOffset(leftHandTransform, leftHandOffset);
 			}
-			return headCollider.transform.position + (ScaledHandPosition(leftHandTransform, leftHandOffset) - headCollider.transform.position).normalized * maxArmLength * scale;
+			return headCollider.transform.position + (PositionWithOffset(leftHandTransform, leftHandOffset) - headCollider.transform.position).normalized * maxArmLength * scale;
 		}
 
 		private Vector3 CurrentRightHandPosition()
@@ -473,11 +458,11 @@ namespace GorillaLocomotion
 			{
 				return headCollider.transform.position + headCollider.transform.up * -0.5f * scale;
 			}
-			if ((ScaledHandPosition(rightHandTransform, rightHandOffset) - headCollider.transform.position).magnitude < maxArmLength * scale)
+			if ((PositionWithOffset(rightHandTransform, rightHandOffset) - headCollider.transform.position).magnitude < maxArmLength * scale)
 			{
-				return ScaledHandPosition(rightHandTransform, rightHandOffset);
+				return PositionWithOffset(rightHandTransform, rightHandOffset);
 			}
-			return headCollider.transform.position + (ScaledHandPosition(rightHandTransform, rightHandOffset) - headCollider.transform.position).normalized * maxArmLength * scale;
+			return headCollider.transform.position + (PositionWithOffset(rightHandTransform, rightHandOffset) - headCollider.transform.position).normalized * maxArmLength * scale;
 		}
 
 		private Vector3 PositionWithOffset(Transform transformToModify, Vector3 offsetVector)

@@ -243,3 +243,21 @@ the GitHub web UI). Without it the RAVE page reports the song as missing.
   the only head transform is the camera. Head preds = runtime/ADB.
 - Defaults unchanged (ITEMS toggles all ON); with the camera path
   gone, default-on preds are visual-only and safe.
+
+## Round 12 (2026-11-12, build #11): long arms reverted - Sans was right
+
+- **Build #10's camera break was the LONG ARMS, not the preds**
+  (Sans's isolation). Round 6's FalconArmScale multiplied the
+  head->hand offset inside Player.Current*HandPosition - those
+  methods ARE the locomotion (body movement = current minus last
+  hand position), the last positions are seeded from the RAW hand
+  transforms, and the head reference is the camera itself, so scaled
+  reads dragged the body (and with it the rig/camera root) under
+  the map from spawn. Player.cs is fully reverted to stock.
+- The round-11 preds rewrite stands on its own merits (never write
+  the camera transform), but it was not this bug.
+- Option 1 interim: reach cap removed (10000) while ON - the
+  original scene-edit spec. The real long-arms route is Sans's pick:
+  whole-player scale 1.4 (the game's own scale field - every radius,
+  clamp and unstick distance already multiplies by it) vs visual-only
+  arm stretch (his SteamLongArm approach) + cap off.
