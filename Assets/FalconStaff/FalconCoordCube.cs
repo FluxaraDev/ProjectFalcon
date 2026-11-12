@@ -111,7 +111,7 @@ public class FalconCoordCube : MonoBehaviour
         GameObject meshGo = GameObject.CreatePrimitive(PrimitiveType.Cube);
         meshGo.name = "Cube";
         meshGo.transform.SetParent(cubeRoot.transform, false);
-        meshGo.transform.localScale = Vector3.one * 0.5f;
+        meshGo.transform.localScale = Vector3.one * 0.15f; // was 0.5 - 'wayyy too big' (build #9)
         Collider col = meshGo.GetComponent<Collider>();
         if (col != null) Destroy(col);
         MeshRenderer rend = meshGo.GetComponent<MeshRenderer>();
@@ -123,7 +123,7 @@ public class FalconCoordCube : MonoBehaviour
         var labelRoot = new GameObject("CoordLabel");
         RectTransform lrt = labelRoot.AddComponent<RectTransform>();
         lrt.SetParent(cubeRoot.transform, false);
-        lrt.localPosition = new Vector3(0f, 0.48f, 0f);
+        lrt.localPosition = new Vector3(0f, 0.17f, 0f);
         lrt.sizeDelta = new Vector2(760f, 100f);
         Canvas cv = labelRoot.AddComponent<Canvas>();
         cv.renderMode = RenderMode.WorldSpace;

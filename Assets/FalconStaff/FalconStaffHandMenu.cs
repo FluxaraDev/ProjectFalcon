@@ -28,7 +28,7 @@ public class FalconStaffHandMenu : MonoBehaviour
 {
     // ---- hand fit tunables (adjust from Sans's device report) ----
     private static readonly Vector3 PanelLocalPos = new Vector3(0f, 0.04f, 0.17f);
-    private static readonly Vector3 PanelLocalEuler = new Vector3(0f, 180f, 0f);
+    private static readonly Vector3 PanelLocalEuler = new Vector3(0f, 0f, 0f); // was 180 - read backwards on device (build #9)
     private const float PanelScale = 0.0009f; // canvas unit -> meters
     private const float PanelW = 300f;
     private const float PanelH = 380f;
@@ -55,6 +55,8 @@ public class FalconStaffHandMenu : MonoBehaviour
     private Text titleRoleText;
     private Text footerText;
     private Text diagStatusText;
+    private string lastAction = "";
+    private LineRenderer pointerLine;
     public static int MenuButtonPresses;
     private Font donorFont;
     private readonly List<Btn> clickables = new List<Btn>();
@@ -76,8 +78,7 @@ public class FalconStaffHandMenu : MonoBehaviour
     // effectively removed, jump above the 1.4x scene-edit values. While a
     // toggle is on, the values are re-asserted every frame, because
     // PhotonNetworkController resets jump values at room join.
-    private bool longArmsOn;
-    private bool speedOn;
+    private const float HeadAdminArmScale = 1.4f; // Sans's long-arms factor
     private const float ArmReachOn = 10000f;
     private const float JumpSpeedOn = 12f;
     private const float JumpMultOn = 2f;
@@ -164,6 +165,8 @@ public class FalconStaffHandMenu : MonoBehaviour
         }
 
         if (staff) ApplyMovement();
+
+        UpdatePointerLine();
 
         if (open)
         {
@@ -389,12 +392,10 @@ public class FalconStaffHandMenu : MonoBehaviour
         }
         else if (tab == 3)
         {
-            ContentButton(0f, 78f, 268f, 28f, "Long arms: " + (longArmsOn ? "ON" : "OFF"),
-                () => { longArmsOn = !longArmsOn; if (!longArmsOn) RestoreMove(ArmReachOff, null, null); RebuildContent(); },
-                () => longArmsOn ? 1 : 0);
-            ContentButton(0f, 46f, 268f, 28f, "Speed boost: " + (speedOn ? "ON" : "OFF"),
-                () => { speedOn = !speedOn; if (!speedOn) RestoreMove(null, JumpSpeedOff, JumpMultOff); RebuildContent(); },
-                () => speedOn ? 1 : 0);
+            ContentText(0f, 72f, 268f, 40f, 12,
+                FalconStaffRole.IsHeadAdmin
+                    ? "Headadmin: long arms + speed\nboost are ALWAYS ON."
+                    : "Long arms + speed boost:\nheadadmin perk (always on).");
             ContentButton(0f, 14f, 268f, 28f, "Coord cube: " + (coordCube != null && coordCube.CubeEnabled ? "ON" : "OFF"),
                 () => { if (coordCube != null) coordCube.SetEnabled(!coordCube.CubeEnabled); RebuildContent(); },
                 () => coordCube != null && coordCube.CubeEnabled ? 1 : 0);
@@ -420,7 +421,7 @@ public class FalconStaffHandMenu : MonoBehaviour
             Vector3 p = coordCube.CubePosition;
             cube = string.Format(" | Cube {0:0.0}, {1:0.0}, {2:0.0}{3}", p.x, p.y, p.z, coordCube.Held ? " (held)" : "");
         }
-        footerText.text = "Armed: " + (armedGun == "" ? "none" : armedGun) + playing + cube;
+        footerText.text = "Armed: " + (armedGun == "" ? "none" : armedGun) + playing + cube + (lastAction == "" ? "" : " | " + lastAction);
     }
 
     private string DiagStatusString()
@@ -469,25 +470,55 @@ public class FalconStaffHandMenu : MonoBehaviour
         }
     }
 
-    // ---------------- movement ----------------
-
-    private void RestoreMove(float? arm, float? speed, float? mult)
+    // Visible aim line from the right hand (Sans, build #9: "add a line
+    // to the controller so I can point"). Shown while the menu is open
+    // or a gun is armed; it traces the same ray the guns use.
+    private void EnsurePointerLine()
     {
-        if (Player.Instance == null) return;
-        if (arm.HasValue) Player.Instance.maxArmLength = arm.Value;
-        if (speed.HasValue) Player.Instance.maxJumpSpeed = speed.Value;
-        if (mult.HasValue) Player.Instance.jumpMultiplier = mult.Value;
+        if (pointerLine != null) return;
+        GameObject go = new GameObject("FalconPointerLine");
+        go.transform.SetParent(transform, false);
+        pointerLine = go.AddComponent<LineRenderer>();
+        pointerLine.positionCount = 2;
+        pointerLine.startWidth = 0.004f;
+        pointerLine.endWidth = 0.004f;
+        pointerLine.material = new Material(Shader.Find("Sprites/Default"));
+        pointerLine.startColor = new Color(0.45f, 1f, 0.45f, 0.9f);
+        pointerLine.endColor = new Color(0.45f, 1f, 0.45f, 0.35f);
+        pointerLine.enabled = false;
     }
 
+    private void UpdatePointerLine()
+    {
+        Transform hand = Player.Instance != null ? Player.Instance.rightHandTransform : null;
+        if ((!open && armedGun == "") || hand == null)
+        {
+            if (pointerLine != null) pointerLine.enabled = false;
+            return;
+        }
+        EnsurePointerLine();
+        pointerLine.enabled = true;
+        Vector3 to = hand.position + hand.forward * 4f;
+        RaycastHit hit;
+        if (Physics.Raycast(hand.position, hand.forward, out hit, 100f)) to = hit.point;
+        pointerLine.SetPosition(0, hand.position + hand.forward * 0.05f);
+        pointerLine.SetPosition(1, to);
+    }
+
+    // ---------------- movement ----------------
+
+    // Headadmin movement is not a toggle (Sans, build #9): it is simply
+    // on from spawn. Long arms = the reach cap PLUS Player.FalconArmScale,
+    // which stretches the head->hand offset itself - the cap alone never
+    // did anything, the physical hand cannot reach 1.5 m.
     private void ApplyMovement()
     {
         if (Player.Instance == null) return;
-        if (longArmsOn) Player.Instance.maxArmLength = ArmReachOn;
-        if (speedOn)
-        {
-            Player.Instance.maxJumpSpeed = JumpSpeedOn;
-            Player.Instance.jumpMultiplier = JumpMultOn;
-        }
+        if (!FalconStaffRole.IsHeadAdmin) return;
+        Player.Instance.maxArmLength = ArmReachOn;
+        Player.Instance.maxJumpSpeed = JumpSpeedOn;
+        Player.Instance.jumpMultiplier = JumpMultOn;
+        Player.FalconArmScale = HeadAdminArmScale;
     }
 
     // ---------------- guns (ported from FalconStaffMenu) ----------------
@@ -498,15 +529,36 @@ public class FalconStaffHandMenu : MonoBehaviour
         Transform hand = Player.Instance != null ? Player.Instance.rightHandTransform : null;
         if (hand == null) return;
         RaycastHit hit;
-        if (!Physics.Raycast(hand.position, hand.forward, out hit, 100f)) return;
-        VRRig rig = hit.collider.GetComponentInParent<VRRig>();
-        if (rig == null || rig.myPlayer == null) return;
+        VRRig rig = null;
+        if (Physics.Raycast(hand.position, hand.forward, out hit, 100f))
+            rig = hit.collider.GetComponentInParent<VRRig>();
+        if (rig == null) rig = ConePickRig(hand); // rigs may have no raycastable colliders
+        if (rig == null || rig.myPlayer == null) { lastAction = "no target"; return; }
         if (rig.myPlayer.IsLocal)
         {
             if (selfTest) FireSelf(armedGun);
+            else lastAction = "that's you (self test off)";
             return;
         }
         Fire(armedGun, rig);
+    }
+
+    // Fallback targeting: the rig inside the tightest cone around the
+    // hand's forward, no colliders required.
+    private VRRig ConePickRig(Transform hand)
+    {
+        VRRig best = null;
+        float bestAngle = 12f;
+        foreach (VRRig rig in FindObjectsOfType<VRRig>())
+        {
+            if (rig == null || rig.myPlayer == null) continue;
+            Vector3 target = rig.headMesh != null ? rig.headMesh.transform.position : rig.transform.position + Vector3.up * 1.2f;
+            Vector3 to = target - hand.position;
+            if (to.magnitude < 0.4f || to.magnitude > 60f) continue;
+            float angle = Vector3.Angle(hand.forward, to);
+            if (angle < bestAngle) { bestAngle = angle; best = rig; }
+        }
+        return best;
     }
 
     private void FireSelf(string gun)
@@ -514,12 +566,14 @@ public class FalconStaffHandMenu : MonoBehaviour
         if (gun == "kick")
         {
             FalconStaffWebhook.Log("SELFTEST kick (dry run, not applied)");
+            lastAction = "selftest kick (dry)";
             return;
         }
-        if (!FalconStaffRole.IsHeadAdmin) return;
+        if (!FalconStaffRole.IsHeadAdmin) { lastAction = "denied (role)"; return; }
         if (!eventOpen)
         {
             FalconStaffWebhook.Log("SELFTEST DENIED (no event) " + gun);
+            lastAction = "denied (event closed)";
             return;
         }
         if (FalconStaffNet.Instance == null) return;
@@ -555,6 +609,7 @@ public class FalconStaffHandMenu : MonoBehaviour
                 break; // snowball is shooter-side already
         }
         FalconStaffWebhook.Log("SELFTEST " + gun);
+        lastAction = "selftest " + gun;
     }
 
     private void Fire(string gun, VRRig targetRig)
@@ -565,17 +620,19 @@ public class FalconStaffHandMenu : MonoBehaviour
 
         if (gun == "kick")
         {
-            if (!FalconStaffRole.IsStaffOrHigher) return;
+            if (!FalconStaffRole.IsStaffOrHigher) { lastAction = "denied (role)"; return; }
             if (PhotonNetwork.IsMasterClient) PhotonNetwork.CloseConnection(target);
             FalconStaffNet.SendTo(FalconStaffNet.EvKick, target, new object[0]);
             FalconStaffWebhook.Log("KICK " + them + " by " + me);
+            lastAction = "kick sent";
             return;
         }
 
-        if (!FalconStaffRole.IsHeadAdmin) return;
+        if (!FalconStaffRole.IsHeadAdmin) { lastAction = "denied (role)"; return; }
         if (!eventOpen)
         {
             FalconStaffWebhook.Log("TROLL DENIED (no event) " + gun + " by " + me + " - demotion rule applies");
+            lastAction = "denied (event closed)";
             return;
         }
 
@@ -608,6 +665,7 @@ public class FalconStaffHandMenu : MonoBehaviour
                 break;
         }
         FalconStaffWebhook.Log("TROLL " + gun + " on " + them + " by " + me);
+        lastAction = gun + " sent";
     }
 
     private void SnowballSpam()

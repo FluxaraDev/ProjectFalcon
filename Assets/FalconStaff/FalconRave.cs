@@ -58,6 +58,11 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
     private Color[] unlitBase = new Color[0];
     private Material[] darkerMats = new Material[0];
     private Color[] darkerBase = new Color[0];
+    private Material[] dayMats = new Material[0];
+    private Color[] dayBase = new Color[0];
+    private Material[] dayCutoutMats = new Material[0];
+    private Color[] dayCutoutBase = new Color[0];
+    private int totalMats;
 
     // Last lifecycle step, shown on the RAVE page (round 5): if a start
     // path dies mid-way again, the page says exactly how far it got.
@@ -257,7 +262,20 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
                 darkerBase = new Color[darkerMats.Length];
                 for (int i = 0; i < darkerMats.Length; i++)
                     darkerBase[i] = darkerMats[i] != null ? darkerMats[i].color : Color.white;
-                matsOk = true;
+                // The lightmapped lists: forest/city surfaces live here,
+                // NOT in the unlit lists - round 5 tinted the wrong lists
+                // for the forest, which is why the disco only ever showed
+                // on lit objects (Sans: "the lighting is baked").
+                dayMats = bdn.dayNightSupportedMaterials ?? new Material[0];
+                dayBase = new Color[dayMats.Length];
+                for (int i = 0; i < dayMats.Length; i++)
+                    dayBase[i] = dayMats[i] != null ? dayMats[i].color : Color.white;
+                dayCutoutMats = bdn.dayNightSupportedMaterialsCutout ?? new Material[0];
+                dayCutoutBase = new Color[dayCutoutMats.Length];
+                for (int i = 0; i < dayCutoutMats.Length; i++)
+                    dayCutoutBase[i] = dayCutoutMats[i] != null ? dayCutoutMats[i].color : Color.white;
+                totalMats = unlitMats.Length + darkerMats.Length + dayMats.Length + dayCutoutMats.Length;
+                matsOk = totalMats > 0;
             }
         }
         catch (System.Exception e)
@@ -279,7 +297,7 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
             audioSource.loop = false;
             audioSource.PlayScheduled(AudioSettings.dspTime + System.Math.Max(0.0, audioDelay));
         }
-        LastStep = (solo ? "BEGAN (SOLO)" : "BEGAN (LOBBY)") + (matsOk ? "" : " - NO MAP FX");
+        LastStep = (solo ? "BEGAN (SOLO)" : "BEGAN (LOBBY)") + (matsOk ? " MATS " + totalMats : " - NO MAP FX");
         Debug.Log("[FalconRave] Rave started. Solo=" + soloRave + " Duration=" + duration);
     }
 
@@ -316,6 +334,14 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
         for (int i = 0; i < darkerMats.Length; i++)
         {
             if (darkerMats[i] != null) darkerMats[i].color = darkerBase[i];
+        }
+        for (int i = 0; i < dayMats.Length; i++)
+        {
+            if (dayMats[i] != null) dayMats[i].color = dayBase[i];
+        }
+        for (int i = 0; i < dayCutoutMats.Length; i++)
+        {
+            if (dayCutoutMats[i] != null) dayCutoutMats[i].color = dayCutoutBase[i];
         }
 
         if (audioSource != null) audioSource.Stop();
@@ -362,19 +388,40 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
         // tinted lit objects). Absolute writes from the bases cached at
         // BeginRave, so the manager's per-tick rewrites can never
         // compound the tint.
+        // Full-brightness disco (round 6): multiplying by the captured
+        // day-phase brightness made the tint vanish in dark phases.
         for (int i = 0; i < unlitMats.Length; i++)
         {
             if (unlitMats[i] != null)
-                unlitMats[i].color = new Color(c.r * unlitBase[i].r, c.g * unlitBase[i].r, c.b * unlitBase[i].r);
+                unlitMats[i].color = c;
         }
         for (int i = 0; i < darkerMats.Length; i++)
         {
             if (darkerMats[i] != null)
             {
                 Color.RGBToHSV(darkerBase[i], out _, out _, out float bv);
-                darkerMats[i].color = Color.HSVToRGB(hue, 0.85f, bv);
+                darkerMats[i].color = Color.HSVToRGB(hue, 0.85f, Mathf.Max(bv, 0.65f));
             }
         }
+        for (int i = 0; i < dayMats.Length; i++)
+        {
+            if (dayMats[i] != null)
+                dayMats[i].color = DiscoOver(dayBase[i], c);
+        }
+        for (int i = 0; i < dayCutoutMats.Length; i++)
+        {
+            if (dayCutoutMats[i] != null)
+                dayCutoutMats[i].color = DiscoOver(dayCutoutBase[i], c);
+        }
+    }
+
+    // Disco color over an authored base color, with the base normalized
+    // so dark authored colors still take the full disco.
+    private static Color DiscoOver(Color baseColor, Color disco)
+    {
+        float m = Mathf.Max(baseColor.r, Mathf.Max(baseColor.g, baseColor.b));
+        if (m < 0.05f) return disco;
+        return new Color(disco.r * baseColor.r / m, disco.g * baseColor.g / m, disco.b * baseColor.b / m);
     }
 
     private GorillaComputer[] allComputers;

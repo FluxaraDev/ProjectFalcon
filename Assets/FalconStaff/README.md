@@ -139,3 +139,26 @@ the GitHub web UI). Without it the RAVE page reports the song as missing.
   manager carries hue forward between ticks.
 - **Grace-window rave exploit closed (pre-#9 catch by Sans):** a solo rave started during the leave/join transition ("not in a room" reads true mid-join) survived into the joined public lobby - effects with no master and no server-side rave. Solo starts now require a settled Photon state (ConnectedToMasterServer or Disconnected), and OnJoinedRoom ends any running rave.
 - **CoC/MOTD auto-fit:** Sans's build #8 screenshot showed the CoC's last lines running off the board's bottom edge. FalconBoardTexts now enables best-fit on both boards (max = serialized size, min 10) - words unchanged, rendered size shrinks only as much as the rect needs.
+
+## Round 6 (2026-11-12, build #10): build #9 field repairs
+
+- **Panel backwards:** PanelLocalEuler 180 -> 0 (it read mirrored on device).
+- **Pointer line:** a green LineRenderer now traces the right hand's ray
+  whenever the menu is open or a gun is armed - the same ray the guns use.
+- **Guns report back:** the menu footer shows the last gun result
+  (sent / no target / denied + why) instead of failing silently, and
+  targeting falls back to a 12-degree cone pick over all rigs when the
+  physics raycast finds no rig collider.
+- **Long arms + speed are headadmin spawn state, not toggles.**
+  Player.cs gained FalconArmScale (1.4), applied to the head->hand
+  offset inside the three Current*HandPosition methods before the
+  maxArmLength clamp. Raising the cap alone never did anything - the
+  physical hand cannot reach it (Sans called this in #9). Headadmins
+  also get cap 10000 + jump 12 / 2.0 asserted per frame.
+- **Coord cube:** 0.5 m -> 0.15 m (label lowered to match).
+- **Rave disco v3:** the forest/city surfaces live in the day/night
+  manager's LIGHTMAPPED lists (dayNightSupportedMaterials + Cutout),
+  which round 5 never tinted - only genuinely lit objects reacted.
+  All four lists are now tinted at full disco brightness (dark-phase
+  bases no longer dim it to nothing) and restored at rave end; the
+  RAVE page STEP line reports the material count (MATS n).
