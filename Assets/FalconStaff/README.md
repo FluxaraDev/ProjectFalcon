@@ -110,3 +110,30 @@ is restored locally, so nothing leaks into the next lobby.
 REQUIRED: `Assets/Resources/rave_song.mp3` must exist in the repo before
 building - it is a binary and rides outside the snapshot push (uploaded via
 the GitHub web UI). Without it the RAVE page reports the song as missing.
+
+## Round 5 (2026-11-12, build #9): build #8 field repairs
+
+- **Staff menu reachability.** Input is read before the role gate now,
+  from two paths: the XR menu button and the game's own
+  ControllerInputPoller (left secondary / Y). With no role the panel
+  opens as a status page (role, fetch state, last PlayFab error, press
+  counter) with a retry-fetch button; guns/movement stay gated.
+  FalconStaffRole tracks FetchState/LastError and can re-fetch
+  (EnsureRole) when the player pokes the menu button.
+- **Computer failed-state repair (FalconComputerFix +
+  GorillaComputer.FalconClearFailureState).** The stock build only
+  restores the red failed state after a no-internet failure, so Falcon
+  gate messages bricked the computer until restart. Falcon gates call
+  FalconFailure.Mark(); the watcher clears the state once the blocking
+  condition is gone (or on room join). Stock errors untouched.
+- **MOTD board.** The title-data display path is stripped in this
+  export, so FalconBoardTexts now writes the Falcon MOTD directly
+  (multi-pass over the first seconds), and the CoC cheats line is
+  compressed to fit the physical board.
+- **Rave.** Page text shortened to fit the computer screen, with a
+  STEP + STAFF status line. Private-lobby start no longer relies on
+  the Photon event looping back to the host (host begins locally too).
+  Disco now tints the day/night manager's unlit material lists - the
+  map is unlit, so lights/fog alone only ever tinted lit objects; the
+  darker list's base colors are restored at rave end because the
+  manager carries hue forward between ticks.

@@ -54,7 +54,16 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
     private Color savedAmbient;
     private readonly List<Light> discoLights = new List<Light>();
     private readonly List<Color> discoLightColors = new List<Color>();
+    private Material[] unlitMats = new Material[0];
+    private Color[] unlitBase = new Color[0];
+    private Material[] darkerMats = new Material[0];
+    private Color[] darkerBase = new Color[0];
+
+    // Last lifecycle step, shown on the RAVE page (round 5): if a start
+    // path dies mid-way again, the page says exactly how far it got.
+    public static string LastStep { get; private set; } = "IDLE";
     private float hue;
+    private bool matsOk;
     private float nextScreenPush;
 
     // True while a solo rave is running: every join path (computer AND zone
@@ -91,15 +100,18 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
     // Screen text for the RAVE page (GorillaComputer's old Credits case).
     public static string GetScreenText()
     {
+        string staff = "\nSTAFF: " + (FalconStaffRole.Role == "" ? "NONE (" + FalconStaffRole.FetchState.ToUpperInvariant() + ")" : FalconStaffRole.Role.ToUpperInvariant()) + " BTN:" + FalconStaffHandMenu.MenuButtonPresses;
         if (IsRaving)
         {
-            return "RAVE MODE\n\n" + SongTitle + "\n\nTIME LEFT: " + CountdownText()
-                + "\n\nLOW GRAVITY + SPEED BOOST ACTIVE."
-                + (soloRave ? "\nJOINING IS LOCKED UNTIL THE SONG ENDS." : "");
+            return "RAVE MODE\n\nTIME LEFT: " + CountdownText()
+                + "\n\nLOW GRAVITY + SPEED BOOST"
+                + (soloRave ? "\nJOINING LOCKED TILL SONG ENDS" : "")
+                + "\nSTEP: " + LastStep + staff;
         }
-        return "RAVE MODE\n\nPRESS ENTER TO START THE RAVE.\n\n" + SongTitle
-            + "\n\nTHE SONG PLAYS EVERYWHERE, THE LIGHTS GO DISCO, FOG ROLLS IN, GRAVITY DROPS AND YOU GET A SPEED BOOST."
-            + "\n\nWORKS SOLO (NOT IN A ROOM), OR LOBBY-WIDE IF YOU ARE THE HOST OF A PRIVATE LOBBY.";
+        return "RAVE MODE\n\nPRESS ENTER TO START\nSONG: " + SongTitle
+            + "\n\nDISCO LIGHTS - LOW GRAVITY\nSPEED BOOST - WHOLE MAP"
+            + "\n\nSOLO OR PRIVATE HOST ONLY"
+            + "\nSTEP: " + LastStep + staff;
     }
 
     // ENTER pressed on the RAVE page.
@@ -108,11 +120,13 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
         if (Instance == null) return;
         if (IsRaving)
         {
+            FalconFailure.Mark();
             GorillaComputer.instance.UpdateFailureText("THE RAVE IS ALREADY GOING. " + CountdownText());
             return;
         }
         if (!Instance.TryLoadClip())
         {
+            FalconFailure.Mark();
             GorillaComputer.instance.UpdateFailureText("RAVE SONG FILE IS MISSING FROM THIS BUILD.");
             return;
         }
@@ -120,17 +134,26 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
         {
             if (!PhotonNetwork.IsMasterClient)
             {
-                GorillaComputer.instance.UpdateFailureText("ONLY THE HOST OF A PRIVATE LOBBY CAN START THE RAVE.");
+                FalconFailure.Mark();
+            GorillaComputer.instance.UpdateFailureText("ONLY THE HOST OF A PRIVATE LOBBY CAN START THE RAVE.");
                 return;
             }
             if (PhotonNetwork.CurrentRoom == null || PhotonNetwork.CurrentRoom.IsVisible)
             {
-                GorillaComputer.instance.UpdateFailureText("THE RAVE ONLY WORKS SOLO OR IN A PRIVATE LOBBY.");
+                FalconFailure.Mark();
+            GorillaComputer.instance.UpdateFailureText("THE RAVE ONLY WORKS SOLO OR IN A PRIVATE LOBBY.");
                 return;
             }
             double startAt = PhotonNetwork.Time + 1.0;
             var options = new RaiseEventOptions { Receivers = ReceiverGroup.All };
             PhotonNetwork.RaiseEvent(EvRaveStart, startAt, options, SendOptions.SendReliable);
+            LastStep = "EVENT SENT";
+            // Round 5: the host starts locally too. Build #8 froze
+            // briefly (the clip loading) then never fired in private
+            // lobbies - relying on the event looping back to the sender
+            // was the fragile link. The looped-back event still arrives,
+            // but BeginRave no-ops while a rave is running.
+            Instance.BeginRave(solo: false, audioDelay: 1.0);
         }
         else
         {
@@ -196,6 +219,32 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
             }
         }
 
+        // Cache the day/night manager's unlit material bases for the
+        // disco tint (see LateUpdate). The darker list MUST be restored
+        // at EndRave: the manager preserves its hue between ticks, so a
+        // leftover rave hue would otherwise stick forever.
+        matsOk = false;
+        try
+        {
+            BetterDayNightManager bdn = BetterDayNightManager.instance;
+            if (bdn != null)
+            {
+                unlitMats = bdn.standardMaterialsUnlit ?? new Material[0];
+                unlitBase = new Color[unlitMats.Length];
+                for (int i = 0; i < unlitMats.Length; i++)
+                    unlitBase[i] = unlitMats[i] != null ? unlitMats[i].color : Color.white;
+                darkerMats = bdn.standardMaterialsUnlitDarker ?? new Material[0];
+                darkerBase = new Color[darkerMats.Length];
+                for (int i = 0; i < darkerMats.Length; i++)
+                    darkerBase[i] = darkerMats[i] != null ? darkerMats[i].color : Color.white;
+                matsOk = true;
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError("[FalconRave] material capture failed: " + e.Message);
+        }
+
         if (audioSource == null)
         {
             audioSource = gameObject.AddComponent<AudioSource>();
@@ -210,6 +259,7 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
             audioSource.loop = false;
             audioSource.PlayScheduled(AudioSettings.dspTime + System.Math.Max(0.0, audioDelay));
         }
+        LastStep = (solo ? "BEGAN (SOLO)" : "BEGAN (LOBBY)") + (matsOk ? "" : " - NO MAP FX");
         Debug.Log("[FalconRave] Rave started. Solo=" + soloRave + " Duration=" + duration);
     }
 
@@ -239,8 +289,17 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
         }
         discoLights.Clear();
         discoLightColors.Clear();
+        for (int i = 0; i < unlitMats.Length; i++)
+        {
+            if (unlitMats[i] != null) unlitMats[i].color = unlitBase[i];
+        }
+        for (int i = 0; i < darkerMats.Length; i++)
+        {
+            if (darkerMats[i] != null) darkerMats[i].color = darkerBase[i];
+        }
 
         if (audioSource != null) audioSource.Stop();
+        LastStep = "ENDED";
         Debug.Log("[FalconRave] Rave ended; everything restored.");
     }
 
@@ -282,6 +341,24 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
         {
             if (discoLights[i] != null) discoLights[i].color = c;
         }
+        // The map is unlit: its colors live in the day/night manager's
+        // material lists, not in lights or fog (build #8's disco only
+        // tinted lit objects). Absolute writes from the bases cached at
+        // BeginRave, so the manager's per-tick rewrites can never
+        // compound the tint.
+        for (int i = 0; i < unlitMats.Length; i++)
+        {
+            if (unlitMats[i] != null)
+                unlitMats[i].color = new Color(c.r * unlitBase[i].r, c.g * unlitBase[i].r, c.b * unlitBase[i].r);
+        }
+        for (int i = 0; i < darkerMats.Length; i++)
+        {
+            if (darkerMats[i] != null)
+            {
+                Color.RGBToHSV(darkerBase[i], out _, out _, out float bv);
+                darkerMats[i].color = Color.HSVToRGB(hue, 0.85f, bv);
+            }
+        }
     }
 
     // ---- Photon -----------------------------------------------------------
@@ -291,6 +368,7 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
         if (photonEvent.Code != EvRaveStart || IsRaving) return;
         double startAt = photonEvent.CustomData is double d ? d : PhotonNetwork.Time;
         double delay = startAt - PhotonNetwork.Time;
+        LastStep = "EVENT RECEIVED";
         BeginRave(solo: false, audioDelay: delay);
     }
 

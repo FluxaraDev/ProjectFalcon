@@ -1377,6 +1377,17 @@ namespace GorillaNetworking
             tutorialWallScreenText.DisableFailedState();
         }
 
+        // Project Falcon (2026-11-12): the stock build only restores the
+        // failed state after a no-internet failure, so Falcon gate
+        // messages (name gate, rave lock) bricked the computer until
+        // restart. FalconComputerFix calls this once the Falcon-side
+        // blocking condition has cleared.
+        public void FalconClearFailureState()
+        {
+            RestoreFromFailureState();
+            UpdateScreen();
+        }
+
         public void GeneralFailureMessage(string failMessage)
         {
             isConnectedToMaster = false;

@@ -803,7 +803,8 @@ namespace GorillaNetworking
 			{
 				if (GorillaComputer.instance != null)
 				{
-					GorillaComputer.instance.UpdateFailureText("THE RAVE IS STILL GOING. YOU CAN JOIN WHEN THE SONG ENDS (" + FalconRave.CountdownText() + ").");
+					FalconFailure.Mark();
+				GorillaComputer.instance.UpdateFailureText("THE RAVE IS STILL GOING. YOU CAN JOIN WHEN THE SONG ENDS (" + FalconRave.CountdownText() + ").");
 				}
 				return true;
 			}
@@ -814,6 +815,7 @@ namespace GorillaNetworking
 			}
 			if (GorillaComputer.instance != null)
 			{
+				FalconFailure.Mark();
 				GorillaComputer.instance.UpdateFailureText("YOU CAN NOT JOIN LOBBIES WITH THE DEFAULT NAME. GO TO THE NAME PAGE ON THE COMPUTER AND CHANGE YOUR NAME FIRST.");
 			}
 			return true;

@@ -26,6 +26,15 @@ public static class FalconStaffRole
     // Cached at login. "" until the fetch lands, and for regular players.
     public static string Role { get; private set; } = "";
 
+    // Fetch diagnostics (round 5, after build #8 shipped with a silently
+    // dead staff menu): the staff menu's status page and the computer's
+    // RAVE page display these, so a failed fetch is visible in-game
+    // instead of looking like "the menu button does nothing".
+    public static string FetchState { get; private set; } = "not run";
+    public static string LastError { get; private set; } = "";
+    public static int FetchCount { get; private set; }
+    private static float lastFetchRealtime = -100f;
+
     public static bool IsStaffOrHigher
     {
         get { return Role == "staff" || IsAdminOrHigher; }
@@ -44,16 +53,40 @@ public static class FalconStaffRole
 
     public static void FetchRole()
     {
-        var request = new GetUserDataRequest
+        FetchState = "pending";
+        FetchCount++;
+        lastFetchRealtime = Time.realtimeSinceStartup;
+        try
         {
-            Keys = new List<string> { RoleKey }
-            // PlayFabId left unset: defaults to the logged-in player.
-        };
-        PlayFabClientAPI.GetUserReadOnlyData(request, OnRole, OnError);
+            var request = new GetUserDataRequest
+            {
+                Keys = new List<string> { RoleKey }
+                // PlayFabId left unset: defaults to the logged-in player.
+            };
+            PlayFabClientAPI.GetUserReadOnlyData(request, OnRole, OnError);
+        }
+        catch (System.Exception e)
+        {
+            FetchState = "error";
+            LastError = e.GetType().Name + ": " + e.Message;
+            Role = "";
+        }
+    }
+
+    // Re-run the fetch when it never ran, errored, or has been pending
+    // suspiciously long. Called when the player pokes the staff menu, so
+    // a transient login-time failure can heal itself in-session.
+    public static void EnsureRole()
+    {
+        if (FetchState == "ok") return;
+        if (FetchState == "pending" && Time.realtimeSinceStartup - lastFetchRealtime < 5f) return;
+        FetchRole();
     }
 
     private static void OnRole(GetUserDataResult result)
     {
+        FetchState = "ok";
+        LastError = "";
         UserDataRecord record;
         if (result.Data != null && result.Data.TryGetValue(RoleKey, out record))
             Role = record.Value ?? "";
@@ -65,6 +98,8 @@ public static class FalconStaffRole
     private static void OnError(PlayFabError error)
     {
         // Fail closed: no role read, no staff ability this session.
+        FetchState = "error";
+        LastError = error.ErrorMessage ?? error.Error.ToString();
         Role = "";
         Debug.LogError("[FalconStaff] role fetch failed: " + error.GenerateErrorReport());
     }

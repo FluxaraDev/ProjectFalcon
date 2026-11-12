@@ -53,6 +53,7 @@ public class FalconCoordCube : MonoBehaviour
         InputDevice right = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
         bool a;
         right.TryGetFeatureValue(CommonUsages.primaryButton, out a);
+        a = a || (ControllerInputPoller.instance != null && ControllerInputPoller.instance.rightControllerPrimaryButton);
         bool aEdge = a && !prevA;
         prevA = a;
         if (aEdge)

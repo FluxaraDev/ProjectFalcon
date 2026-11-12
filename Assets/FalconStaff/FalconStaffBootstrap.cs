@@ -26,5 +26,6 @@ public static class FalconStaffBootstrap
         go.AddComponent<FalconVoidGuard>();
         go.AddComponent<FalconBoardTexts>();
         go.AddComponent<FalconRave>();
+        go.AddComponent<FalconComputerFix>();
     }
 }

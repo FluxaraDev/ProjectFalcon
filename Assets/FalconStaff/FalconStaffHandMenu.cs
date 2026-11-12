@@ -54,6 +54,8 @@ public class FalconStaffHandMenu : MonoBehaviour
     private RectTransform contentRoot;
     private Text titleRoleText;
     private Text footerText;
+    private Text diagStatusText;
+    public static int MenuButtonPresses;
     private Font donorFont;
     private readonly List<Btn> clickables = new List<Btn>();
     private readonly List<Btn> contentBtns = new List<Btn>();
@@ -103,23 +105,30 @@ public class FalconStaffHandMenu : MonoBehaviour
 
     private void Update()
     {
-        if (!FalconStaffRole.IsStaffOrHigher)
-        {
-            if (open) { open = false; SetPanelVisible(false); }
-            return;
-        }
-
+        // Input is read BEFORE the role gate (round 5): after build #8's
+        // silently dead menu, a missing role must never make the panel
+        // unreachable - without a role it opens as a status page instead.
+        // Two input paths: the XR menu button, and the game's own
+        // ControllerInputPoller (left secondary / Y), whose data the
+        // whole game runs on. Presses are counted either way; the count
+        // shows on the status page and the computer's RAVE page.
         InputDevice left = InputDevices.GetDeviceAtXRNode(XRNode.LeftHand);
         bool menuBtn;
         left.TryGetFeatureValue(CommonUsages.menuButton, out menuBtn);
-        bool menuEdge = menuBtn && !prevMenu;
-        prevMenu = menuBtn;
+        bool yBtn = ControllerInputPoller.instance != null && ControllerInputPoller.instance.leftControllerSecondaryButton;
+        bool anyBtn = menuBtn || yBtn;
+        bool menuEdge = anyBtn && !prevMenu;
+        prevMenu = anyBtn;
         if (menuEdge)
         {
+            MenuButtonPresses++;
+            FalconStaffRole.EnsureRole();
             open = !open;
             if (open) { EnsurePanel(); RebuildContent(); }
             SetPanelVisible(open);
         }
+
+        bool staff = FalconStaffRole.IsStaffOrHigher;
 
         // Role can arrive (login) or change while the menu exists.
         if (lastRole != FalconStaffRole.Role)
@@ -132,6 +141,7 @@ public class FalconStaffHandMenu : MonoBehaviour
         InputDevice right = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
         bool trig;
         right.TryGetFeatureValue(CommonUsages.triggerButton, out trig);
+        trig = trig || (ControllerInputPoller.instance != null && ControllerInputPoller.instance.rightControllerIndexFloat > 0.5f);
         bool trigEdge = trig && !prevTrigger;
         prevTrigger = trig;
 
@@ -144,21 +154,21 @@ public class FalconStaffHandMenu : MonoBehaviour
         {
             if (trigEdge && hovered.onClick != null) hovered.onClick();
         }
-        else if (armedGun == "snowball")
+        else if (staff && armedGun == "snowball")
         {
             if (trig) SnowballSpam();
         }
-        else if (trigEdge)
+        else if (staff && trigEdge)
         {
             GunFire();
         }
 
-        ApplyMovement();
+        if (staff) ApplyMovement();
 
         if (open)
         {
             footerTimer -= Time.deltaTime;
-            if (footerTimer <= 0f) { footerTimer = 0.5f; RefreshFooter(); }
+            if (footerTimer <= 0f) { footerTimer = 0.5f; RefreshFooter(); if (!staff) RefreshDiagStatus(); }
         }
     }
 
@@ -314,6 +324,17 @@ public class FalconStaffHandMenu : MonoBehaviour
         if (panelRoot == null || contentRoot == null) return;
         ClearContent();
 
+        if (!FalconStaffRole.IsStaffOrHigher)
+        {
+            ContentText(0f, 80f, 268f, 24f, 13, "NO STAFF ROLE");
+            diagStatusText = ContentText(0f, 34f, 268f, 68f, 11, DiagStatusString());
+            ContentButton(0f, -30f, 268f, 28f, "Retry role fetch", () => { FalconStaffRole.FetchRole(); }, () => 0);
+            ContentText(0f, -80f, 268f, 40f, 11, "Role comes from PlayFab at login.\nIf FETCH is ok but role is NONE,\nthis account has no falcon_role.");
+            RefreshFooter();
+            PaintButtons();
+            return;
+        }
+
         if (tab == 0)
         {
             ContentButton(0f, 78f, 268f, 28f, "Kick gun (staff+)", () => { armedGun = "kick"; RebuildContent(); }, () => armedGun == "kick" ? 2 : 0);
@@ -400,6 +421,19 @@ public class FalconStaffHandMenu : MonoBehaviour
             cube = string.Format(" | Cube {0:0.0}, {1:0.0}, {2:0.0}{3}", p.x, p.y, p.z, coordCube.Held ? " (held)" : "");
         }
         footerText.text = "Armed: " + (armedGun == "" ? "none" : armedGun) + playing + cube;
+    }
+
+    private string DiagStatusString()
+    {
+        return "ROLE: " + (FalconStaffRole.Role == "" ? "NONE" : FalconStaffRole.Role.ToUpperInvariant())
+            + "\nFETCH: " + FalconStaffRole.FetchState.ToUpperInvariant()
+            + (FalconStaffRole.LastError == "" ? "" : "\nERROR: " + FalconStaffRole.LastError)
+            + "\nMENU PRESSES: " + MenuButtonPresses;
+    }
+
+    private void RefreshDiagStatus()
+    {
+        if (diagStatusText != null) diagStatusText.text = DiagStatusString();
     }
 
     // ---------------- interaction ----------------
