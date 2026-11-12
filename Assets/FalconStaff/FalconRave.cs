@@ -114,7 +114,7 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
         // This layout is 10 lines with every line under 30 chars.
         return "RAVE MODE\n\nPRESS ENTER TO START\nSONG: " + SongTitle
             + "\nDISCO LIGHTS - LOW GRAVITY\nSPEED BOOST - WHOLE MAP"
-            + "\n\nSOLO OR PRIVATE HOST ONLY"
+            + (FalconStaffRole.IsHeadAdmin ? "\n\nHEADADMIN: ANY LOBBY OK" : "\n\nSOLO OR PRIVATE HOST ONLY")
             + "\nSTEP: " + LastStep + staff;
     }
 
@@ -136,17 +136,22 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
         }
         if (PhotonNetwork.InRoom)
         {
-            if (!PhotonNetwork.IsMasterClient)
+            // Headadmins can rave any lobby, public included (Sans,
+            // 2026-11-12). Everyone else still needs host-of-private.
+            if (!FalconStaffRole.IsHeadAdmin)
             {
-                FalconFailure.Mark();
-            GorillaComputer.instance.UpdateFailureText("ONLY THE HOST OF A PRIVATE LOBBY CAN START THE RAVE.");
-                return;
-            }
-            if (PhotonNetwork.CurrentRoom == null || PhotonNetwork.CurrentRoom.IsVisible)
-            {
-                FalconFailure.Mark();
-            GorillaComputer.instance.UpdateFailureText("THE RAVE ONLY WORKS SOLO OR IN A PRIVATE LOBBY.");
-                return;
+                if (!PhotonNetwork.IsMasterClient)
+                {
+                    FalconFailure.Mark();
+                    GorillaComputer.instance.UpdateFailureText("ONLY THE HOST OF A PRIVATE LOBBY CAN START THE RAVE.");
+                    return;
+                }
+                if (PhotonNetwork.CurrentRoom == null || PhotonNetwork.CurrentRoom.IsVisible)
+                {
+                    FalconFailure.Mark();
+                    GorillaComputer.instance.UpdateFailureText("THE RAVE ONLY WORKS SOLO OR IN A PRIVATE LOBBY.");
+                    return;
+                }
             }
             double startAt = PhotonNetwork.Time + 1.0;
             var options = new RaiseEventOptions { Receivers = ReceiverGroup.All };
@@ -332,15 +337,11 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
             Player.Instance.maxJumpSpeed = RaveJumpSpeed;
             Player.Instance.jumpMultiplier = RaveJumpMult;
         }
-        // Countdown on the computer board while the RAVE page is open.
+        // Countdown on the computer screen while the RAVE page is open.
         if (Time.time >= nextScreenPush)
         {
             nextScreenPush = Time.time + 0.25f;
-            GorillaComputer gc = GorillaComputer.instance;
-            if (gc != null && gc.currentState == GorillaComputer.ComputerState.Credits && gc.screenText != null)
-            {
-                gc.screenText.Text = GetScreenText();
-            }
+            PushScreenText();
         }
     }
 
@@ -373,6 +374,30 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
                 Color.RGBToHSV(darkerBase[i], out _, out _, out float bv);
                 darkerMats[i].color = Color.HSVToRGB(hue, 0.85f, bv);
             }
+        }
+    }
+
+    private GorillaComputer[] allComputers;
+    private float computerCacheTime = -100f;
+
+    // Every map computer is its own GorillaComputer with its own screen;
+    // GorillaComputer.instance is only the first one that loaded, and a
+    // computer's screen otherwise redraws only on its own keypresses.
+    // Push the countdown to whichever computers are showing the page.
+    private void PushScreenText()
+    {
+        if (allComputers == null || Time.time - computerCacheTime > 5f)
+        {
+            allComputers = FindObjectsOfType<GorillaComputer>();
+            computerCacheTime = Time.time;
+        }
+        if (allComputers == null) return;
+        string text = GetScreenText();
+        for (int i = 0; i < allComputers.Length; i++)
+        {
+            GorillaComputer gc = allComputers[i];
+            if (gc != null && gc.currentState == GorillaComputer.ComputerState.Credits && gc.screenText != null)
+                gc.screenText.Text = text;
         }
     }
 
