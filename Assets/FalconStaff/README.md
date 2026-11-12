@@ -272,3 +272,17 @@ the GitHub web UI). Without it the RAVE page reports the song as missing.
   Update (selection included). Replaced with a stretched primitive
   cube beam (the coord cube's proven render path), collider removed
   so it can never eat a raycast, tinted green, 8 mm thick.
+
+## Round 14 (2026-11-12, build #11): preds REMOVED, arms restored
+
+- **Sans's final isolation (overrides the round-12 call): "It was
+  the preds. Somehow something related to movement breaks the rig.
+  Remove preds, keep long arms and speed boost - they work."**
+- Optional Preds are DELETED: FalconPreds gutted to a tombstone,
+  bootstrap hook removed, ITEMS option 3 and all Preds state removed
+  from FalconPlayerOptions/GorillaComputer.
+- Round 12's Player.cs revert is itself reverted: the round-6 arm
+  scaling (FalconArmScale + ScaledHandPosition, 9 call sites) is
+  restored exactly as build #10 shipped it - Sans verified long
+  arms + speed boost working. Option 1 drives FalconArmScale again.
+- Round 13's pointer beam is unaffected and stays.

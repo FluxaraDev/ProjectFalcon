@@ -901,9 +901,6 @@ namespace GorillaNetworking
                 case "option2":
                     FalconPlayerOptions.ToggleSpeedBoost();
                     break;
-                case "option3":
-                    FalconPlayerOptions.TogglePreds();
-                    break;
             }
             UpdateScreen();
         }
@@ -1063,7 +1060,7 @@ namespace GorillaNetworking
                         screenText.Text = "USE THIS TO ENABLE OR DISABLE VOICE CHAT.\nPRESS OPTION 1 TO ENABLE VOICE CHAT.\nPRESS OPTION 2 TO DISABLE VOICE CHAT.\n\nVOICE CHAT ON: " + voiceChatOn;
                         break;
                     case ComputerState.Visuals:
-                        screenText.Text = "UPDATE ITEMS SETTINGS. THESE APPLY TO YOU ONLY. PRESS OPTION 1 TO TOGGLE LONG ARMS. PRESS OPTION 2 TO TOGGLE SPEED BOOST. PRESS OPTION 3 TO TOGGLE OPTIONAL PREDS.\n\nLONG ARMS: " + (FalconPlayerOptions.LongArms ? "ON" : "OFF") + "\nSPEED BOOST: " + (FalconPlayerOptions.SpeedBoost ? "ON" : "OFF") + "\nOPTIONAL PREDS: " + (FalconPlayerOptions.Preds ? "ON" : "OFF");
+                        screenText.Text = "UPDATE ITEMS SETTINGS. THESE APPLY TO YOU ONLY. PRESS OPTION 1 TO TOGGLE LONG ARMS. PRESS OPTION 2 TO TOGGLE SPEED BOOST.\n\nLONG ARMS: " + (FalconPlayerOptions.LongArms ? "ON" : "OFF") + "\nSPEED BOOST: " + (FalconPlayerOptions.SpeedBoost ? "ON" : "OFF");
                         break;
                     case ComputerState.Credits:
                         screenText.Text = FalconRave.GetScreenText();
