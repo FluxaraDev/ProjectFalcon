@@ -208,3 +208,21 @@ the GitHub web UI). Without it the RAVE page reports the song as missing.
   #10):** one point light covering the whole map, hue-cycled by his
   RainbowPointLight script (~/workspace/user/files/
   RainbowPointLight_62_mjbf.cs). Not built; logged as the plan.
+
+## Round 10 (2026-11-12, build #10): ITEMS page is for everyone
+
+- **Correction of round 9's placement (Sans):** the Items tab is the
+  COMPUTER's ITEMS page (stock Visuals state), open to EVERY player -
+  staff mods do not belong there. The hand menu's Items tab is removed
+  again (dummy/cube stay on Staff/Move as before).
+- **ITEMS page now holds exactly three toggles, all default ON:**
+  option 1 = long arms (FalconArmScale 1.4x), option 2 = speed boost
+  (jump 9.1 / mult 1.54 - Sans's 1.4x pair; the 12 / 2.0 he called
+  way too high), option 3 = Optional Preds (0.06). FalconPlayerOptions
+  + FalconOptionsDriver (re-asserts the speed pair against join
+  resets). The stock page's particles / instrument-volume controls
+  are replaced, per his "only these three".
+- **The headadmin always-on movement perk is retired:** ApplyMovement
+  is gone; headadmins use the same ITEMS toggles as everyone.
+- **Coord cube label doubled** (canvas scale 0.0016 -> 0.0032, raised
+  to y 0.26) - build #9's text was too small to read up close.

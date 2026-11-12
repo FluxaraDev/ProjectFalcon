@@ -28,5 +28,6 @@ public static class FalconStaffBootstrap
         go.AddComponent<FalconRave>();
         go.AddComponent<FalconComputerFix>();
         go.AddComponent<FalconPreds>();
+        go.AddComponent<FalconOptionsDriver>();
     }
 }

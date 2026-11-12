@@ -64,7 +64,7 @@ public class FalconStaffHandMenu : MonoBehaviour
     private Btn hovered;
 
     private bool open;
-    private int tab; // 0 staff, 1 troll, 2 sound, 3 move, 4 items
+    private int tab; // 0 staff, 1 troll, 2 sound, 3 move
     private string armedGun = "";
     private bool prevMenu;
     private bool prevTrigger;
@@ -162,7 +162,6 @@ public class FalconStaffHandMenu : MonoBehaviour
             GunFire();
         }
 
-        if (staff) ApplyMovement();
 
         UpdatePointerLine();
 
@@ -206,11 +205,11 @@ public class FalconStaffHandMenu : MonoBehaviour
         titleRoleText.text = "FALCON STAFF - " + FalconStaffRole.Role.ToUpperInvariant();
         lastRole = FalconStaffRole.Role;
 
-        string[] tabNames = { "Staff", "Troll", "Sound", "Move", "Items" };
+        string[] tabNames = { "Staff", "Troll", "Sound", "Move" };
         for (int i = 0; i < tabNames.Length; i++)
         {
             int idx = i;
-            Btn b = MakeButton(rt, -108f + 54f * i, 116f, 51f, 28f, tabNames[i],
+            Btn b = MakeButton(rt, -103.5f + 69f * i, 116f, 66f, 28f, tabNames[i],
                 () => { tab = idx; RebuildContent(); },
                 () => tab == idx ? 1 : 0);
             clickables.Add(b);
@@ -394,32 +393,12 @@ public class FalconStaffHandMenu : MonoBehaviour
         }
         else if (tab == 3)
         {
-            ContentText(0f, 72f, 268f, 40f, 12,
-                FalconStaffRole.IsHeadAdmin
-                    ? "Headadmin: long arms + speed\nboost are ALWAYS ON."
-                    : "Long arms + speed boost:\nheadadmin perk (always on).");
+            ContentText(0f, 72f, 268f, 40f, 12, "Long arms, speed + preds moved\nto the computer ITEMS page.");
             ContentButton(0f, 14f, 268f, 28f, "Coord cube: " + (coordCube != null && coordCube.CubeEnabled ? "ON" : "OFF"),
                 () => { if (coordCube != null) coordCube.SetEnabled(!coordCube.CubeEnabled); RebuildContent(); },
                 () => coordCube != null && coordCube.CubeEnabled ? 1 : 0);
-            ContentText(0f, -22f, 268f, 36f, 11, "Long arms = reach cap 10000.\nSpeed = jump 12 / mult 2.0.");
+            ContentText(0f, -22f, 268f, 36f, 11, "Everyone's options, all default ON.\nThis tab keeps the coord cube.");
             ContentText(0f, -58f, 268f, 36f, 11, "Cube rides the right hand.\nA = drop / pick up. Coords float above it.");
-        }
-        else if (tab == 4)
-        {
-            ContentButton(0f, 78f, 268f, 28f, "1. Test dummy", () => { FalconTestDummy.Toggle(transform); }, () => 0);
-            ContentButton(0f, 46f, 268f, 28f, "2. Coord cube: " + (coordCube != null && coordCube.CubeEnabled ? "ON" : "OFF"),
-                () => { if (coordCube != null) coordCube.SetEnabled(!coordCube.CubeEnabled); RebuildContent(); },
-                () => coordCube != null && coordCube.CubeEnabled ? 1 : 0);
-            ContentButton(0f, 14f, 268f, 28f, "3. Optional Preds: " + (FalconPreds.Enabled ? "ON" : "OFF"),
-                () => { FalconPreds.Enabled = !FalconPreds.Enabled; RebuildContent(); },
-                () => FalconPreds.Enabled ? 1 : 0);
-            ContentButton(-92f, -22f, 80f, 24f, "-10ms",
-                () => { FalconPreds.PredictionTime = Mathf.Clamp(FalconPreds.PredictionTime - 0.01f, 0f, 0.15f); RebuildContent(); }, () => 0);
-            ContentText(0f, -22f, 100f, 24f, 12, "Preds: " + Mathf.RoundToInt(FalconPreds.PredictionTime * 1000f) + "ms");
-            ContentButton(92f, -22f, 80f, 24f, "+10ms",
-                () => { FalconPreds.PredictionTime = Mathf.Clamp(FalconPreds.PredictionTime + 0.01f, 0f, 0.15f); RebuildContent(); }, () => 0);
-            ContentText(0f, -58f, 268f, 36f, 11, "In-game preds (OculusPreds math).
-Test: OVR Metrics PRED, off vs on.");
         }
         else
         {
@@ -522,22 +501,6 @@ Test: OVR Metrics PRED, off vs on.");
         if (Physics.Raycast(hand.position, hand.forward, out hit, 100f)) to = hit.point;
         pointerLine.SetPosition(0, hand.position + hand.forward * 0.05f);
         pointerLine.SetPosition(1, to);
-    }
-
-    // ---------------- movement ----------------
-
-    // Headadmin movement is not a toggle (Sans, build #9): it is simply
-    // on from spawn. Long arms = the reach cap PLUS Player.FalconArmScale,
-    // which stretches the head->hand offset itself - the cap alone never
-    // did anything, the physical hand cannot reach 1.5 m.
-    private void ApplyMovement()
-    {
-        if (Player.Instance == null) return;
-        if (!FalconStaffRole.IsHeadAdmin) return;
-        Player.Instance.maxArmLength = ArmReachOn;
-        Player.Instance.maxJumpSpeed = JumpSpeedOn;
-        Player.Instance.jumpMultiplier = JumpMultOn;
-        Player.FalconArmScale = HeadAdminArmScale;
     }
 
     // ---------------- guns (ported from FalconStaffMenu) ----------------

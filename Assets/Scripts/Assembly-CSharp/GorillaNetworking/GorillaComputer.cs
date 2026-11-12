@@ -884,35 +884,26 @@ namespace GorillaNetworking
 
         private void ProcessVisualsState(GorillaKeyboardButton buttonPressed)
         {
-            if (int.TryParse(buttonPressed.characterString, out var result))
+            // Project Falcon ITEMS page (Sans, 2026-11-12): per-player
+            // options for EVERYONE, all default ON. Replaces the stock
+            // particles / instrument-volume controls on this page.
+            switch (buttonPressed.characterString)
             {
-                instrumentVolume = (float)result / 50f;
-                PlayerPrefs.SetFloat("instrumentVolume", instrumentVolume);
-                PlayerPrefs.Save();
-            }
-            else
-            {
-                switch (buttonPressed.characterString)
-                {
-                    case "up":
-                        SwitchToVoiceState();
-                        break;
-                    case "down":
-                        SwitchToCreditsState();
-                        break;
-                    case "option1":
-                        disableParticles = false;
-                        PlayerPrefs.SetString("disableParticles", "FALSE");
-                        PlayerPrefs.Save();
-                        GorillaTagger.Instance.ShowCosmeticParticles(!disableParticles);
-                        break;
-                    case "option2":
-                        disableParticles = true;
-                        PlayerPrefs.SetString("disableParticles", "TRUE");
-                        PlayerPrefs.Save();
-                        GorillaTagger.Instance.ShowCosmeticParticles(!disableParticles);
-                        break;
-                }
+                case "up":
+                    SwitchToVoiceState();
+                    break;
+                case "down":
+                    SwitchToCreditsState();
+                    break;
+                case "option1":
+                    FalconPlayerOptions.ToggleLongArms();
+                    break;
+                case "option2":
+                    FalconPlayerOptions.ToggleSpeedBoost();
+                    break;
+                case "option3":
+                    FalconPlayerOptions.TogglePreds();
+                    break;
             }
             UpdateScreen();
         }
@@ -1072,7 +1063,7 @@ namespace GorillaNetworking
                         screenText.Text = "USE THIS TO ENABLE OR DISABLE VOICE CHAT.\nPRESS OPTION 1 TO ENABLE VOICE CHAT.\nPRESS OPTION 2 TO DISABLE VOICE CHAT.\n\nVOICE CHAT ON: " + voiceChatOn;
                         break;
                     case ComputerState.Visuals:
-                        screenText.Text = "UPDATE ITEMS SETTINGS. PRESS OPTION 1 TO ENABLE ITEM PARTICLES. PRESS OPTION 2 TO DISABLE ITEM PARTICLES. PRESS 1-10 TO CHANGE INSTRUMENT VOLUME FOR OTHER PLAYERS.\n\nITEM PARTICLES ON: " + (disableParticles ? "FALSE" : "TRUE") + "\nINSTRUMENT VOLUME: " + Mathf.CeilToInt(instrumentVolume * 50f);
+                        screenText.Text = "UPDATE ITEMS SETTINGS. THESE APPLY TO YOU ONLY. PRESS OPTION 1 TO TOGGLE LONG ARMS. PRESS OPTION 2 TO TOGGLE SPEED BOOST. PRESS OPTION 3 TO TOGGLE OPTIONAL PREDS.\n\nLONG ARMS: " + (FalconPlayerOptions.LongArms ? "ON" : "OFF") + "\nSPEED BOOST: " + (FalconPlayerOptions.SpeedBoost ? "ON" : "OFF") + "\nOPTIONAL PREDS: " + (FalconPlayerOptions.Preds ? "ON" : "OFF");
                         break;
                     case ComputerState.Credits:
                         screenText.Text = FalconRave.GetScreenText();

@@ -123,13 +123,13 @@ public class FalconCoordCube : MonoBehaviour
         var labelRoot = new GameObject("CoordLabel");
         RectTransform lrt = labelRoot.AddComponent<RectTransform>();
         lrt.SetParent(cubeRoot.transform, false);
-        lrt.localPosition = new Vector3(0f, 0.17f, 0f);
+        lrt.localPosition = new Vector3(0f, 0.26f, 0f);
         lrt.sizeDelta = new Vector2(760f, 100f);
         Canvas cv = labelRoot.AddComponent<Canvas>();
         cv.renderMode = RenderMode.WorldSpace;
         CanvasScaler scaler = labelRoot.AddComponent<CanvasScaler>();
         scaler.dynamicPixelsPerUnit = 4f;
-        labelRoot.transform.localScale = Vector3.one * 0.0016f;
+        labelRoot.transform.localScale = Vector3.one * 0.0032f; // doubled - text was too small to read (build #9)
 
         var bgGo = new GameObject("bg");
         RectTransform bgRt = bgGo.AddComponent<RectTransform>();
