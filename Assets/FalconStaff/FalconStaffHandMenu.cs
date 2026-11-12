@@ -105,8 +105,6 @@ public class FalconStaffHandMenu : MonoBehaviour
     private void Update()
     {
         // Input is read BEFORE the role gate (round 5): after build #8's
-        // silently dead menu, a missing role must never make the panel
-        // unreachable - without a role it opens as a status page instead.
         // Two input paths: the XR menu button, and the game's own
         // ControllerInputPoller (left secondary / Y), whose data the
         // whole game runs on. Presses are counted either way; the count
@@ -122,9 +120,23 @@ public class FalconStaffHandMenu : MonoBehaviour
         {
             MenuButtonPresses++;
             FalconStaffRole.EnsureRole();
-            open = !open;
-            if (open) { EnsurePanel(); RebuildContent(); }
-            SetPanelVisible(open);
+            if (!open && !FalconStaffRole.IsStaffOrHigher && FalconStaffRole.FetchState == "ok")
+            {
+                // No staff role on this account: the menu does not open
+                // at all (Sans, build #12: a fresh account is "not
+                // supposed to have staff menu" - the old design opened
+                // a diagnostic page for everyone, which put the menu in
+                // every player's hands). The status page remains
+                // reachable only while a fetch is pending or errored,
+                // so a real staffer with a broken login can see why.
+                SetPanelVisible(false);
+            }
+            else
+            {
+                open = !open;
+                if (open) { EnsurePanel(); RebuildContent(); }
+                SetPanelVisible(open);
+            }
         }
 
         bool staff = FalconStaffRole.IsStaffOrHigher;
