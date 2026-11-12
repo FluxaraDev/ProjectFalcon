@@ -764,8 +764,56 @@ namespace GorillaNetworking
 		{
 		}
 
+		// Project Falcon name gate (2026-11-12): the default name can not
+		// join lobbies. The player has to set a real name at the computer
+		// first; the refusal is shown on the computer/level screens.
+		public static bool NameIsDefault(string nameToCheck)
+		{
+			if (string.IsNullOrEmpty(nameToCheck))
+			{
+				return true;
+			}
+			string n = nameToCheck.Trim().ToLowerInvariant();
+			if (n == "gorilla")
+			{
+				return true;
+			}
+			if (n.StartsWith("gorilla") && n.Length > 7)
+			{
+				bool allDigits = true;
+				for (int i = 7; i < n.Length; i++)
+				{
+					if (!char.IsDigit(n[i]))
+					{
+						allDigits = false;
+						break;
+					}
+				}
+				if (allDigits)
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+
+		private bool BlockJoinForDefaultName()
+		{
+			string nm = (GorillaComputer.instance != null) ? GorillaComputer.instance.savedName : PhotonNetwork.LocalPlayer.NickName;
+			if (!NameIsDefault(nm))
+			{
+				return false;
+			}
+			if (GorillaComputer.instance != null)
+			{
+				GorillaComputer.instance.UpdateFailureText("YOU CAN NOT JOIN LOBBIES WITH THE DEFAULT NAME. GO TO THE NAME PAGE ON THE COMPUTER AND CHANGE YOUR NAME FIRST.");
+			}
+			return true;
+		}
+
 		public void AttemptToJoinPublicRoom(GorillaNetworkJoinTrigger triggeredTrigger)
 		{
+			if (BlockJoinForDefaultName()) return;
 			currentJoinTrigger = triggeredTrigger;
 			joiningWithFriend = false;
 			ProcessState(ConnectionEvent.AttemptJoinPublicRoom);
@@ -773,6 +821,7 @@ namespace GorillaNetworking
 
 		public void AttemptToJoinSpecificRoom(string roomID)
 		{
+			if (BlockJoinForDefaultName()) return;
 			customRoomID = roomID;
 			joiningWithFriend = false;
 			ProcessState(ConnectionEvent.AttemptJoinSpecificRoom);
@@ -1023,6 +1072,7 @@ namespace GorillaNetworking
 
 		public void AttemptJoinPublicWithFriends(GorillaNetworkJoinTrigger triggeredTrigger)
 		{
+			if (BlockJoinForDefaultName()) return;
 			currentJoinTrigger = triggeredTrigger;
 			joiningWithFriend = true;
 			keyToFollow = PhotonNetwork.LocalPlayer.ActorNumber + keyStr;
@@ -1032,6 +1082,7 @@ namespace GorillaNetworking
 
 		public void AttemptToFollowFriendIntoPub(string userIDToFollow, int actorNumberToFollow, string newKeyStr, string shufflerStr)
 		{
+			if (BlockJoinForDefaultName()) return;
 			friendToFollow = userIDToFollow;
 			keyToFollow = actorNumberToFollow + newKeyStr;
 			actorIdToFollow = actorNumberToFollow;

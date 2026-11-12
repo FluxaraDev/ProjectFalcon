@@ -211,11 +211,11 @@ namespace GorillaNetworking
 						KeyValuePair<string, List<string>> current = enumerator.Current;
 						if (current.Value[0] != "Indefinite")
 						{
-							gorillaComputer.GeneralFailureMessage("YOUR ACCOUNT " + loginDisplayID + " HAS BEEN BANNED FROM LEGACY RUNNERS. YOU WILL NOT BE ABLE TO PLAY UNTIL THE BAN EXPIRES.\nREASON: " + current.Key + "\nHOURS LEFT: " + (int)((DateTime.Parse(current.Value[0]) - DateTime.UtcNow).TotalHours + 1.0));
+							gorillaComputer.GeneralFailureMessage("YOUR ACCOUNT " + loginDisplayID + " HAS BEEN BANNED FROM PROJECT FALCON. YOU WILL NOT BE ABLE TO PLAY UNTIL THE BAN EXPIRES.\nREASON: " + current.Key + "\nHOURS LEFT: " + (int)((DateTime.Parse(current.Value[0]) - DateTime.UtcNow).TotalHours + 1.0));
 						}
 						else
 						{
-							gorillaComputer.GeneralFailureMessage("YOUR ACCOUNT " + loginDisplayID + " HAS BEEN BANNED FROM LEGACY RUNNERS INDEFINITELY.\nREASON: " + current.Key);
+							gorillaComputer.GeneralFailureMessage("YOUR ACCOUNT " + loginDisplayID + " HAS BEEN BANNED FROM PROJECT FALCON INDEFINITELY.\nREASON: " + current.Key);
 						}
 					}
 					return;
@@ -230,11 +230,11 @@ namespace GorillaNetworking
 						KeyValuePair<string, List<string>> current2 = enumerator2.Current;
 						if (current2.Value[0] != "Indefinite")
 						{
-							gorillaComputer.GeneralFailureMessage("THIS IP HAS BEEN BANNED FROM LEGACY RUNNERS. YOU WILL NOT BE ABLE TO PLAY UNTIL THE BAN EXPIRES.\nREASON: " + current2.Key + "\nHOURS LEFT: " + (int)((DateTime.Parse(current2.Value[0]) - DateTime.UtcNow).TotalHours + 1.0));
+							gorillaComputer.GeneralFailureMessage("THIS IP HAS BEEN BANNED FROM PROJECT FALCON. YOU WILL NOT BE ABLE TO PLAY UNTIL THE BAN EXPIRES.\nREASON: " + current2.Key + "\nHOURS LEFT: " + (int)((DateTime.Parse(current2.Value[0]) - DateTime.UtcNow).TotalHours + 1.0));
 						}
 						else
 						{
-							gorillaComputer.GeneralFailureMessage("THIS IP HAS BEEN BANNED FROM LEGACY RUNNERS INDEFINITELY.\nREASON: " + current2.Key);
+							gorillaComputer.GeneralFailureMessage("THIS IP HAS BEEN BANNED FROM PROJECT FALCON INDEFINITELY.\nREASON: " + current2.Key);
 						}
 					}
 					return;
