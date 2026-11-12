@@ -300,6 +300,7 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
         if (IsRaving) EndRave();
     }
 
+    public void OnFriendListUpdate(System.Collections.Generic.List<FriendInfo> friendList) { }
     public void OnCreatedRoom() { }
     public void OnCreateRoomFailed(short returnCode, string message) { }
     public void OnJoinedRoom() { }
