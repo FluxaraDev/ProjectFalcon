@@ -58,7 +58,11 @@ namespace GorillaNetworking
 
 		public void DisableFailedState()
 		{
-			failedState = true;
+			// Project Falcon (2026-11-12): stock code set this flag back
+			// to true here, latching every computer text into failed
+			// state forever - after the first error, Text writes were
+			// stored but never displayed until the next error cycle.
+			failedState = false;
 			text.text = originalText;
 			failureText = "";
 			meshRenderer.materials = originalMaterials;

@@ -1086,6 +1086,8 @@ namespace GorillaNetworking
                             string text = "OCULUS PC";
                             text = "STEAM";
                             screenText.Text = "SUPPORT\n\nPLAYERID   " + PlayFabAuthenticator.instance._playFabPlayerIdCache + "\nVERSION    " + version.ToUpper() + "\nPLATFORM   " + text + "\nBUILD DATE " + buildDate + "\n";
+                            // Project Falcon: role legend (Sans, 2026-11-12).
+                            screenText.Text += "\nROLE:  PLAYER (DEFAULT)\nROLE: ADMIN (INSTABAN)\nROLE: HEADADMIN (EVERYTHING)";
                         }
                         else
                         {
