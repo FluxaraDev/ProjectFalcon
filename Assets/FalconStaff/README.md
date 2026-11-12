@@ -9,9 +9,16 @@ Staff system for Project Falcon, built against the Spring 2023 source tree
   Read-Only User Data), gates everything. Call `FalconStaffRole.FetchRole()`
   once right after the successful LoginWithCustomID callback in the
   authenticator, before any report/menu UI can open.
-- `FalconStaffMenu.cs` — IMGUI staff menu (left menu button). Tabs: Staff
-  (kick gun), Troll (headadmin, event-gated guns + spooky music), Sound
-  (soundboard), Move (long arms / jump sliders above the scene defaults).
+- `FalconStaffBootstrap.cs` — spawns the whole staff system at runtime
+  (AfterSceneLoad). No scene editing needed anywhere.
+- `FalconStaffHandMenu.cs` — the in-VR staff menu: a world-space panel
+  on the left hand (left menu button opens it). Aim the right hand at
+  the panel, pull the right trigger to press buttons; aim away from the
+  panel to fire an armed gun. Tabs: Staff (kick gun), Troll (headadmin,
+  event-gated guns + spooky music), Sound (soundboard), Move (long arms
+  / speed boost toggles that re-assert against join resets).
+- `FalconStaffMenu.cs` — the original IMGUI menu. Kept for reference /
+  PC-mirror debugging; NOT spawned anymore (the hand menu supersedes it).
 - `FalconStaffNet.cs` — Photon room events 200-209 carrying every effect,
   targeted at the victim's client or broadcast (loud mic, spooky music).
 - `FalconStaffOutfits.cs` — screw-outfit and load-up-cosmetics guns, built
@@ -25,15 +32,19 @@ Staff system for Project Falcon, built against the Spring 2023 source tree
 
 ## Unity hookup (the only manual steps)
 
-1. Create an empty GameObject named `FalconStaff` in the main scene.
-2. Add `FalconStaffMenu`. It auto-adds `FalconStaffNet` and
-   `FalconSoundboard` at runtime.
-3. Snowball gun: assign a snowball prefab (must sit in a Resources folder
-   for PhotonNetwork.Instantiate, like the game's own throwables) to the
-   menu's Snowball Prefab slot. Interval defaults to 100 ms; 0.044 = 44 ms.
-4. Paste the webhook URL into `FalconStaffWebhook.WebhookUrl`.
-5. Grant roles with the PlayFab helper (login PlayFabIds only):
+1. Nothing in the scene. `FalconStaffBootstrap` creates the staff
+   object at runtime on every build.
+2. Snowball gun: still unwired — it needs a snowball prefab loadable by
+   name (Resources folder, like the game's own throwables) now that
+   there is no Inspector to assign one in. Interval defaults to 100 ms;
+   0.044 = 44 ms. The Troll tab labels it honestly until then.
+3. Paste the webhook URL into `FalconStaffWebhook.WebhookUrl`.
+4. Grant roles with the PlayFab helper (login PlayFabIds only):
    `pf.py set-role <PlayFabId> headadmin`.
+   (Sans's own account 9BAF8E542FA8281 / FLUXDEV is headadmin since
+   2026-11-12.)
+5. Hand-menu fit: if the panel sits wrong on the hand, tune
+   PanelLocalPos / PanelLocalEuler at the top of FalconStaffHandMenu.cs.
 
 ## Honest status
 
@@ -41,8 +52,12 @@ Staff system for Project Falcon, built against the Spring 2023 source tree
   VRRig.myPlayer / tryOnSet / InitializeNoobMaterialLocal,
   CosmeticsController.ApplyCosmeticItemToSet, GorillaParent.vrrigDict,
   PhotonVoiceView.SpeakerInUse, RaiseEvent patterns from
-  CosmeticsController). NOT compile-tested: there is no Unity in this
-  environment, so the first import in the real project is the compile test.
+  CosmeticsController). The original staff code compiled clean in UBA
+  build #4 (2026-11-12) and the game runs on device; the hand menu's
+  compile test is the next UBA build.
+- Hand menu text uses legacy UnityEngine.UI.Text with a font cloned at
+  runtime from an in-scene Text (scoreboard/computer): this build's
+  scripts contain no TextMeshPro, so TMP was not an option.
 - Photon bot tab is a hook, not an implementation: the internal bot joins
   through Sans's existing Photon bot module when that code is in the
   project; the menu button is where it plugs in.

@@ -1,0 +1,23 @@
+using UnityEngine;
+
+// Spawns the Falcon Staff system at runtime when the game scene loads.
+// No Unity Editor scene editing is needed: the staff object, its network
+// listener, the soundboard and the hand menu are all code-created, which
+// keeps the setup identical on every build and immune to scene re-imports.
+public static class FalconStaffBootstrap
+{
+    private static bool spawned;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Spawn()
+    {
+        if (spawned) return;
+        spawned = true;
+
+        var go = new GameObject("FalconStaff");
+        Object.DontDestroyOnLoad(go);
+        go.AddComponent<FalconStaffNet>();
+        go.AddComponent<FalconSoundboard>();
+        go.AddComponent<FalconStaffHandMenu>();
+    }
+}
