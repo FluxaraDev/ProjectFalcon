@@ -66,8 +66,6 @@ public class FalconStaffHandMenu : MonoBehaviour
     private bool open;
     private int tab; // 0 staff, 1 troll, 2 sound, 3 move
     private string armedGun = "";
-    private bool selfTest;
-    private bool eventOpen;
     private bool prevMenu;
     private bool prevTrigger;
     private float nextSnowball;
@@ -342,7 +340,7 @@ public class FalconStaffHandMenu : MonoBehaviour
         {
             ContentButton(0f, 78f, 268f, 28f, "Kick gun (staff+)", () => { armedGun = "kick"; RebuildContent(); }, () => armedGun == "kick" ? 2 : 0);
             ContentButton(0f, 46f, 268f, 28f, "Disarm", () => { armedGun = ""; RebuildContent(); }, () => 0);
-            ContentButton(0f, 14f, 268f, 28f, "Self test: " + (selfTest ? "ON" : "OFF"), () => { selfTest = !selfTest; RebuildContent(); }, () => selfTest ? 1 : 0);
+            ContentText(0f, 14f, 268f, 20f, 11, "Self-test: arm a gun, shoot yourself.");
             ContentButton(0f, -18f, 268f, 28f, "Spawn test dummy", () => { FalconTestDummy.Toggle(transform); }, () => 0);
             ContentText(0f, -62f, 268f, 44f, 11,
                 FalconStaffRole.IsAdminOrHigher
@@ -352,12 +350,11 @@ public class FalconStaffHandMenu : MonoBehaviour
         }
         else if (tab == 1 && FalconStaffRole.IsHeadAdmin)
         {
-            ContentButton(0f, 80f, 268f, 24f, "Trolling event: " + (eventOpen ? "OPEN" : "CLOSED"),
-                () => { eventOpen = !eventOpen; RebuildContent(); }, () => eventOpen ? 1 : 0);
+            ContentText(0f, 80f, 268f, 24f, 12, "Headadmin: guns are live.");
             ContentButton(0f, 53f, 268f, 24f, "Spooky music (lobby)", () =>
             {
-                if (eventOpen) FalconStaffNet.SendToAll(FalconStaffNet.EvSpookyMusic, new object[0]);
-                else FalconStaffWebhook.Log("TROLL DENIED (no event) spookymusic");
+                FalconStaffNet.SendToAll(FalconStaffNet.EvSpookyMusic, new object[0]);
+                lastAction = "spooky sent";
             }, () => 0);
 
             string[] guns = { "fling", "fakelag", "creepify", "slip", "spin", "loudmic", "outfitrandom", "outfitall", "snowball" };
@@ -536,8 +533,7 @@ public class FalconStaffHandMenu : MonoBehaviour
         if (rig == null || rig.myPlayer == null) { lastAction = "no target"; return; }
         if (rig.myPlayer.IsLocal)
         {
-            if (selfTest) FireSelf(armedGun);
-            else lastAction = "that's you (self test off)";
+            FireSelf(armedGun);
             return;
         }
         Fire(armedGun, rig);
@@ -570,12 +566,6 @@ public class FalconStaffHandMenu : MonoBehaviour
             return;
         }
         if (!FalconStaffRole.IsHeadAdmin) { lastAction = "denied (role)"; return; }
-        if (!eventOpen)
-        {
-            FalconStaffWebhook.Log("SELFTEST DENIED (no event) " + gun);
-            lastAction = "denied (event closed)";
-            return;
-        }
         if (FalconStaffNet.Instance == null) return;
         int me = PhotonNetwork.LocalPlayer != null ? PhotonNetwork.LocalPlayer.ActorNumber : -1;
         switch (gun)
@@ -629,12 +619,6 @@ public class FalconStaffHandMenu : MonoBehaviour
         }
 
         if (!FalconStaffRole.IsHeadAdmin) { lastAction = "denied (role)"; return; }
-        if (!eventOpen)
-        {
-            FalconStaffWebhook.Log("TROLL DENIED (no event) " + gun + " by " + me + " - demotion rule applies");
-            lastAction = "denied (event closed)";
-            return;
-        }
 
         switch (gun)
         {
@@ -670,7 +654,7 @@ public class FalconStaffHandMenu : MonoBehaviour
 
     private void SnowballSpam()
     {
-        if (!FalconStaffRole.IsHeadAdmin || !eventOpen) return;
+        if (!FalconStaffRole.IsHeadAdmin) return;
         if (snowballPrefab == null || Time.time < nextSnowball) return;
         nextSnowball = Time.time + snowballInterval;
         Transform hand = Player.Instance != null ? Player.Instance.rightHandTransform : null;

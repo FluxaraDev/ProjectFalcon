@@ -162,3 +162,15 @@ the GitHub web UI). Without it the RAVE page reports the song as missing.
   All four lists are now tinted at full disco brightness (dark-phase
   bases no longer dim it to nothing) and restored at rave end; the
   RAVE page STEP line reports the material count (MATS n).
+
+## Round 7 (2026-11-12, build #10): support role field + gates removed
+
+- **SUPPORT page correction:** round 5.4 pasted Sans's three role
+  formats as a static legend; he meant the field to show the SIGNED-IN
+  player's own role. Now: ROLE + FalconRoleText() -> HEADADMIN
+  (EVERYTHING) / ADMIN (INSTABAN) / STAFF / PLAYER (DEFAULT).
+- **Safety toggles removed (Sans, build #9: "too many safety toggles -
+  head admins know what they click"):** the trolling-event gate and the
+  self-test toggle are gone. Headadmin guns fire when clicked, spooky
+  music sends immediately, and shooting your own rig self-tests without
+  arming anything first. Troll use is still webhook-logged.

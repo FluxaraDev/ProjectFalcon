@@ -1086,8 +1086,9 @@ namespace GorillaNetworking
                             string text = "OCULUS PC";
                             text = "STEAM";
                             screenText.Text = "SUPPORT\n\nPLAYERID   " + PlayFabAuthenticator.instance._playFabPlayerIdCache + "\nVERSION    " + version.ToUpper() + "\nPLATFORM   " + text + "\nBUILD DATE " + buildDate + "\n";
-                            // Project Falcon: role legend (Sans, 2026-11-12).
-                            screenText.Text += "\nROLE:  PLAYER (DEFAULT)\nROLE: ADMIN (INSTABAN)\nROLE: HEADADMIN (EVERYTHING)";
+                            // Project Falcon: the signed-in player's own
+                            // staff role (Sans, 2026-11-12).
+                            screenText.Text += "\nROLE       " + FalconRoleText();
                         }
                         else
                         {
@@ -1384,6 +1385,19 @@ namespace GorillaNetworking
         // messages (name gate, rave lock) bricked the computer until
         // restart. FalconComputerFix calls this once the Falcon-side
         // blocking condition has cleared.
+        // Project Falcon: display text for the signed-in player's role
+        // on the SUPPORT page, in Sans's formats.
+        private static string FalconRoleText()
+        {
+            switch (FalconStaffRole.Role)
+            {
+                case "headadmin": return "HEADADMIN (EVERYTHING)";
+                case "admin": return "ADMIN (INSTABAN)";
+                case "staff": return "STAFF";
+                default: return "PLAYER (DEFAULT)";
+            }
+        }
+
         public void FalconClearFailureState()
         {
             RestoreFromFailureState();
