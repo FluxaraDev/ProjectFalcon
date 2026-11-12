@@ -137,3 +137,4 @@ the GitHub web UI). Without it the RAVE page reports the song as missing.
   map is unlit, so lights/fog alone only ever tinted lit objects; the
   darker list's base colors are restored at rave end because the
   manager carries hue forward between ticks.
+- **Grace-window rave exploit closed (pre-#9 catch by Sans):** a solo rave started during the leave/join transition ("not in a room" reads true mid-join) survived into the joined public lobby - effects with no master and no server-side rave. Solo starts now require a settled Photon state (ConnectedToMasterServer or Disconnected), and OnJoinedRoom ends any running rave.

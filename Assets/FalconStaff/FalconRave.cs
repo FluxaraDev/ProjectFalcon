@@ -155,9 +155,20 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
             // but BeginRave no-ops while a rave is running.
             Instance.BeginRave(solo: false, audioDelay: 1.0);
         }
-        else
+        else if (PhotonNetwork.NetworkClientState == ClientState.ConnectedToMasterServer
+                 || PhotonNetwork.NetworkClientState == ClientState.Disconnected)
         {
             Instance.BeginRave(solo: true, audioDelay: 0.0);
+        }
+        else
+        {
+            // Transitional states (joining / leaving / connecting) also
+            // read as "not in a room". Starting the solo rave inside that
+            // window let it survive into the lobby being joined - full
+            // effects in a public room, no master, no server-side rave
+            // (Sans's field report, 2026-11-12). Refuse until settled.
+            FalconFailure.Mark();
+            GorillaComputer.instance.UpdateFailureText("WAIT UNTIL YOU ARE ALL THE WAY IN OR OUT OF THE LOBBY TO START THE RAVE.");
         }
     }
 
@@ -382,7 +393,14 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
     public void OnFriendListUpdate(System.Collections.Generic.List<FriendInfo> friendList) { }
     public void OnCreatedRoom() { }
     public void OnCreateRoomFailed(short returnCode, string message) { }
-    public void OnJoinedRoom() { }
+    public void OnJoinedRoom()
+    {
+        // A rave may exist solo (not in a room) or in the room it was
+        // started in. If a join completes while one is running - the
+        // leave/join grace-window route above - it ends here, so the
+        // effects can never ride into a lobby.
+        if (IsRaving) EndRave();
+    }
     public void OnJoinRoomFailed(short returnCode, string message) { }
     public void OnJoinRandomFailed(short returnCode, string message) { }
 }
