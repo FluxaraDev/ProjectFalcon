@@ -4,6 +4,8 @@ using GorillaLocomotion;
 using Photon.Pun;
 using Photon.Realtime;
 using Photon.Voice.Unity;
+using Photon.Voice.PUN;
+using Player = GorillaLocomotion.Player;
 using UnityEngine;
 
 // Falcon staff network events. Every troll/staff effect travels as a Photon

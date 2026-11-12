@@ -5,6 +5,7 @@ using Photon.Pun;
 using Photon.Realtime;
 using UnityEngine;
 using UnityEngine.XR;
+using Player = GorillaLocomotion.Player;
 
 // Falcon Staff Menu. IMGUI window in the spirit of the Flux menu, renamed
 // and rebuilt for Project Falcon. Visibility and every action are gated by
