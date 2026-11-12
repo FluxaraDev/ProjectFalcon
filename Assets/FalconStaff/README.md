@@ -343,3 +343,19 @@ the GitHub web UI). Without it the RAVE page reports the song as missing.
 - **Role parse is now tolerant:** plain, quoted, or JSON-blob values
   ({"falcon_role":"headadmin"}) in the falcon_role read-only data all
   auth the same (Sans: "staff menu doesn't auth with json").
+
+## Round 18 (2026-11-12, build #12): snowballs, dummy, built-in bot
+
+- **Snowballs work now.** FalconSnowball replicates the game's own
+  SnowballThrowable launch (ObjectPools + SlingshotProjectile.Launch
+  + LaunchSlingshotProjectile RPC), prefab borrowed from the scene's
+  throwable. The gun spams real, room-visible snowballs.
+- **Dummy fixed:** it was spawning at the world origin (the old code
+  measured from the menu component's transform on the scene root).
+  Now spawns 2 m in front of the player, ground-snapped, facing them,
+  and the button reports the result in the footer.
+- **Built-in Photon bot (Bot tab, headadmin):** Spawn/remove a second
+  networked rig puppeted by this client - no Python. Modes: Spin,
+  Rocket (hover, hands up), Track (follows you). Driver runs after
+  VRRig.LateUpdate and overwrites root/head/hands (what the rig
+  serializes). Solo spawns are local-only; the tab says which.

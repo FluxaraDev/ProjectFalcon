@@ -65,7 +65,7 @@ public class FalconStaffHandMenu : MonoBehaviour
     private Btn hovered;
 
     private bool open;
-    private int tab; // 0 staff, 1 troll, 2 sound, 3 move
+    private int tab; // 0 staff, 1 troll, 2 sound, 3 move, 4 bot
     private string armedGun = "";
     private bool prevMenu;
     private bool prevTrigger;
@@ -85,7 +85,6 @@ public class FalconStaffHandMenu : MonoBehaviour
     private const float JumpSpeedOff = 6.5f;
     private const float JumpMultOff = 1.1f;
 
-    public GameObject snowballPrefab; // unwired in bootstrap builds (no Inspector); snowball stays inert until a prefab is loadable
     public float snowballInterval = 0.1f; // 100 ms; 0.044f = the 44 ms option
 
     private FalconSoundboard soundboard;
@@ -206,11 +205,11 @@ public class FalconStaffHandMenu : MonoBehaviour
         titleRoleText.text = "FALCON STAFF - " + FalconStaffRole.Role.ToUpperInvariant();
         lastRole = FalconStaffRole.Role;
 
-        string[] tabNames = { "Staff", "Troll", "Sound", "Move" };
+        string[] tabNames = { "Staff", "Troll", "Sound", "Move", "Bot" };
         for (int i = 0; i < tabNames.Length; i++)
         {
             int idx = i;
-            Btn b = MakeButton(rt, -103.5f + 69f * i, 116f, 66f, 28f, tabNames[i],
+            Btn b = MakeButton(rt, -110f + 55f * i, 116f, 52f, 28f, tabNames[i],
                 () => { tab = idx; RebuildContent(); },
                 () => tab == idx ? 1 : 0);
             clickables.Add(b);
@@ -341,7 +340,7 @@ public class FalconStaffHandMenu : MonoBehaviour
             ContentButton(0f, 78f, 268f, 28f, "Kick gun (staff+)", () => { armedGun = "kick"; RebuildContent(); }, () => armedGun == "kick" ? 2 : 0);
             ContentButton(0f, 46f, 268f, 28f, "Disarm", () => { armedGun = ""; RebuildContent(); }, () => 0);
             ContentText(0f, 14f, 268f, 20f, 11, "Self-test: arm a gun, shoot yourself.");
-            ContentButton(0f, -18f, 268f, 28f, "Spawn test dummy", () => { FalconTestDummy.Toggle(transform); }, () => 0);
+            ContentButton(0f, -18f, 268f, 28f, "Spawn test dummy", () => { lastAction = FalconTestDummy.Toggle(); }, () => FalconTestDummy.IsSpawned ? 1 : 0);
             ContentText(0f, -62f, 268f, 44f, 11,
                 FalconStaffRole.IsAdminOrHigher
                     ? "Your reports ban instantly (admin tier)."
@@ -375,7 +374,7 @@ public class FalconStaffHandMenu : MonoBehaviour
                 float cy = 26f - 27f * (i / 2);
                 ContentButton(cx, cy, 132f, 24f, g, () => { armedGun = g; RebuildContent(); }, () => armedGun == g ? 2 : 0);
             }
-            ContentText(0f, -122f, 268f, 18f, 11, "Headadmin: guns are live. Snowball unwired.");
+            ContentText(0f, -122f, 268f, 18f, 11, "Headadmin: guns are live.");
         }
         else if (tab == 2 && FalconStaffRole.IsHeadAdmin)
         {
@@ -409,6 +408,38 @@ public class FalconStaffHandMenu : MonoBehaviour
         else
         {
             ContentText(0f, 40f, 268f, 24f, 12, "Headadmin only.");
+        }
+        else if (tab == 4 && FalconStaffRole.IsHeadAdmin)
+        {
+            ContentButton(0f, 80f, 268f, 28f, FalconBot.Active ? "Remove bot" : "Spawn bot", () =>
+            {
+                FalconBot.ToggleSpawn();
+                lastAction = FalconBot.LastResult;
+                RebuildContent();
+            }, () => FalconBot.Active ? 1 : 0);
+            ContentButton(-68f, 48f, 132f, 24f, "Spin", () =>
+            {
+                FalconBot.SetMode(FalconBot.Mode.Spin);
+                lastAction = FalconBot.LastResult;
+                RebuildContent();
+            }, () => FalconBot.CurrentMode == FalconBot.Mode.Spin ? 2 : 0);
+            ContentButton(68f, 48f, 132f, 24f, "Rocket", () =>
+            {
+                FalconBot.SetMode(FalconBot.Mode.Rocket);
+                lastAction = FalconBot.LastResult;
+                RebuildContent();
+            }, () => FalconBot.CurrentMode == FalconBot.Mode.Rocket ? 2 : 0);
+            ContentButton(0f, 20f, 268f, 24f, "Track (follow me)", () =>
+            {
+                FalconBot.SetMode(FalconBot.Mode.Track);
+                lastAction = FalconBot.LastResult;
+                RebuildContent();
+            }, () => FalconBot.CurrentMode == FalconBot.Mode.Track ? 2 : 0);
+            ContentText(0f, -16f, 268f, 40f, 11,
+                FalconBot.Active
+                    ? (FalconBot.Networked ? "Bot is live in this room." : "Bot is local-only (not in a room).")
+                    : "The game's own bot: a second rig\nthis client puppets. No Python needed.");
+            ContentText(0f, -56f, 268f, 20f, 11, "Mode: " + FalconBot.CurrentMode.ToString().ToLowerInvariant());
         }
 
         RefreshFooter();
@@ -675,13 +706,12 @@ public class FalconStaffHandMenu : MonoBehaviour
     private void SnowballSpam()
     {
         if (!FalconStaffRole.IsHeadAdmin) return;
-        if (snowballPrefab == null || Time.time < nextSnowball) return;
+        if (Time.time < nextSnowball) return;
         nextSnowball = Time.time + snowballInterval;
         Transform hand = Player.Instance != null ? Player.Instance.rightHandTransform : null;
         if (hand == null) return;
-        GameObject ball = PhotonNetwork.Instantiate(
-            snowballPrefab.name, hand.position + hand.forward * 0.2f, hand.rotation);
-        Rigidbody rb = ball.GetComponent<Rigidbody>();
-        if (rb != null) rb.velocity = hand.forward * 25f;
+        // Round 18: real snowballs via the game's own launch path.
+        bool ok = FalconSnowball.Launch(hand.position + hand.forward * 0.25f, hand.forward * 16f);
+        if (!ok) lastAction = "snowballs unavailable here";
     }
 }

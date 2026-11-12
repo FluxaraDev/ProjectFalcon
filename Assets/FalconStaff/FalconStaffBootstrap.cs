@@ -18,6 +18,7 @@ public static class FalconStaffBootstrap
         Object.DontDestroyOnLoad(go);
         go.AddComponent<FalconStaffNet>();
         go.AddComponent<FalconSoundboard>();
+        go.AddComponent<FalconBot>();
         go.AddComponent<FalconStaffHandMenu>();
         go.AddComponent<FalconCoordCube>();
         // Game-wide pieces that ride the same bootstrap: the void guard
