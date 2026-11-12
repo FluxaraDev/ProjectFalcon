@@ -189,3 +189,22 @@ the GitHub web UI). Without it the RAVE page reports the song as missing.
   A real second desk = second logic instance + rewiring a cloned desk
   group's screen and buttons to it. Deferred pending Sans's word; his
   spot for it: (-50.76, 16.62, -99.83).
+
+## Round 9 (2026-11-12, build #10): Optional Preds + RGB fallback plan
+
+- **Optional Preds (Items tab, option 3):** FalconPreds.cs - the
+  OculusPreds math (velocity x predictionTime on head + hands,
+  OVRPlugin/OVRInput velocities), default predictionTime 0.06 (the
+  author's value, "about 50 preds at 72 Hz" - Sans's call, changed
+  from 0.02). Applied as offsets in LateUpdate, restored first thing
+  in Update (execution order -100) so locomotion never reads a
+  predicted pose. Items tab also holds the test dummy (1) and coord
+  cube (2); pred time adjusts in 10 ms steps (0-150). Sans's target:
+  preds that show on OVR Metrics - #10's off-vs-on PRED read is the
+  verdict. Spark's prior: metrics PRED is the runtime compositor's
+  number and app-side offsets likely won't move it; hand feel may
+  still change. His headset decides.
+- **RGB fallback (Sans, conditional - only if disco v3 fails in
+  #10):** one point light covering the whole map, hue-cycled by his
+  RainbowPointLight script (~/workspace/user/files/
+  RainbowPointLight_62_mjbf.cs). Not built; logged as the plan.
