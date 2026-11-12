@@ -87,6 +87,7 @@ public class FalconStaffHandMenu : MonoBehaviour
     public float snowballInterval = 0.1f; // 100 ms; 0.044f = the 44 ms option
 
     private FalconSoundboard soundboard;
+    private FalconCoordCube coordCube;
 
     private void Awake()
     {
@@ -97,6 +98,7 @@ public class FalconStaffHandMenu : MonoBehaviour
     {
         soundboard = GetComponent<FalconSoundboard>();
         if (soundboard == null) soundboard = gameObject.AddComponent<FalconSoundboard>();
+        coordCube = GetComponent<FalconCoordCube>();
     }
 
     private void Update()
@@ -372,8 +374,11 @@ public class FalconStaffHandMenu : MonoBehaviour
             ContentButton(0f, 46f, 268f, 28f, "Speed boost: " + (speedOn ? "ON" : "OFF"),
                 () => { speedOn = !speedOn; if (!speedOn) RestoreMove(null, JumpSpeedOff, JumpMultOff); RebuildContent(); },
                 () => speedOn ? 1 : 0);
-            ContentText(0f, 2f, 268f, 40f, 11, "Long arms = reach cap 10000.\nSpeed = jump 12 / mult 2.0.");
-            ContentText(0f, -46f, 268f, 40f, 11, "Values re-assert while ON\n(join resets can't stomp them).");
+            ContentButton(0f, 14f, 268f, 28f, "Coord cube: " + (coordCube != null && coordCube.CubeEnabled ? "ON" : "OFF"),
+                () => { if (coordCube != null) coordCube.SetEnabled(!coordCube.CubeEnabled); RebuildContent(); },
+                () => coordCube != null && coordCube.CubeEnabled ? 1 : 0);
+            ContentText(0f, -22f, 268f, 36f, 11, "Long arms = reach cap 10000.\nSpeed = jump 12 / mult 2.0.");
+            ContentText(0f, -58f, 268f, 36f, 11, "Cube rides the right hand.\nA = drop / pick up. Coords float above it.");
         }
         else
         {
@@ -388,7 +393,13 @@ public class FalconStaffHandMenu : MonoBehaviour
     {
         if (footerText == null) return;
         string playing = soundboard != null && soundboard.NowPlaying != "" ? " | " + soundboard.NowPlaying : "";
-        footerText.text = "Armed: " + (armedGun == "" ? "none" : armedGun) + playing;
+        string cube = "";
+        if (coordCube != null && coordCube.CubeEnabled)
+        {
+            Vector3 p = coordCube.CubePosition;
+            cube = string.Format(" | Cube {0:0.0}, {1:0.0}, {2:0.0}{3}", p.x, p.y, p.z, coordCube.Held ? " (held)" : "");
+        }
+        footerText.text = "Armed: " + (armedGun == "" ? "none" : armedGun) + playing + cube;
     }
 
     // ---------------- interaction ----------------

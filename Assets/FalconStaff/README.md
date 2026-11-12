@@ -11,6 +11,16 @@ Staff system for Project Falcon, built against the Spring 2023 source tree
   authenticator, before any report/menu UI can open.
 - `FalconStaffBootstrap.cs` — spawns the whole staff system at runtime
   (AfterSceneLoad). No scene editing needed anywhere.
+- `FalconCoordCube.cs` — Coordinates Cube (Move tab toggle): a 0.5 m
+  cube carried in the right hand; A drops / picks it up; its world
+  coordinates float above it for map-editing measurements.
+- `FalconVoidGuard.cs` — game-wide (every player): falling below
+  y = -50 teleports you back to the stump spawn (-64, 12.53, -83)
+  instead of the old disconnect kick or an infinite void fall.
+  `GorillaNetworkDisconnectTrigger` was patched to the same behavior.
+- `FalconBoardTexts.cs` — applies the Falcon code of conduct to the
+  scene's static CoC boards at startup (glitches / exploits /
+  out-of-bounds explicitly count as cheating).
 - `FalconStaffHandMenu.cs` — the in-VR staff menu: a world-space panel
   on the left hand (left menu button opens it). Aim the right hand at
   the panel, pull the right trigger to press buttons; aim away from the

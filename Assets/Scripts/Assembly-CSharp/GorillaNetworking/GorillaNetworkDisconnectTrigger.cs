@@ -29,19 +29,22 @@ namespace GorillaNetworking
 			{
 				array[i].SetActive(value: true);
 			}
-			if (PhotonNetwork.InRoom)
+			// Project Falcon change (2026-11-12): falling out of the map
+			// no longer disconnects ("kicks") the player. They are
+			// teleported back to the normal spawn in the stump room
+			// instead. The FalconVoidGuard covers the whole map as well;
+			// this trigger now behaves the same way wherever it is placed.
+			GorillaLocomotion.Player player = GorillaLocomotion.Player.Instance;
+			if (player != null)
 			{
-				if (componentTypeToRemove != "" && componentTarget.GetComponent(componentTypeToRemove) != null)
+				player.transform.position = FalconVoidGuard.SpawnPosition;
+				Rigidbody rb = player.GetComponent<Rigidbody>();
+				if (rb != null)
 				{
-					Object.Destroy(componentTarget.GetComponent(componentTypeToRemove));
+					rb.position = FalconVoidGuard.SpawnPosition;
+					rb.velocity = Vector3.zero;
+					rb.angularVelocity = Vector3.zero;
 				}
-				PhotonNetwork.Disconnect();
-				SkinnedMeshRenderer[] array2 = photonNetworkController.offlineVRRig;
-				for (int i = 0; i < array2.Length; i++)
-				{
-					array2[i].enabled = true;
-				}
-				PhotonNetwork.ConnectUsingSettings();
 			}
 		}
 	}
