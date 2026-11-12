@@ -56,7 +56,8 @@ public class FalconStaffHandMenu : MonoBehaviour
     private Text footerText;
     private Text diagStatusText;
     private string lastAction = "";
-    private LineRenderer pointerLine;
+    private GameObject pointerBeam;
+    private MeshRenderer pointerBeamRenderer;
     public static int MenuButtonPresses;
     private Font donorFont;
     private readonly List<Btn> clickables = new List<Btn>();
@@ -473,17 +474,25 @@ public class FalconStaffHandMenu : MonoBehaviour
     // or a gun is armed; it traces the same ray the guns use.
     private void EnsurePointerLine()
     {
-        if (pointerLine != null) return;
-        GameObject go = new GameObject("FalconPointerLine");
-        go.transform.SetParent(transform, false);
-        pointerLine = go.AddComponent<LineRenderer>();
-        pointerLine.positionCount = 2;
-        pointerLine.startWidth = 0.004f;
-        pointerLine.endWidth = 0.004f;
-        pointerLine.material = new Material(Shader.Find("Sprites/Default"));
-        pointerLine.startColor = new Color(0.45f, 1f, 0.45f, 0.9f);
-        pointerLine.endColor = new Color(0.45f, 1f, 0.45f, 0.35f);
-        pointerLine.enabled = false;
+        // Round 13: the beam is a stretched primitive cube, NOT a
+        // LineRenderer - round 6 built its material from
+        // Shader.Find("Sprites/Default"), which is stripped from this
+        // build; material creation threw inside Update every frame
+        // the menu was open, killing the beam AND menu selection
+        // (build #10: "no arrow, can't select"). CreatePrimitive's
+        // material path is the same one the coord cube uses - it
+        // demonstrably renders on device.
+        if (pointerBeam != null) return;
+        pointerBeam = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        pointerBeam.name = "FalconPointerBeam";
+        Collider c = pointerBeam.GetComponent<Collider>();
+        if (c != null) Destroy(c); // the beam must never eat raycasts
+        pointerBeam.transform.SetParent(transform, false);
+        pointerBeamRenderer = pointerBeam.GetComponent<MeshRenderer>();
+        Material m = new Material(pointerBeamRenderer.sharedMaterial);
+        m.color = new Color(0.45f, 1f, 0.45f);
+        pointerBeamRenderer.material = m;
+        pointerBeam.SetActive(false);
     }
 
     private void UpdatePointerLine()
@@ -491,16 +500,21 @@ public class FalconStaffHandMenu : MonoBehaviour
         Transform hand = Player.Instance != null ? Player.Instance.rightHandTransform : null;
         if ((!open && armedGun == "") || hand == null)
         {
-            if (pointerLine != null) pointerLine.enabled = false;
+            if (pointerBeam != null) pointerBeam.SetActive(false);
             return;
         }
         EnsurePointerLine();
-        pointerLine.enabled = true;
+        Vector3 from = hand.position + hand.forward * 0.05f;
         Vector3 to = hand.position + hand.forward * 4f;
         RaycastHit hit;
         if (Physics.Raycast(hand.position, hand.forward, out hit, 100f)) to = hit.point;
-        pointerLine.SetPosition(0, hand.position + hand.forward * 0.05f);
-        pointerLine.SetPosition(1, to);
+        Vector3 dir = to - from;
+        float len = dir.magnitude;
+        if (len < 0.05f) { pointerBeam.SetActive(false); return; }
+        pointerBeam.SetActive(true);
+        pointerBeam.transform.position = from + dir * 0.5f;
+        pointerBeam.transform.rotation = Quaternion.LookRotation(dir);
+        pointerBeam.transform.localScale = new Vector3(0.008f, 0.008f, len);
     }
 
     // ---------------- guns (ported from FalconStaffMenu) ----------------

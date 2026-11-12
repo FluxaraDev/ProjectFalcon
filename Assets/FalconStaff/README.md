@@ -261,3 +261,14 @@ the GitHub web UI). Without it the RAVE page reports the song as missing.
   whole-player scale 1.4 (the game's own scale field - every radius,
   clamp and unstick distance already multiplies by it) vs visual-only
   arm stretch (his SteamLongArm approach) + cap off.
+
+## Round 13 (2026-11-12, build #11): pointer beam replaces the line
+
+- Build #10 (Sans): "still no arrow on staff menu and I can't
+  select". The round-6 pointer was a LineRenderer whose material
+  came from Shader.Find("Sprites/Default") - stripped from this
+  build, so material creation threw inside the menu's Update every
+  frame it was open, killing the beam and everything after it in
+  Update (selection included). Replaced with a stretched primitive
+  cube beam (the coord cube's proven render path), collider removed
+  so it can never eat a raycast, tinted green, 8 mm thick.
