@@ -49,6 +49,18 @@ public class FalconBoardTexts : MonoBehaviour
         }
     }
 
+    // The board rects are sized for the stock wording; the Falcon
+    // cheats line pushed the last lines off the bottom edge (Sans's
+    // build #8 screenshot: "-PLEASE BE NICE GORILLAS..." never made it
+    // onto the board). Best-fit shrinks the rendered size only as much
+    // as the rect requires - every word stays.
+    private static void FitText(Text t)
+    {
+        t.resizeTextForBestFit = true;
+        t.resizeTextMinSize = 10;
+        t.resizeTextMaxSize = t.fontSize;
+    }
+
     private void ApplyOnce()
     {
         foreach (Text t in Resources.FindObjectsOfTypeAll<Text>())
@@ -57,11 +69,13 @@ public class FalconBoardTexts : MonoBehaviour
             if (t.text != null && t.text.StartsWith("-NO RACISM"))
             {
                 t.text = CodeOfConduct;
+                FitText(t);
             }
             else if (t.gameObject.name == "motdtext" || (t.text != null && t.text.Trim() == "-LOADING-"))
             {
                 t.supportRichText = true;
                 t.text = Motd;
+                FitText(t);
             }
         }
     }
