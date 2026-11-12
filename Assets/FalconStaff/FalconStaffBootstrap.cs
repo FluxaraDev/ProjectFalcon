@@ -25,5 +25,6 @@ public static class FalconStaffBootstrap
         // Falcon code of conduct to the scene's static boards.
         go.AddComponent<FalconVoidGuard>();
         go.AddComponent<FalconBoardTexts>();
+        go.AddComponent<FalconRave>();
     }
 }

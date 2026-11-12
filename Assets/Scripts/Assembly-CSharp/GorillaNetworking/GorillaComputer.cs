@@ -928,7 +928,7 @@ namespace GorillaNetworking
                     SwitchToSupportState();
                     break;
                 case "enter":
-                    creditsView.ProcessButtonPress(buttonPressed);
+                    FalconRave.TryStartFromComputer();
                     break;
             }
             UpdateScreen();
@@ -1075,7 +1075,7 @@ namespace GorillaNetworking
                         screenText.Text = "UPDATE ITEMS SETTINGS. PRESS OPTION 1 TO ENABLE ITEM PARTICLES. PRESS OPTION 2 TO DISABLE ITEM PARTICLES. PRESS 1-10 TO CHANGE INSTRUMENT VOLUME FOR OTHER PLAYERS.\n\nITEM PARTICLES ON: " + (disableParticles ? "FALSE" : "TRUE") + "\nINSTRUMENT VOLUME: " + Mathf.CeilToInt(instrumentVolume * 50f);
                         break;
                     case ComputerState.Credits:
-                        screenText.Text = creditsView.GetScreenText();
+                        screenText.Text = FalconRave.GetScreenText();
                         break;
                     case ComputerState.Time:
                         screenText.Text = "UPDATE TIME SETTINGS. (LOCALLY ONLY). \nPRESS OPTION 1 FOR NORMAL MODE. \nPRESS OPTION 2 FOR STATIC MODE. \nPRESS 1-10 TO CHANGE TIME OF DAY. \nCURRENT MODE: " + BetterDayNightManager.instance.currentSetting.ToString().ToUpper() + ". \nTIME OF DAY: " + BetterDayNightManager.instance.currentTimeOfDay.ToUpper() + ". \n";
@@ -1146,7 +1146,7 @@ namespace GorillaNetworking
 
         private void UpdateFunctionScreen()
         {
-            functionSelectText.Text = "ROOM   " + ((currentState == ComputerState.Room) ? "<-" : "") + "\nNAME   " + ((currentState == ComputerState.Name) ? "<-" : "") + "\nCOLOR  " + ((currentState == ComputerState.Color) ? "<-" : "") + "\nTURN   " + ((currentState == ComputerState.Turn) ? "<-" : "") + "\nMIC    " + ((currentState == ComputerState.Mic) ? "<-" : "") + "\nQUEUE  " + ((currentState == ComputerState.Queue) ? "<-" : "") + "\nGROUP  " + ((currentState == ComputerState.Group) ? "<-" : "") + "\nVOICE  " + ((currentState == ComputerState.Voice) ? "<-" : "") + "\nITEMS  " + ((currentState == ComputerState.Visuals) ? "<-" : "") + "\nCREDITS" + ((currentState == ComputerState.Credits) ? "<-" : "") + "\nSUPPORT" + ((currentState == ComputerState.Support) ? "<-" : "");
+            functionSelectText.Text = "ROOM   " + ((currentState == ComputerState.Room) ? "<-" : "") + "\nNAME   " + ((currentState == ComputerState.Name) ? "<-" : "") + "\nCOLOR  " + ((currentState == ComputerState.Color) ? "<-" : "") + "\nTURN   " + ((currentState == ComputerState.Turn) ? "<-" : "") + "\nMIC    " + ((currentState == ComputerState.Mic) ? "<-" : "") + "\nQUEUE  " + ((currentState == ComputerState.Queue) ? "<-" : "") + "\nGROUP  " + ((currentState == ComputerState.Group) ? "<-" : "") + "\nVOICE  " + ((currentState == ComputerState.Voice) ? "<-" : "") + "\nITEMS  " + ((currentState == ComputerState.Visuals) ? "<-" : "") + "\nRAVE   " + ((currentState == ComputerState.Credits) ? "<-" : "") + "\nSUPPORT" + ((currentState == ComputerState.Support) ? "<-" : "");
         }
 
         private void OnReturnCurrentVersion(PlayFab.ClientModels.ExecuteCloudScriptResult result)

@@ -95,3 +95,18 @@ Staff system for Project Falcon, built against the Spring 2023 source tree
   prefab in front of you as a frozen local rig for aim/raycast practice.
   It is not a room member and has no locomotion, so movement effects
   cannot move it; self test covers those.
+
+## RAVE tab (2026-11-12)
+The computer's CREDITS tab is now the RAVE tab (label + screen + ENTER rewired
+in GorillaComputer; the state enum value is unchanged internally).
+`FalconRave` plays SOPHIE - VYZEE from `Assets/Resources/rave_song.mp3`
+(map-wide 2D audio), cycles every directional light + fog + ambient through
+disco colors, enables colored fog, drops gravity to -2.0, and boosts jump to
+15 / 2.4 for the length of the song (3:18). Start rules: not in a room (solo;
+all joins, triggers included, are locked until the song ends with a countdown
+on the computer board), or master client of a private (invisible) room, where
+event 210 starts it lobby-wide on a synced clock. On room leave every effect
+is restored locally, so nothing leaks into the next lobby.
+REQUIRED: `Assets/Resources/rave_song.mp3` must exist in the repo before
+building - it is a binary and rides outside the snapshot push (uploaded via
+the GitHub web UI). Without it the RAVE page reports the song as missing.

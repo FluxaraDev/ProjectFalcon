@@ -799,6 +799,14 @@ namespace GorillaNetworking
 
 		private bool BlockJoinForDefaultName()
 		{
+			if (FalconRave.JoinLocked)
+			{
+				if (GorillaComputer.instance != null)
+				{
+					GorillaComputer.instance.UpdateFailureText("THE RAVE IS STILL GOING. YOU CAN JOIN WHEN THE SONG ENDS (" + FalconRave.CountdownText() + ").");
+				}
+				return true;
+			}
 			string nm = (GorillaComputer.instance != null) ? GorillaComputer.instance.savedName : PhotonNetwork.LocalPlayer.NickName;
 			if (!NameIsDefault(nm))
 			{
