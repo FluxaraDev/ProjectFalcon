@@ -85,7 +85,7 @@ public class FalconStaffHandMenu : MonoBehaviour
     private const float JumpSpeedOff = 6.5f;
     private const float JumpMultOff = 1.1f;
 
-    public float snowballInterval = 0.1f; // 100 ms; 0.044f = the 44 ms option
+    // Snowball spam interval lives in FalconStaffSettings (Settings tab).
 
     private FalconSoundboard soundboard;
     private FalconCoordCube coordCube;
@@ -217,11 +217,11 @@ public class FalconStaffHandMenu : MonoBehaviour
         titleRoleText.text = "FALCON STAFF - " + FalconStaffRole.Role.ToUpperInvariant();
         lastRole = FalconStaffRole.Role;
 
-        string[] tabNames = { "Staff", "Troll", "Sound", "Move", "Bot" };
+        string[] tabNames = { "Staff", "Troll", "Sound", "Move", "Bot", "Settings" };
         for (int i = 0; i < tabNames.Length; i++)
         {
             int idx = i;
-            Btn b = MakeButton(rt, -110f + 55f * i, 116f, 52f, 28f, tabNames[i],
+            Btn b = MakeButton(rt, -120f + 48f * i, 116f, 45f, 28f, tabNames[i],
                 () => { tab = idx; RebuildContent(); },
                 () => tab == idx ? 1 : 0);
             clickables.Add(b);
@@ -449,6 +449,28 @@ public class FalconStaffHandMenu : MonoBehaviour
                     : "The game's own bot: a second rig\nthis client puppets. No Python needed.");
             ContentText(0f, -56f, 268f, 20f, 11, "Mode: " + FalconBot.CurrentMode.ToString().ToLowerInvariant());
         }
+        else if (tab == 5 && FalconStaffRole.IsHeadAdmin)
+        {
+            // Settings tab (Jacob's suggestion): gun tuning with
+            // steppers. Snowball: 1..1000 ms in jumps of 10. Spin:
+            // game speed units (9 = stock spec). Fling: velocity.
+            ContentText(0f, 84f, 268f, 18f, 11, "Snowball spam interval");
+            ContentButton(-100f, 58f, 52f, 24f, "-10", () => { FalconStaffSettings.SnowballMs = Mathf.Clamp(FalconStaffSettings.SnowballMs - 10, 1, 1000); RebuildContent(); }, () => 0);
+            ContentButton(100f, 58f, 52f, 24f, "+10", () => { FalconStaffSettings.SnowballMs = Mathf.Clamp(FalconStaffSettings.SnowballMs + 10, 1, 1000); RebuildContent(); }, () => 0);
+            ContentText(0f, 58f, 120f, 24f, 13, FalconStaffSettings.SnowballMs + " ms");
+
+            ContentText(0f, 28f, 268f, 18f, 11, "Spin speed (sent to target)");
+            ContentButton(-100f, 2f, 52f, 24f, "-1", () => { FalconStaffSettings.SpinSpeed = Mathf.Clamp(FalconStaffSettings.SpinSpeed - 1, 1, 30); RebuildContent(); }, () => 0);
+            ContentButton(100f, 2f, 52f, 24f, "+1", () => { FalconStaffSettings.SpinSpeed = Mathf.Clamp(FalconStaffSettings.SpinSpeed + 1, 1, 30); RebuildContent(); }, () => 0);
+            ContentText(0f, 2f, 120f, 24f, 13, "speed " + FalconStaffSettings.SpinSpeed);
+
+            ContentText(0f, -28f, 268f, 18f, 11, "Fling force");
+            ContentButton(-100f, -54f, 52f, 24f, "-5", () => { FalconStaffSettings.FlingForce = Mathf.Clamp(FalconStaffSettings.FlingForce - 5f, 5f, 100f); RebuildContent(); }, () => 0);
+            ContentButton(100f, -54f, 52f, 24f, "+5", () => { FalconStaffSettings.FlingForce = Mathf.Clamp(FalconStaffSettings.FlingForce + 5f, 5f, 100f); RebuildContent(); }, () => 0);
+            ContentText(0f, -54f, 120f, 24f, 13, FalconStaffSettings.FlingForce.ToString("0"));
+
+            ContentText(0f, -92f, 268f, 36f, 11, "Snowball + fling apply on your client.\nSpin speed rides the shot to the target.");
+        }
         else
         {
             ContentText(0f, 40f, 268f, 24f, 12, "Headadmin only.");
@@ -635,7 +657,7 @@ public class FalconStaffHandMenu : MonoBehaviour
         {
             case "fling":
                 Vector3 dir = Random.onUnitSphere; dir.y = Mathf.Abs(dir.y) + 0.5f;
-                FalconStaffNet.Instance.ApplyLocal(FalconStaffNet.EvFling, new object[] { dir.normalized * 30f });
+                FalconStaffNet.Instance.ApplyLocal(FalconStaffNet.EvFling, new object[] { dir.normalized * FalconStaffSettings.FlingForce });
                 break;
             case "fakelag":
                 FalconStaffNet.Instance.ApplyLocal(FalconStaffNet.EvFakeLag, new object[0]);
@@ -647,7 +669,7 @@ public class FalconStaffHandMenu : MonoBehaviour
                 FalconStaffNet.Instance.ApplyLocal(FalconStaffNet.EvSlip, new object[0]);
                 break;
             case "spin":
-                FalconStaffNet.Instance.ApplyLocal(FalconStaffNet.EvSpin, new object[0]);
+                FalconStaffNet.Instance.ApplyLocal(FalconStaffNet.EvSpin, new object[] { FalconStaffSettings.SpinDegPerSec });
                 break;
             case "loudmic":
                 FalconStaffNet.Instance.ApplyLocal(FalconStaffNet.EvLoudMic, new object[] { me });
@@ -687,7 +709,7 @@ public class FalconStaffHandMenu : MonoBehaviour
         {
             case "fling":
                 Vector3 dir = Random.onUnitSphere; dir.y = Mathf.Abs(dir.y) + 0.5f;
-                FalconStaffNet.SendTo(FalconStaffNet.EvFling, target, new object[] { dir.normalized * 30f });
+                FalconStaffNet.SendTo(FalconStaffNet.EvFling, target, new object[] { dir.normalized * FalconStaffSettings.FlingForce });
                 break;
             case "fakelag":
                 FalconStaffNet.SendTo(FalconStaffNet.EvFakeLag, target, new object[0]);
@@ -699,7 +721,7 @@ public class FalconStaffHandMenu : MonoBehaviour
                 FalconStaffNet.SendTo(FalconStaffNet.EvSlip, target, new object[0]);
                 break;
             case "spin":
-                FalconStaffNet.SendTo(FalconStaffNet.EvSpin, target, new object[0]);
+                FalconStaffNet.SendTo(FalconStaffNet.EvSpin, target, new object[] { FalconStaffSettings.SpinDegPerSec });
                 break;
             case "loudmic":
                 FalconStaffNet.SendToAll(FalconStaffNet.EvLoudMic, new object[] { target.ActorNumber });
@@ -719,7 +741,7 @@ public class FalconStaffHandMenu : MonoBehaviour
     {
         if (!FalconStaffRole.IsHeadAdmin) return;
         if (Time.time < nextSnowball) return;
-        nextSnowball = Time.time + snowballInterval;
+        nextSnowball = Time.time + FalconStaffSettings.SnowballMs / 1000f;
         Transform hand = Player.Instance != null ? Player.Instance.rightHandTransform : null;
         if (hand == null) return;
         // Round 18: real snowballs via the game's own launch path.

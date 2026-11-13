@@ -26,6 +26,19 @@ using UnityEngine;
 // 2026-11-13: "RaiseEvent(210) failed... eventCode must be less than
 // 200"). The game's own codes use low numbers (cosmetics = 9), so the
 // 100s are free. Original codes were 200-209 and never left the client.
+// Values from the staff menu's Settings tab (Jacob's suggestion,
+// 2026-11-13). Snowball interval and fling force apply on the
+// SHOOTER's client; spin speed travels inside the EvSpin payload so
+// the victim's client spins at the shooter's chosen speed.
+public static class FalconStaffSettings
+{
+    public static int SnowballMs = 100;   // spam interval, 1..1000 ms, step 10
+    public static int SpinSpeed = 9;      // game turn-speed units, 1..30
+    public static float FlingForce = 30f; // fling velocity magnitude, 5..100
+
+    public static float SpinDegPerSec { get { return SpinSpeed * 60f; } } // speed 9 = 540 deg/s
+}
+
 public class FalconStaffNet : MonoBehaviour, IOnEventCallback
 {
     public const byte EvKick = 100;
@@ -76,7 +89,7 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback
             case EvFakeLag: StartCoroutine(FakeLag()); break;
             case EvCreepify: StartCoroutine(Creepify()); break;
             case EvSlip: StartCoroutine(Slip()); break;
-            case EvSpin: StartCoroutine(Spin()); break;
+            case EvSpin: StartCoroutine(Spin(data != null && data.Length > 0 && data[0] is float ? (float)data[0] : FalconStaffSettings.SpinDegPerSec)); break;
             case EvLoudMic: if (data != null && data.Length > 0) LoudMic((int)data[0]); break;
             case EvOutfitRandom: FalconStaffOutfits.RandomOutfit(); break;
             case EvOutfitAll: StartCoroutine(FalconStaffOutfits.AllCosmetics()); break;
@@ -164,16 +177,17 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback
         }
     }
 
-    private IEnumerator Spin()
+    private IEnumerator Spin(float degPerSec)
     {
         // Smooth-turn code (Player.Turn) applied nonstop for 10 s.
-        // 540 deg/s is the "speed 9" mapping used by the menu; tune in one
-        // place if Sans wants it faster or slower.
+        // Speed arrives in the event payload (Settings tab on the
+        // shooter's client); empty payloads from older builds fall
+        // back to the local setting (speed 9 = 540 deg/s).
         if (Player.Instance == null) yield break;
         float end = Time.time + 10f;
         while (Time.time < end)
         {
-            Player.Instance.Turn(540f * Time.deltaTime);
+            Player.Instance.Turn(degPerSec * Time.deltaTime);
             yield return null;
         }
     }

@@ -116,7 +116,7 @@ public class FalconStaffMenu : MonoBehaviour
         {
             case "fling":
                 Vector3 dir = Random.onUnitSphere; dir.y = Mathf.Abs(dir.y) + 0.5f;
-                FalconStaffNet.Instance.ApplyLocal(FalconStaffNet.EvFling, new object[] { dir.normalized * 30f });
+                FalconStaffNet.Instance.ApplyLocal(FalconStaffNet.EvFling, new object[] { dir.normalized * FalconStaffSettings.FlingForce });
                 break;
             case "fakelag":
                 FalconStaffNet.Instance.ApplyLocal(FalconStaffNet.EvFakeLag, new object[0]);
@@ -128,7 +128,7 @@ public class FalconStaffMenu : MonoBehaviour
                 FalconStaffNet.Instance.ApplyLocal(FalconStaffNet.EvSlip, new object[0]);
                 break;
             case "spin":
-                FalconStaffNet.Instance.ApplyLocal(FalconStaffNet.EvSpin, new object[0]);
+                FalconStaffNet.Instance.ApplyLocal(FalconStaffNet.EvSpin, new object[] { FalconStaffSettings.SpinDegPerSec });
                 break;
             case "loudmic":
                 FalconStaffNet.Instance.ApplyLocal(FalconStaffNet.EvLoudMic, new object[] { me });
@@ -173,7 +173,7 @@ public class FalconStaffMenu : MonoBehaviour
         {
             case "fling":
                 Vector3 dir = Random.onUnitSphere; dir.y = Mathf.Abs(dir.y) + 0.5f;
-                FalconStaffNet.SendTo(FalconStaffNet.EvFling, target, new object[] { dir.normalized * 30f });
+                FalconStaffNet.SendTo(FalconStaffNet.EvFling, target, new object[] { dir.normalized * FalconStaffSettings.FlingForce });
                 break;
             case "fakelag":
                 FalconStaffNet.SendTo(FalconStaffNet.EvFakeLag, target, new object[0]);
@@ -185,7 +185,7 @@ public class FalconStaffMenu : MonoBehaviour
                 FalconStaffNet.SendTo(FalconStaffNet.EvSlip, target, new object[0]);
                 break;
             case "spin":
-                FalconStaffNet.SendTo(FalconStaffNet.EvSpin, target, new object[0]);
+                FalconStaffNet.SendTo(FalconStaffNet.EvSpin, target, new object[] { FalconStaffSettings.SpinDegPerSec });
                 break;
             case "loudmic":
                 FalconStaffNet.SendToAll(FalconStaffNet.EvLoudMic, new object[] { target.ActorNumber });
