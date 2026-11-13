@@ -26,6 +26,17 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
     public const byte EvRaveStart = 110;
     public const byte EvRaveEnd = 111;
 
+    // Materials whose shader has no _Color (the DayNightLerpUnlit map
+    // atlases) log an error on EVERY .color get/set. Sans's kick.txt
+    // logcat (2026-11-13) showed ~1,000 of them in one BeginRave burst,
+    // after which Android's logger dropped the game's log stream for
+    // the rest of the session - blinding the capture. Never touch
+    // .color on a material that cannot take it.
+    private static bool HasColorProp(Material m)
+    {
+        return m != null && m.HasProperty("_Color");
+    }
+
     // Tunables ------------------------------------------------------------
     private const float RaveGravityY = -2.0f;    // stock gravity is -9.81
     private const float RaveJumpSpeed = 15f;     // below the game's own 2x
@@ -298,11 +309,11 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
                 unlitMats = bdn.standardMaterialsUnlit ?? new Material[0];
                 unlitBase = new Color[unlitMats.Length];
                 for (int i = 0; i < unlitMats.Length; i++)
-                    unlitBase[i] = unlitMats[i] != null ? unlitMats[i].color : Color.white;
+                    unlitBase[i] = HasColorProp(unlitMats[i]) ? unlitMats[i].color : Color.white;
                 darkerMats = bdn.standardMaterialsUnlitDarker ?? new Material[0];
                 darkerBase = new Color[darkerMats.Length];
                 for (int i = 0; i < darkerMats.Length; i++)
-                    darkerBase[i] = darkerMats[i] != null ? darkerMats[i].color : Color.white;
+                    darkerBase[i] = HasColorProp(darkerMats[i]) ? darkerMats[i].color : Color.white;
                 // The lightmapped lists: forest/city surfaces live here,
                 // NOT in the unlit lists - round 5 tinted the wrong lists
                 // for the forest, which is why the disco only ever showed
@@ -310,11 +321,11 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
                 dayMats = bdn.dayNightSupportedMaterials ?? new Material[0];
                 dayBase = new Color[dayMats.Length];
                 for (int i = 0; i < dayMats.Length; i++)
-                    dayBase[i] = dayMats[i] != null ? dayMats[i].color : Color.white;
+                    dayBase[i] = HasColorProp(dayMats[i]) ? dayMats[i].color : Color.white;
                 dayCutoutMats = bdn.dayNightSupportedMaterialsCutout ?? new Material[0];
                 dayCutoutBase = new Color[dayCutoutMats.Length];
                 for (int i = 0; i < dayCutoutMats.Length; i++)
-                    dayCutoutBase[i] = dayCutoutMats[i] != null ? dayCutoutMats[i].color : Color.white;
+                    dayCutoutBase[i] = HasColorProp(dayCutoutMats[i]) ? dayCutoutMats[i].color : Color.white;
                 totalMats = unlitMats.Length + darkerMats.Length + dayMats.Length + dayCutoutMats.Length;
                 matsOk = totalMats > 0;
             }
@@ -398,19 +409,19 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
         discoLightColors.Clear();
         for (int i = 0; i < unlitMats.Length; i++)
         {
-            if (unlitMats[i] != null) unlitMats[i].color = unlitBase[i];
+            if (HasColorProp(unlitMats[i])) unlitMats[i].color = unlitBase[i];
         }
         for (int i = 0; i < darkerMats.Length; i++)
         {
-            if (darkerMats[i] != null) darkerMats[i].color = darkerBase[i];
+            if (HasColorProp(darkerMats[i])) darkerMats[i].color = darkerBase[i];
         }
         for (int i = 0; i < dayMats.Length; i++)
         {
-            if (dayMats[i] != null) dayMats[i].color = dayBase[i];
+            if (HasColorProp(dayMats[i])) dayMats[i].color = dayBase[i];
         }
         for (int i = 0; i < dayCutoutMats.Length; i++)
         {
-            if (dayCutoutMats[i] != null) dayCutoutMats[i].color = dayCutoutBase[i];
+            if (HasColorProp(dayCutoutMats[i])) dayCutoutMats[i].color = dayCutoutBase[i];
         }
 
         if (lmOk)
@@ -472,12 +483,12 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
         // day-phase brightness made the tint vanish in dark phases.
         for (int i = 0; i < unlitMats.Length; i++)
         {
-            if (unlitMats[i] != null)
+            if (HasColorProp(unlitMats[i]))
                 unlitMats[i].color = c;
         }
         for (int i = 0; i < darkerMats.Length; i++)
         {
-            if (darkerMats[i] != null)
+            if (HasColorProp(darkerMats[i]))
             {
                 Color.RGBToHSV(darkerBase[i], out _, out _, out float bv);
                 darkerMats[i].color = Color.HSVToRGB(hue, 0.85f, Mathf.Max(bv, 0.65f));
@@ -485,12 +496,12 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
         }
         for (int i = 0; i < dayMats.Length; i++)
         {
-            if (dayMats[i] != null)
+            if (HasColorProp(dayMats[i]))
                 dayMats[i].color = DiscoOver(dayBase[i], c);
         }
         for (int i = 0; i < dayCutoutMats.Length; i++)
         {
-            if (dayCutoutMats[i] != null)
+            if (HasColorProp(dayCutoutMats[i]))
                 dayCutoutMats[i].color = DiscoOver(dayCutoutBase[i], c);
         }
         // v4: repaint the map itself through its own lighting path.
