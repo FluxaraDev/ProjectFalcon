@@ -20,20 +20,24 @@ using UnityEngine;
 // Loud mic and spooky music go to ALL clients, because every client renders
 // the target's voice / the lobby music locally.
 //
-// Event codes 200-219 are Falcon staff codes. The game's own codes in this
-// source tree use low numbers (cosmetics = 9), so 200+ does not collide.
+// Event codes 100-109 are Falcon staff codes, 110-111 the rave's. They
+// MUST stay under 200: Photon reserves 200+ for its own internal events
+// and RaiseEvent refuses to send them (proven in Sans's kick.txt logcat
+// 2026-11-13: "RaiseEvent(210) failed... eventCode must be less than
+// 200"). The game's own codes use low numbers (cosmetics = 9), so the
+// 100s are free. Original codes were 200-209 and never left the client.
 public class FalconStaffNet : MonoBehaviour, IOnEventCallback
 {
-    public const byte EvKick = 200;
-    public const byte EvFling = 201;
-    public const byte EvFakeLag = 202;
-    public const byte EvCreepify = 203;
-    public const byte EvSlip = 204;
-    public const byte EvSpin = 205;
-    public const byte EvLoudMic = 206;
-    public const byte EvOutfitRandom = 207;
-    public const byte EvOutfitAll = 208;
-    public const byte EvSpookyMusic = 209;
+    public const byte EvKick = 100;
+    public const byte EvFling = 101;
+    public const byte EvFakeLag = 102;
+    public const byte EvCreepify = 103;
+    public const byte EvSlip = 104;
+    public const byte EvSpin = 105;
+    public const byte EvLoudMic = 106;
+    public const byte EvOutfitRandom = 107;
+    public const byte EvOutfitAll = 108;
+    public const byte EvSpookyMusic = 109;
 
     private void OnEnable() { PhotonNetwork.AddCallbackTarget(this); }
     private void OnDisable() { PhotonNetwork.RemoveCallbackTarget(this); }

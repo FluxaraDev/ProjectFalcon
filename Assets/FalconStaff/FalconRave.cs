@@ -23,8 +23,8 @@ using Player = GorillaLocomotion.Player;
 // loaded with Resources.Load; if it is missing the rave refuses to start.
 public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
 {
-    public const byte EvRaveStart = 210;
-    public const byte EvRaveEnd = 211;
+    public const byte EvRaveStart = 110;
+    public const byte EvRaveEnd = 111;
 
     // Tunables ------------------------------------------------------------
     private const float RaveGravityY = -2.0f;    // stock gravity is -9.81
