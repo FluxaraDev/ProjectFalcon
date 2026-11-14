@@ -34,7 +34,6 @@ namespace GorillaNetworking
             NameWarning = 12,
             Loading = 13,
             Support = 14,
-            ModCall = 15
         }
 
         private enum NameCheckResult
@@ -342,9 +341,6 @@ namespace GorillaNetworking
                 case ComputerState.Support:
                     ProcessSupportState(buttonPressed);
                     break;
-                case ComputerState.ModCall:
-                    ProcessModCallState(buttonPressed);
-                    break;
                 case ComputerState.Visuals:
                     ProcessVisualsState(buttonPressed);
                     break;
@@ -538,11 +534,6 @@ namespace GorillaNetworking
         private void SwitchToSupportState()
         {
             SwitchState(ComputerState.Support);
-        }
-
-        private void SwitchToModCallState()
-        {
-            SwitchState(ComputerState.ModCall);
         }
 
         private void SwitchToVisualsState()
@@ -950,27 +941,10 @@ namespace GorillaNetworking
                     break;
                 case "down":
                     displaySupport = false;
-                    SwitchToModCallState();
-                    break;
-                case "enter":
-                    displaySupport = true;
-                    break;
-            }
-            UpdateScreen();
-        }
-
-        private void ProcessModCallState(GorillaKeyboardButton buttonPressed)
-        {
-            switch (buttonPressed.characterString)
-            {
-                case "up":
-                    SwitchToSupportState();
-                    break;
-                case "down":
                     SwitchToRoomState();
                     break;
                 case "enter":
-                    FalconModCall.TryCallFromComputer();
+                    displaySupport = true;
                     break;
             }
             UpdateScreen();
@@ -1100,9 +1074,6 @@ namespace GorillaNetworking
                     case ComputerState.Credits:
                         screenText.Text = FalconRave.GetScreenText();
                         break;
-                    case ComputerState.ModCall:
-                        screenText.Text = FalconModCall.GetScreenText();
-                        break;
                     case ComputerState.Time:
                         screenText.Text = "UPDATE TIME SETTINGS. (LOCALLY ONLY). \nPRESS OPTION 1 FOR NORMAL MODE. \nPRESS OPTION 2 FOR STATIC MODE. \nPRESS 1-10 TO CHANGE TIME OF DAY. \nCURRENT MODE: " + BetterDayNightManager.instance.currentSetting.ToString().ToUpper() + ". \nTIME OF DAY: " + BetterDayNightManager.instance.currentTimeOfDay.ToUpper() + ". \n";
                         break;
@@ -1175,7 +1146,7 @@ namespace GorillaNetworking
 
         private void UpdateFunctionScreen()
         {
-            functionSelectText.Text = "ROOM   " + ((currentState == ComputerState.Room) ? "<-" : "") + "\nNAME   " + ((currentState == ComputerState.Name) ? "<-" : "") + "\nCOLOR  " + ((currentState == ComputerState.Color) ? "<-" : "") + "\nTURN   " + ((currentState == ComputerState.Turn) ? "<-" : "") + "\nMIC    " + ((currentState == ComputerState.Mic) ? "<-" : "") + "\nQUEUE  " + ((currentState == ComputerState.Queue) ? "<-" : "") + "\nGROUP  " + ((currentState == ComputerState.Group) ? "<-" : "") + "\nVOICE  " + ((currentState == ComputerState.Voice) ? "<-" : "") + "\nITEMS  " + ((currentState == ComputerState.Visuals) ? "<-" : "") + "\nRAVE   " + ((currentState == ComputerState.Credits) ? "<-" : "") + "\nSUPPORT" + ((currentState == ComputerState.Support) ? "<-" : "") + "\nMOD CALL" + ((currentState == ComputerState.ModCall) ? "<-" : "");
+            functionSelectText.Text = "ROOM   " + ((currentState == ComputerState.Room) ? "<-" : "") + "\nNAME   " + ((currentState == ComputerState.Name) ? "<-" : "") + "\nCOLOR  " + ((currentState == ComputerState.Color) ? "<-" : "") + "\nTURN   " + ((currentState == ComputerState.Turn) ? "<-" : "") + "\nMIC    " + ((currentState == ComputerState.Mic) ? "<-" : "") + "\nQUEUE  " + ((currentState == ComputerState.Queue) ? "<-" : "") + "\nGROUP  " + ((currentState == ComputerState.Group) ? "<-" : "") + "\nVOICE  " + ((currentState == ComputerState.Voice) ? "<-" : "") + "\nITEMS  " + ((currentState == ComputerState.Visuals) ? "<-" : "") + "\nRAVE   " + ((currentState == ComputerState.Credits) ? "<-" : "") + "\nSUPPORT" + ((currentState == ComputerState.Support) ? "<-" : "");
         }
 
         private void OnReturnCurrentVersion(PlayFab.ClientModels.ExecuteCloudScriptResult result)

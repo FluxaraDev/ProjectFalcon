@@ -40,7 +40,7 @@ public class FalconNameTags : MonoBehaviour
         var seen = new HashSet<VRRig>();
         foreach (VRRig rig in FindObjectsOfType<VRRig>())
         {
-            if (rig == null || rig.myPlayer == null || rig.myPlayer.IsLocal) continue;
+            if (rig == null || rig.myPlayer == null) continue;
             if (rig.headConstraint == null) continue;
             seen.Add(rig);
             Tag tag;
@@ -48,7 +48,11 @@ public class FalconNameTags : MonoBehaviour
             {
                 if (tagFont == null && rig.playerText != null) tagFont = rig.playerText.font;
                 if (tagFont == null) continue;
-                tag = CreateTag(rig);
+                // Round 34: your OWN tag too (Sans asked - it's how he
+                // checks tags in the mirror), riding higher (+0.9)
+                // than everyone else's (+0.55) so it stays out of
+                // his own view.
+                tag = CreateTag(rig, rig.myPlayer.IsLocal ? 0.9f : 0.55f);
                 tags[rig] = tag;
             }
             string want = rig.myPlayer.NickName + "\n" + rig.myPlayer.UserId;
@@ -60,11 +64,11 @@ public class FalconNameTags : MonoBehaviour
         foreach (VRRig rig in stale) { Destroy(tags[rig].go); tags.Remove(rig); }
     }
 
-    private Tag CreateTag(VRRig rig)
+    private Tag CreateTag(VRRig rig, float height)
     {
         var go = new GameObject("FalconNameTag");
         go.transform.SetParent(rig.headConstraint, false);
-        go.transform.localPosition = new Vector3(0f, 0.55f, 0f);
+        go.transform.localPosition = new Vector3(0f, height, 0f);
         var tm = go.AddComponent<TextMesh>();
         tm.font = tagFont;
         tm.fontSize = 64;

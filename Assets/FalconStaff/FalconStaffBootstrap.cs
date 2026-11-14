@@ -31,5 +31,6 @@ public static class FalconStaffBootstrap
         go.AddComponent<FalconOptionsDriver>();
         go.AddComponent<FalconNameTags>();
         go.AddComponent<FalconWallSign>();
+        go.AddComponent<FalconModCallButtons>();
     }
 }
