@@ -1,42 +1,33 @@
-using System.Collections;
-using System.Text;
+using PlayFab;
+using PlayFab.ClientModels;
 using UnityEngine;
-using UnityEngine.Networking;
 
-// Staff log webhook: every ban and every kick posts here (Sans, 2026-11-10).
-// Paste the staff-log webhook URL between the quotes. It ships in the game
-// build by design in this in-game system; never post it publicly.
+// Staff log relay (round 27). Every ban, kick and troll action posts to
+// Sans's Discord through here (Sans, 2026-11-10) - but NOT directly:
+// this class used to POST to a webhook URL compiled into the client,
+// and that path never delivered a single message. The URL const shipped
+// empty, the coroutine host was only ever wired by the retired IMGUI
+// menu, and the webhook from the old kit turned out to be deleted at
+// Discord's end anyway. Logs now ride the PlayFab CloudScript handler
+// "FalconLog" (staff-gated server-side), which owns the webhook URL
+// privately - no URL in the client, none in the public repo.
 public static class FalconStaffWebhook
 {
-    private const string WebhookUrl = "";
-
-    private static MonoBehaviour host;
-
-    // Called once by FalconStaffMenu so coroutines have somewhere to live.
-    public static void Init(MonoBehaviour coroutineHost)
-    {
-        host = coroutineHost;
-    }
+    // Legacy no-op: older callers wired a coroutine host here. The
+    // CloudScript relay needs no host; kept so call sites still compile.
+    public static void Init(MonoBehaviour coroutineHost) { }
 
     public static void Log(string message)
     {
-        if (string.IsNullOrEmpty(WebhookUrl) || host == null) return;
-        host.StartCoroutine(Post(message));
-    }
-
-    private static IEnumerator Post(string message)
-    {
-        string json = "{\"content\":\"" + Escape(message) + "\"}";
-        var req = new UnityWebRequest(WebhookUrl, "POST");
-        req.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(json));
-        req.downloadHandler = new DownloadHandlerBuffer();
-        req.SetRequestHeader("Content-Type", "application/json");
-        yield return req.SendWebRequest();
-        req.Dispose();
-    }
-
-    private static string Escape(string s)
-    {
-        return s.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n");
+        try
+        {
+            var request = new ExecuteCloudScriptRequest
+            {
+                FunctionName = "FalconLog",
+                FunctionParameter = new { msg = message }
+            };
+            PlayFabClientAPI.ExecuteCloudScript(request, delegate (ExecuteCloudScriptResult result) { }, null, null, null);
+        }
+        catch { }
     }
 }
