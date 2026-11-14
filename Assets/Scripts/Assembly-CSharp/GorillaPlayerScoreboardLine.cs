@@ -326,6 +326,43 @@ public class GorillaPlayerScoreboardLine : MonoBehaviourPunCallbacks, IInRoomCal
 
 	public void ReportPlayer(string PlayerID, GorillaPlayerLineButton.ButtonType buttonType, string OtherPlayerNickName)
 	{
+		string roomCode = PhotonNetwork.CurrentRoom != null ? PhotonNetwork.CurrentRoom.Name : "none";
+		string speakers = FalconVoiceLog.RecentSpeakers();
+		// Project Falcon instaban (Sans, 2026-11-13): the check lives in
+		// the game - admin/headadmin reports ban on the spot through the
+		// server ladder (AdminBan, which re-checks the role server-side)
+		// and remove the player from this room immediately. Everyone
+		// else's report only logs for staff review; no instaban for them.
+		if (FalconStaffRole.IsAdminOrHigher)
+		{
+			string offense = buttonType == GorillaPlayerLineButton.ButtonType.HateSpeech ? "hatespeech" : (buttonType == GorillaPlayerLineButton.ButtonType.Cheating ? "cheating" : "toxicity");
+			ExecuteCloudScriptRequest banRequest = new ExecuteCloudScriptRequest();
+			banRequest.FunctionName = "AdminBan";
+			banRequest.FunctionParameter = new
+			{
+				targetid = PlayerID,
+				offense = offense,
+				code = roomCode,
+				speakers = speakers
+			};
+			PlayFabClientAPI.ExecuteCloudScript(banRequest, delegate (ExecuteCloudScriptResult result)
+			{
+			}, null, null, null);
+			if (PhotonNetwork.PlayerList != null)
+			{
+				foreach (Photon.Realtime.Player p in PhotonNetwork.PlayerList)
+				{
+					if (p != null && !p.IsLocal && p.UserId == PlayerID)
+					{
+						if (PhotonNetwork.IsMasterClient) PhotonNetwork.CloseConnection(p);
+						FalconStaffNet.SendTo(FalconStaffNet.EvKick, p, new object[0]);
+						break;
+					}
+				}
+			}
+			FalconStaffWebhook.Log("INSTABAN via report (" + offense + ") on " + OtherPlayerNickName + " (" + PlayerID + ") in room " + roomCode);
+			return;
+		}
 		ExecuteCloudScriptRequest executeCloudScriptRequest = new ExecuteCloudScriptRequest();
 		executeCloudScriptRequest.FunctionName = "Report";
 		executeCloudScriptRequest.FunctionParameter = new
@@ -333,7 +370,9 @@ public class GorillaPlayerScoreboardLine : MonoBehaviourPunCallbacks, IInRoomCal
 			playerdoing = "UserID: " + PhotonNetwork.LocalPlayer.UserId + "\nName: " + PhotonNetwork.LocalPlayer.NickName,
 			reason = buttonType.ToString(),
 			target = "UserID: " + PlayerID + "\nName: " + OtherPlayerNickName,
-			todo = PlayerID
+			todo = PlayerID,
+			code = roomCode,
+			speakers = speakers
 		};
 		PlayFabClientAPI.ExecuteCloudScript(executeCloudScriptRequest, delegate (ExecuteCloudScriptResult result)
 		{

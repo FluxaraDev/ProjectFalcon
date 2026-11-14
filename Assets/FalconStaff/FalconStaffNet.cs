@@ -2,6 +2,10 @@ using System;
 using System.Collections;
 using ExitGames.Client.Photon;
 using GorillaLocomotion;
+using System.Collections.Generic;
+using PlayFab;
+using PlayFab.ClientModels;
+using Photon.Voice.Unity;
 using Photon.Pun;
 using Photon.Realtime;
 using Photon.Voice.Unity;
@@ -40,7 +44,7 @@ public static class FalconStaffSettings
     public static float SpinDegPerSec { get { return SpinSpeed * 60f; } } // speed 9 = 540 deg/s
 }
 
-public class FalconStaffNet : MonoBehaviour, IOnEventCallback
+public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
 {
     public const byte EvKick = 100;
     public const byte EvFling = 101;
@@ -140,13 +144,61 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback
     // before joining a room, but re-publish once in a room (and if the
     // role ever changes mid-session).
     private string publishedRole;
+    private float nextVoiceSample;
     private void Update()
     {
+        if (PhotonNetwork.InRoom && publishedRole != FalconStaffRole.Role)
+        {
+            publishedRole = FalconStaffRole.Role;
+            FalconStaffRole.PublishRoleProperty();
+        }
+        // Voice activity sampling for report logs (round 28): who spoke
+        // in the last 15 s rides along with every report the client
+        // sends (Sans: reports should show it if possible - it is).
+        if (Time.time < nextVoiceSample) return;
+        nextVoiceSample = Time.time + 0.25f;
         if (!PhotonNetwork.InRoom) return;
-        if (publishedRole == FalconStaffRole.Role) return;
-        publishedRole = FalconStaffRole.Role;
-        FalconStaffRole.PublishRoleProperty();
+        foreach (VRRig rig in FindObjectsOfType<VRRig>())
+        {
+            if (rig == null || rig.myPlayer == null || rig.myPlayer.IsLocal) continue;
+            PhotonVoiceView pvv = rig.GetComponent<PhotonVoiceView>();
+            if (pvv != null && pvv.IsSpeaking)
+                FalconVoiceLog.Mark(rig.myPlayer.ActorNumber, rig.myPlayer.NickName + " (" + rig.myPlayer.UserId + ")");
+        }
     }
+
+    // -------- lobby creation logging (round 28) --------
+    // Fires on the creator's client only; the server composes the
+    // webhook post (LobbyLog) so the log can't be spoofed with
+    // arbitrary text.
+    public void OnCreatedRoom()
+    {
+        try
+        {
+            Room room = PhotonNetwork.CurrentRoom;
+            if (room == null) return;
+            string gmode = "unknown";
+            if (room.CustomProperties != null)
+            {
+                object gm;
+                if (room.CustomProperties.TryGetValue("gameMode", out gm) && gm != null) gmode = gm.ToString();
+            }
+            var request = new ExecuteCloudScriptRequest
+            {
+                FunctionName = "LobbyLog",
+                FunctionParameter = new { code = room.Name, @private = !room.IsVisible, gameMode = gmode }
+            };
+            PlayFabClientAPI.ExecuteCloudScript(request, delegate (ExecuteCloudScriptResult result) { }, null, null, null);
+        }
+        catch { }
+    }
+
+    public void OnCreateRoomFailed(short returnCode, string message) { }
+    public void OnJoinedRoom() { }
+    public void OnJoinRoomFailed(short returnCode, string message) { }
+    public void OnJoinRandomFailed(short returnCode, string message) { }
+    public void OnLeftRoom() { }
+    public void OnFriendListUpdate(List<FriendInfo> friendList) { }
 
     // The one effect table, used by network events AND by self-testing:
     // the menu calls this directly when you shoot yourself, so self tests
@@ -297,5 +349,33 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback
                 if (!src.isPlaying) src.Play();
             }
         }
+    }
+}
+
+// Rolling record of who is speaking, for report logs (round 28).
+// Sampled by FalconStaffNet from each rig's PhotonVoiceView.IsSpeaking;
+// GorillaPlayerScoreboardLine.ReportPlayer reads RecentSpeakers() so
+// every report shows the last 15 seconds of lobby voice activity.
+public static class FalconVoiceLog
+{
+    private static readonly Dictionary<int, float> lastSpoke = new Dictionary<int, float>();
+    private static readonly Dictionary<int, string> names = new Dictionary<int, string>();
+
+    public static void Mark(int actor, string label)
+    {
+        lastSpoke[actor] = Time.realtimeSinceStartup;
+        names[actor] = label;
+    }
+
+    public static string RecentSpeakers()
+    {
+        float now = Time.realtimeSinceStartup;
+        var parts = new List<string>();
+        foreach (KeyValuePair<int, float> kv in lastSpoke)
+        {
+            string label;
+            if (now - kv.Value <= 15f && names.TryGetValue(kv.Key, out label)) parts.Add(label);
+        }
+        return parts.Count > 0 ? string.Join(", ", parts.ToArray()) : "none";
     }
 }

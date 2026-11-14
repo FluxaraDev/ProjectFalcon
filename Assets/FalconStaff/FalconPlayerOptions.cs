@@ -16,6 +16,7 @@ public static class FalconPlayerOptions
 {
     public static bool LongArms = true;
     public static bool SpeedBoost = true;
+    public static bool NameTags = true;
 
     public const float ArmScale = 1.4f;
     public const float JumpSpeed = 9.1f;
@@ -25,6 +26,7 @@ public static class FalconPlayerOptions
 
     public static void ToggleLongArms() { LongArms = !LongArms; ApplyArms(); }
     public static void ToggleSpeedBoost() { SpeedBoost = !SpeedBoost; ApplySpeed(); }
+    public static void ToggleNameTags() { NameTags = !NameTags; }
 
     public static void ApplyAll() { ApplyArms(); ApplySpeed(); }
 

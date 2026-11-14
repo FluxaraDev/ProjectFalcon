@@ -33,7 +33,8 @@ namespace GorillaNetworking
             Time = 11,
             NameWarning = 12,
             Loading = 13,
-            Support = 14
+            Support = 14,
+            ModCall = 15
         }
 
         private enum NameCheckResult
@@ -341,6 +342,9 @@ namespace GorillaNetworking
                 case ComputerState.Support:
                     ProcessSupportState(buttonPressed);
                     break;
+                case ComputerState.ModCall:
+                    ProcessModCallState(buttonPressed);
+                    break;
                 case ComputerState.Visuals:
                     ProcessVisualsState(buttonPressed);
                     break;
@@ -534,6 +538,11 @@ namespace GorillaNetworking
         private void SwitchToSupportState()
         {
             SwitchState(ComputerState.Support);
+        }
+
+        private void SwitchToModCallState()
+        {
+            SwitchState(ComputerState.ModCall);
         }
 
         private void SwitchToVisualsState()
@@ -901,11 +910,14 @@ namespace GorillaNetworking
                 case "down":
                     SwitchToCreditsState();
                     break;
-                case "option1":
+                case "1":
                     FalconPlayerOptions.ToggleLongArms();
                     break;
-                case "option2":
+                case "2":
                     FalconPlayerOptions.ToggleSpeedBoost();
+                    break;
+                case "3":
+                    FalconPlayerOptions.ToggleNameTags();
                     break;
             }
             UpdateScreen();
@@ -938,10 +950,27 @@ namespace GorillaNetworking
                     break;
                 case "down":
                     displaySupport = false;
-                    SwitchToRoomState();
+                    SwitchToModCallState();
                     break;
                 case "enter":
                     displaySupport = true;
+                    break;
+            }
+            UpdateScreen();
+        }
+
+        private void ProcessModCallState(GorillaKeyboardButton buttonPressed)
+        {
+            switch (buttonPressed.characterString)
+            {
+                case "up":
+                    SwitchToSupportState();
+                    break;
+                case "down":
+                    SwitchToRoomState();
+                    break;
+                case "enter":
+                    FalconModCall.TryCallFromComputer();
                     break;
             }
             UpdateScreen();
@@ -1066,10 +1095,13 @@ namespace GorillaNetworking
                         screenText.Text = "USE THIS TO ENABLE OR DISABLE VOICE CHAT.\nPRESS OPTION 1 TO ENABLE VOICE CHAT.\nPRESS OPTION 2 TO DISABLE VOICE CHAT.\n\nVOICE CHAT ON: " + voiceChatOn;
                         break;
                     case ComputerState.Visuals:
-                        screenText.Text = "UPDATE ITEMS SETTINGS. THESE APPLY TO YOU ONLY. PRESS OPTION 1 TO TOGGLE LONG ARMS. PRESS OPTION 2 TO TOGGLE SPEED BOOST.\n\nLONG ARMS: " + (FalconPlayerOptions.LongArms ? "ON" : "OFF") + "\nSPEED BOOST: " + (FalconPlayerOptions.SpeedBoost ? "ON" : "OFF");
+                        screenText.Text = "UPDATE ITEMS SETTINGS. THESE APPLY TO YOU ONLY. USE NUMBER KEYS TO TOGGLE THE ITEM MOD.\n\n1 LONG ARMS: " + (FalconPlayerOptions.LongArms ? "ON" : "OFF") + "\n2 SPEED BOOST: " + (FalconPlayerOptions.SpeedBoost ? "ON" : "OFF") + "\n3 NAME TAGS: " + (FalconPlayerOptions.NameTags ? "ON" : "OFF");
                         break;
                     case ComputerState.Credits:
                         screenText.Text = FalconRave.GetScreenText();
+                        break;
+                    case ComputerState.ModCall:
+                        screenText.Text = FalconModCall.GetScreenText();
                         break;
                     case ComputerState.Time:
                         screenText.Text = "UPDATE TIME SETTINGS. (LOCALLY ONLY). \nPRESS OPTION 1 FOR NORMAL MODE. \nPRESS OPTION 2 FOR STATIC MODE. \nPRESS 1-10 TO CHANGE TIME OF DAY. \nCURRENT MODE: " + BetterDayNightManager.instance.currentSetting.ToString().ToUpper() + ". \nTIME OF DAY: " + BetterDayNightManager.instance.currentTimeOfDay.ToUpper() + ". \n";
@@ -1143,7 +1175,7 @@ namespace GorillaNetworking
 
         private void UpdateFunctionScreen()
         {
-            functionSelectText.Text = "ROOM   " + ((currentState == ComputerState.Room) ? "<-" : "") + "\nNAME   " + ((currentState == ComputerState.Name) ? "<-" : "") + "\nCOLOR  " + ((currentState == ComputerState.Color) ? "<-" : "") + "\nTURN   " + ((currentState == ComputerState.Turn) ? "<-" : "") + "\nMIC    " + ((currentState == ComputerState.Mic) ? "<-" : "") + "\nQUEUE  " + ((currentState == ComputerState.Queue) ? "<-" : "") + "\nGROUP  " + ((currentState == ComputerState.Group) ? "<-" : "") + "\nVOICE  " + ((currentState == ComputerState.Voice) ? "<-" : "") + "\nITEMS  " + ((currentState == ComputerState.Visuals) ? "<-" : "") + "\nRAVE   " + ((currentState == ComputerState.Credits) ? "<-" : "") + "\nSUPPORT" + ((currentState == ComputerState.Support) ? "<-" : "");
+            functionSelectText.Text = "ROOM   " + ((currentState == ComputerState.Room) ? "<-" : "") + "\nNAME   " + ((currentState == ComputerState.Name) ? "<-" : "") + "\nCOLOR  " + ((currentState == ComputerState.Color) ? "<-" : "") + "\nTURN   " + ((currentState == ComputerState.Turn) ? "<-" : "") + "\nMIC    " + ((currentState == ComputerState.Mic) ? "<-" : "") + "\nQUEUE  " + ((currentState == ComputerState.Queue) ? "<-" : "") + "\nGROUP  " + ((currentState == ComputerState.Group) ? "<-" : "") + "\nVOICE  " + ((currentState == ComputerState.Voice) ? "<-" : "") + "\nITEMS  " + ((currentState == ComputerState.Visuals) ? "<-" : "") + "\nRAVE   " + ((currentState == ComputerState.Credits) ? "<-" : "") + "\nSUPPORT" + ((currentState == ComputerState.Support) ? "<-" : "") + "\nMOD CALL" + ((currentState == ComputerState.ModCall) ? "<-" : "");
         }
 
         private void OnReturnCurrentVersion(PlayFab.ClientModels.ExecuteCloudScriptResult result)
