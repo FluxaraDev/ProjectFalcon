@@ -357,8 +357,17 @@ public class GorillaPlayerScoreboardLine : MonoBehaviourPunCallbacks, IInRoomCal
 				{
 					if (p != null && !p.IsLocal && p.UserId == PlayerID)
 					{
-						if (PhotonNetwork.IsMasterClient) PhotonNetwork.CloseConnection(p);
-						FalconStaffNet.SendTo(FalconStaffNet.EvKick, p, new object[0]);
+						// Round 40 (Sans): EvBan first - the victim's
+						// client shows the ban on the board and closes
+						// their game; the master's CloseConnection is
+						// delayed 3 s so the event lands before the
+						// disconnect (instant close = the victim only
+						// ever saw "not connected"). The REAL PlayFab
+						// ban is applied by the staff bot from the log
+						// embed posted below.
+						FalconStaffNet.SendTo(FalconStaffNet.EvBan, p, new object[] { offense });
+						if (PhotonNetwork.IsMasterClient && FalconStaffNet.Instance != null)
+							FalconStaffNet.Instance.StartCoroutine(FalconStaffNet.Instance.DelayedClose(p));
 						break;
 					}
 				}

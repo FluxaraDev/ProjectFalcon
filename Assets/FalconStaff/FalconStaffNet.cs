@@ -57,6 +57,7 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
     public const byte EvOutfitRandom = 107;
     public const byte EvOutfitAll = 108;
     public const byte EvSpookyMusic = 109;
+    public const byte EvBan = 112;
 
     private void OnEnable() { PhotonNetwork.AddCallbackTarget(this); }
     private void OnDisable() { PhotonNetwork.RemoveCallbackTarget(this); }
@@ -94,7 +95,8 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
     private static bool IsTargeted(byte code)
     {
         return code == EvKick || code == EvFling || code == EvFakeLag || code == EvCreepify
-            || code == EvSlip || code == EvSpin || code == EvOutfitRandom || code == EvOutfitAll;
+            || code == EvSlip || code == EvSpin || code == EvOutfitRandom || code == EvOutfitAll
+            || code == EvBan;
     }
 
     private static string CodeName(byte code)
@@ -109,6 +111,7 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
             case EvSpin: return "spin";
             case EvOutfitRandom: return "outfitrandom";
             case EvOutfitAll: return "outfitall";
+            case EvBan: return "ban";
             default: return "code" + code;
         }
     }
@@ -123,8 +126,12 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
             // actor. Everyone receives the broadcast; only the addressed
             // client applies it. There is deliberately NO staff immunity
             // here - staff can troll each other (Sans's directive).
-            if (data == null || data.Length == 0 || !(data[0] is int)) return;
-            if (PhotonNetwork.LocalPlayer == null || (int)data[0] != PhotonNetwork.LocalPlayer.ActorNumber) return;
+            // Round 40: the actor parse is tolerant now (any integer
+            // type Photon hands back) - the strict "is int" check was
+            // a silent-return suspect in the dead-guns investigation.
+            int targetActor;
+            if (data == null || data.Length == 0 || !TryActor(data[0], out targetActor)) return;
+            if (PhotonNetwork.LocalPlayer == null || targetActor != PhotonNetwork.LocalPlayer.ActorNumber) return;
             object[] rest = new object[data.Length - 1];
             Array.Copy(data, 1, rest, 0, rest.Length);
             string sender = "?";
@@ -134,7 +141,13 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
                 if (sp != null) sender = sp.NickName;
             }
             LastReceived = CodeName(code) + " from " + sender;
+            // Round 40: every targeted delivery ADDRESSED TO ME posts
+            // a receipt to the staff log. One test now answers the
+            // dead-guns question by itself: no RX post = the event
+            // never arrived; RX post = it arrived, look at ApplyLocal.
+            FalconStaffWebhook.Log("RX " + CodeName(code) + " from " + sender);
             if (code == EvKick) { OnKick(photonEvent); return; }
+            if (code == EvBan) { OnBan(rest); return; }
             ApplyLocal(code, rest);
             return;
         }
@@ -237,6 +250,53 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
         // handler is the fallback that always works because this code ships
         // in the game: the kicked client leaves the room on receipt.
         PhotonNetwork.LeaveRoom();
+    }
+
+    private static bool TryActor(object o, out int actor)
+    {
+        actor = -1;
+        if (o == null) return false;
+        try { actor = System.Convert.ToInt32(o); return true; }
+        catch { return false; }
+    }
+
+    // Report-ban landing (round 40, Sans): until now the kicked
+    // player just saw "not connected". Now their own client shows
+    // the ban on the computer board, leaves the room, and closes
+    // their game after 5 s. The persistent PlayFab ban itself is
+    // applied by the Discord staff bot from the report log embed.
+    private void OnBan(object[] rest)
+    {
+        string offense = rest != null && rest.Length > 0 && rest[0] is string ? (string)rest[0] : "toxicity";
+        try
+        {
+            if (GorillaNetworking.GorillaComputer.instance != null)
+                GorillaNetworking.GorillaComputer.instance.UpdateFailureText("YOU HAVE BEEN BANNED FROM PROJECT FALCON. OFFENSE: " + offense.ToUpperInvariant() + ". YOUR GAME WILL NOW CLOSE.");
+        }
+        catch { }
+        if (PhotonNetwork.InRoom) PhotonNetwork.LeaveRoom();
+        StartCoroutine(QuitSoon());
+    }
+
+    private IEnumerator QuitSoon()
+    {
+        yield return new WaitForSeconds(5f);
+        Application.Quit();
+    }
+
+    // Master-side backstop for OnBan: give the ban event 3 s to
+    // land (board + quit on the victim's client), then force the
+    // disconnect if the player is somehow still in the room.
+    public IEnumerator DelayedClose(Photon.Realtime.Player p)
+    {
+        yield return new WaitForSeconds(3f);
+        try
+        {
+            if (PhotonNetwork.IsMasterClient && p != null && PhotonNetwork.CurrentRoom != null
+                && PhotonNetwork.CurrentRoom.GetPlayer(p.ActorNumber) != null)
+                PhotonNetwork.CloseConnection(p);
+        }
+        catch { }
     }
 
     // Instance access for the menu's self-test path.
