@@ -471,7 +471,14 @@ public class FalconStaffHandMenu : MonoBehaviour
             ContentButton(100f, -54f, 52f, 24f, "+5", () => { FalconStaffSettings.FlingForce = Mathf.Clamp(FalconStaffSettings.FlingForce + 5f, 5f, 100f); RebuildContent(); }, () => 0);
             ContentText(0f, -54f, 120f, 24f, 13, FalconStaffSettings.FlingForce.ToString("0"));
 
-            ContentText(0f, -92f, 268f, 36f, 11, "Snowball + fling apply on your client.\nSpin speed rides the shot to the target.");
+            ContentText(0f, -84f, 268f, 18f, 11, "Snowballs per fire (burst)");
+            ContentButton(-100f, -110f, 52f, 24f, "-10", () => { FalconStaffSettings.SnowballBurst = Mathf.Clamp(FalconStaffSettings.SnowballBurst - 10, 1, 100); RebuildContent(); }, () => 0);
+            ContentButton(100f, -110f, 52f, 24f, "+10", () => { FalconStaffSettings.SnowballBurst = Mathf.Clamp(FalconStaffSettings.SnowballBurst + 10, 1, 100); RebuildContent(); }, () => 0);
+            ContentText(0f, -110f, 120f, 24f, 13, "x" + FalconStaffSettings.SnowballBurst);
+
+            ContentText(0f, -146f, 268f, 36f, 11, FalconStaffSettings.SnowballBurst > 30
+                ? "WARNING: burst over 30 can lag the lobby.\nUse at your own discretion as staff."
+                : "Snowball + fling apply on your client.\nSpin speed rides the shot to the target.");
         }
         else
         {
@@ -788,7 +795,17 @@ public class FalconStaffHandMenu : MonoBehaviour
         Transform hand = Player.Instance != null ? Player.Instance.rightHandTransform : null;
         if (hand == null) return;
         // Round 18: real snowballs via the game's own launch path.
-        bool ok = FalconSnowball.Launch(hand.position + hand.forward * 0.25f, hand.forward * 16f);
-        if (!ok) lastAction = "snowballs unavailable here";
+        // Round 30: burst - N snowballs per fire (Settings tab, 1..100),
+        // slight spread so they don't stack into one.
+        int burst = Mathf.Clamp(FalconStaffSettings.SnowballBurst, 1, 100);
+        bool anyOk = false;
+        for (int i = 0; i < burst; i++)
+        {
+            Vector3 dir = hand.forward;
+            if (burst > 1)
+                dir = (dir + hand.right * UnityEngine.Random.Range(-0.03f, 0.03f) + hand.up * UnityEngine.Random.Range(-0.03f, 0.03f)).normalized;
+            if (FalconSnowball.Launch(hand.position + hand.forward * 0.25f, dir * 16f)) anyOk = true;
+        }
+        if (!anyOk) lastAction = "snowballs unavailable here";
     }
 }

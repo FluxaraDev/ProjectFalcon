@@ -85,6 +85,8 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
     private const string LmName2 = "_GlobalDayNightLightmap2";
     private Material tintMat;
     private RenderTexture lmRt1, lmRt2;
+    private string lmDiag = "";
+    private int lmFrames;
     private Texture lmOrig1, lmOrig2;
     private bool lmOk;
 
@@ -339,6 +341,8 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
         // material lives in Resources so its shader survives build
         // stripping (the Sprites/Default lesson from round 13).
         lmOk = false;
+        lmDiag = "not run";
+        lmFrames = 0;
         try
         {
             Material anchor = Resources.Load<Material>("FalconLightmapTintMat");
@@ -350,17 +354,21 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
             }
             lmOrig1 = Shader.GetGlobalTexture(LmName1);
             lmOrig2 = Shader.GetGlobalTexture(LmName2);
-            if (tintMat != null && lmOrig1 != null && lmOrig2 != null)
+            if (tintMat == null) lmDiag = "NO TINT MAT";
+            else if (lmOrig1 == null || lmOrig2 == null) lmDiag = "NO GLOBALS";
+            else
             {
                 lmRt1 = MakeTintRT(lmOrig1);
                 lmRt2 = MakeTintRT(lmOrig2);
                 lmOk = lmRt1 != null && lmRt2 != null;
+                lmDiag = lmOk ? ("LM " + lmOrig1.name + " " + lmOrig1.width + "x" + lmOrig1.height) : "RT FAIL";
             }
         }
         catch (System.Exception e)
         {
             Debug.LogError("[FalconRave] lightmap capture failed: " + e.Message);
             lmOk = false;
+            lmDiag = "EXC " + e.Message;
         }
 
         if (audioSource == null)
@@ -377,7 +385,7 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
             audioSource.loop = false;
             audioSource.PlayScheduled(AudioSettings.dspTime + System.Math.Max(0.0, audioDelay));
         }
-        LastStep = (solo ? "BEGAN (SOLO)" : "BEGAN (LOBBY)") + (matsOk ? " MATS " + totalMats : " - NO MAP FX") + (lmOk ? " LM" : "");
+        LastStep = (solo ? "BEGAN (SOLO)" : "BEGAN (LOBBY)") + (matsOk ? " MATS " + totalMats : " - NO MAP FX") + " " + lmDiag;
         Debug.Log("[FalconRave] Rave started. Solo=" + soloRave + " Duration=" + duration);
     }
 
@@ -524,6 +532,12 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
         Graphics.Blit(lmOrig2, lmRt2, tintMat);
         Shader.SetGlobalTexture(LmName1, lmRt1);
         Shader.SetGlobalTexture(LmName2, lmRt2);
+        // Round 30 diagnostics: the STEP line on the computer is the
+        // live readout - frame count + which textures the globals
+        // actually hold, so a no-op blit can't hide behind silence.
+        lmFrames++;
+        if (lmFrames % 30 == 0)
+            LastStep = "TINTING f" + lmFrames + " g1=" + (Shader.GetGlobalTexture(LmName1) == lmRt1 ? "RT" : "OTHER") + " g2=" + (Shader.GetGlobalTexture(LmName2) == lmRt2 ? "RT" : "OTHER");
     }
 
     private static RenderTexture MakeTintRT(Texture src)

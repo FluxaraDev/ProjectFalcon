@@ -38,6 +38,7 @@ using UnityEngine;
 public static class FalconStaffSettings
 {
     public static int SnowballMs = 100;   // spam interval, 1..1000 ms, step 10
+    public static int SnowballBurst = 1;  // snowballs per fire, 1..100 (round 30; >30 warns: lobby lag)
     public static int SpinSpeed = 9;      // game turn-speed units, 1..30
     public static float FlingForce = 30f; // fling velocity magnitude, 5..100
 
@@ -147,6 +148,8 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
     private float nextVoiceSample;
     private void Update()
     {
+        if (Time.realtimeSinceStartup < fakeLagUntil)
+            System.Threading.Thread.Sleep(185); // fake lag: ~5 FPS (round 30)
         if (PhotonNetwork.InRoom && publishedRole != FalconStaffRole.Role)
         {
             publishedRole = FalconStaffRole.Role;
@@ -272,12 +275,17 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
         }
     }
 
+    private float fakeLagUntil; // realtime deadline; Update stalls while active
+
     private IEnumerator FakeLag()
     {
-        int previous = Application.targetFrameRate;
-        Application.targetFrameRate = 10;
-        yield return new WaitForSeconds(2f);
-        Application.targetFrameRate = previous;
+        // Round 30: the old version set Application.targetFrameRate,
+        // which the Quest runtime IGNORES (it drives frame pacing
+        // itself) - fake lag did literally nothing. Real fake lag =
+        // stall the main thread in Update: ~185 ms a frame lands at
+        // ~5 FPS for 5 seconds (Sans's numbers).
+        fakeLagUntil = Time.realtimeSinceStartup + 5f;
+        yield break;
     }
 
     private IEnumerator Creepify()
