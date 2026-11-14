@@ -5,8 +5,10 @@ using GorillaLocomotion;
 // ITEMS page, available to EVERY player - not staff-gated. Two
 // toggles, both default ON:
 //   option 1: long arms (Player.FalconArmScale 1.4x reach)
-//   option 2: speed boost (Sans's values, 2026-11-13 round 31:
-//             maxJumpSpeed 999 = the cap removed, jumpMultiplier 1.4)
+//   option 2: speed boost (jumpMultiplier 1.4; the maxJumpSpeed cap
+//             stays at the STOCK 6.5 - round 33: Sans tried cap 999
+//             on device and every hit stacked velocity past any
+//             limit until he zoomed unfairly fast)
 //
 // Optional Preds were option 3 and are REMOVED (Sans, build #10
 // isolation, final): the preds' interaction with movement broke the
@@ -19,7 +21,7 @@ public static class FalconPlayerOptions
     public static bool NameTags = true;
 
     public const float ArmScale = 1.4f;
-    public const float JumpSpeed = 999f;
+    public const float JumpSpeed = 6.5f; // stock cap, Sans round 33 (999 stacked velocity without limit)
     public const float JumpMult = 1.4f;
     private const float StockJumpSpeed = 6.5f;
     private const float StockJumpMult = 1.1f;
