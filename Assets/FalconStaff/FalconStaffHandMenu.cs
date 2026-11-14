@@ -72,6 +72,7 @@ public class FalconStaffHandMenu : MonoBehaviour
     private float nextSnowball;
     private int pendingKickActor = -1;
     private float pendingKickUntil;
+    private string banReason = "toxicity"; // ban gun payload; cycled from the Staff tab
     private float footerTimer;
     private string lastRole = null;
 
@@ -351,15 +352,34 @@ public class FalconStaffHandMenu : MonoBehaviour
 
         if (tab == 0)
         {
-            ContentButton(0f, 78f, 268f, 28f, "Kick gun (staff+)", () => { armedGun = "kick"; RebuildContent(); }, () => armedGun == "kick" ? 2 : 0);
-            ContentButton(0f, 46f, 268f, 28f, "Disarm", () => { armedGun = ""; RebuildContent(); }, () => 0);
-            ContentText(0f, 14f, 268f, 20f, 11, "Self-test: arm a gun, shoot yourself.");
-            ContentButton(0f, -18f, 268f, 28f, "Spawn test dummy", () => { lastAction = FalconTestDummy.Toggle(); }, () => FalconTestDummy.IsSpawned ? 1 : 0);
-            ContentText(0f, -62f, 268f, 44f, 11,
+            ContentButton(0f, 84f, 268f, 24f, "Kick gun (staff+)", () => { armedGun = "kick"; RebuildContent(); }, () => armedGun == "kick" ? 2 : 0);
+            if (FalconStaffRole.IsAdminOrHigher)
+            {
+                ContentButton(-68f, 57f, 132f, 24f, "Ban gun", () => { armedGun = "ban"; RebuildContent(); }, () => armedGun == "ban" ? 2 : 0);
+                ContentButton(68f, 57f, 132f, 24f, "Reason: " + banReason, () =>
+                {
+                    banReason = banReason == "toxicity" ? "cheating" : (banReason == "cheating" ? "hatespeech" : "toxicity");
+                    RebuildContent();
+                }, () => 0);
+            }
+            else
+            {
+                ContentText(0f, 57f, 268f, 24f, 11, "Ban gun: admin tier and up.");
+            }
+            ContentButton(-68f, 30f, 132f, 24f, "Disarm", () => { armedGun = ""; RebuildContent(); }, () => 0);
+            ContentButton(68f, 30f, 132f, 24f, FalconStaffRole.LockOn ? "Staff lock: ON" : "Staff lock: OFF", () =>
+            {
+                FalconStaffRole.SetLock(!FalconStaffRole.LockOn);
+                lastAction = FalconStaffRole.LockOn ? "lock on - staff can't touch you" : "lock off";
+                RebuildContent();
+            }, () => FalconStaffRole.LockOn ? 1 : 0);
+            ContentText(0f, 4f, 268f, 20f, 11, "Lock ON: other staff can't kick, ban,\ntroll or quit you. Self-tests still work.");
+            ContentButton(0f, -24f, 268f, 24f, "Spawn test dummy", () => { lastAction = FalconTestDummy.Toggle(); }, () => FalconTestDummy.IsSpawned ? 1 : 0);
+            ContentText(0f, -56f, 268f, 44f, 11,
                 FalconStaffRole.IsAdminOrHigher
                     ? "Your reports ban instantly (admin tier)."
                     : "Your reports log to the webhook only.");
-            ContentText(0f, -92f, 268f, 20f, 11, "Dummy: frozen rig for target practice.");
+            ContentText(0f, -86f, 268f, 20f, 11, "Dummy: frozen rig for target practice.");
         }
         else if (tab == 1 && FalconStaffRole.IsHeadAdmin)
         {
@@ -380,7 +400,7 @@ public class FalconStaffHandMenu : MonoBehaviour
                 lastAction = "spooky sent";
             }, () => 0);
 
-            string[] guns = { "fling", "fakelag", "creepify", "slip", "spin", "loudmic", "outfitrandom", "outfitall", "snowball" };
+            string[] guns = { "fling", "fakelag", "creepify", "slip", "spin", "loudmic", "outfitrandom", "outfitall", "snowball", "quit" };
             for (int i = 0; i < guns.Length; i++)
             {
                 string g = guns[i];
@@ -675,6 +695,20 @@ public class FalconStaffHandMenu : MonoBehaviour
             lastAction = "selftest kick (dry)";
             return;
         }
+        if (gun == "quit")
+        {
+            // Session-ending like kick: a real self-quit would close
+            // your own game mid-test, so the self test is a dry run.
+            FalconStaffWebhook.Log("SELFTEST quit (dry run, not applied)");
+            lastAction = "selftest quit (dry)";
+            return;
+        }
+        if (gun == "ban")
+        {
+            FalconStaffWebhook.Log("SELFTEST ban (dry run, not applied)");
+            lastAction = "selftest ban (dry)";
+            return;
+        }
         if (!FalconStaffRole.IsHeadAdmin) { lastAction = "denied (role)"; return; }
         if (FalconStaffNet.Instance == null) return;
         int me = PhotonNetwork.LocalPlayer != null ? PhotonNetwork.LocalPlayer.ActorNumber : -1;
@@ -727,6 +761,44 @@ public class FalconStaffHandMenu : MonoBehaviour
         string me = PhotonNetwork.LocalPlayer != null ? PhotonNetwork.LocalPlayer.NickName : "?";
         string them = target.NickName;
 
+        // Staff lock (round 43, Sans): a locked staffer cannot be
+        // effected, kicked or banned by other staff. Checked here,
+        // before anything is sent - and again on the target's own
+        // client, which drops the event if it arrives anyway.
+        if (FalconStaffRole.IsLocked(target))
+        {
+            lastAction = "TARGET LOCKED";
+            FalconStaffWebhook.Log("SHOT BLOCKED (lock) " + gun + " on " + them + " by " + me);
+            return;
+        }
+
+        if (gun == "ban")
+        {
+            if (!FalconStaffRole.IsAdminOrHigher) { lastAction = "denied (role)"; return; }
+            // Ban gun (round 43, Sans): point, shoot, banned - with
+            // the reason picked on the Staff tab. Same landing as a
+            // scoreboard report-ban (rounds 40/42): EvBan shows the
+            // ban on their board and closes their game, the master's
+            // delayed close is the backstop, and CloudScript AdminBan
+            // on live revision 12 applies the real PlayFab ban.
+            string offense = banReason;
+            string roomCode = PhotonNetwork.CurrentRoom != null ? PhotonNetwork.CurrentRoom.Name : "none";
+            string speakers = FalconVoiceLog.RecentSpeakers();
+            FalconStaffNet.SendTo(FalconStaffNet.EvBan, target, new object[] { offense });
+            if (PhotonNetwork.IsMasterClient && FalconStaffNet.Instance != null)
+                FalconStaffNet.Instance.StartCoroutine(FalconStaffNet.Instance.DelayedClose(target));
+            PlayFab.PlayFabClientAPI.ExecuteCloudScript(new PlayFab.ClientModels.ExecuteCloudScriptRequest
+            {
+                FunctionName = "AdminBan",
+                FunctionParameter = new { targetId = target.UserId, offense = offense, code = roomCode, speakers = speakers },
+                GeneratePlayStreamEvent = false
+            }, delegate (PlayFab.ClientModels.ExecuteCloudScriptResult r) { }, delegate (PlayFab.PlayFabError e) { });
+            FalconStaffWebhook.PostEmbed("Ban Gun", 15548997, "By: " + me + " (" + PhotonNetwork.LocalPlayer.UserId + ")\nPlayer: " + them + " (" + target.UserId + ")\nOffense: " + offense + "\nRoom code: " + roomCode + "\nVoice (last 25s): " + speakers, null);
+            FalconStaffWebhook.UploadReportClip(FalconVoiceTap.BuildClipWav(), "BAN GUN (" + offense + ") on " + them + " (" + target.UserId + ") in room " + roomCode + " - last 25s of lobby voice");
+            lastAction = "ban sent (" + offense + ")";
+            return;
+        }
+
         if (gun == "kick")
         {
             if (!FalconStaffRole.IsStaffOrHigher) { lastAction = "denied (role)"; return; }
@@ -747,7 +819,12 @@ public class FalconStaffHandMenu : MonoBehaviour
                 return;
             }
             pendingKickActor = -1;
-            if (PhotonNetwork.IsMasterClient) PhotonNetwork.CloseConnection(target);
+            // Round 43: NO CloseConnection here anymore. It tore the
+            // victim off the Photon server entirely, and racing the
+            // EvKick LeaveRoom it wedged their connection state
+            // machine - build #6: kicked players could not rejoin
+            // lobbies. The event alone kicks (their client leaves the
+            // room and stays connected, free to join another lobby).
             FalconStaffNet.SendTo(FalconStaffNet.EvKick, target, new object[0]);
             FalconStaffWebhook.Log("KICK " + them + " by " + me);
             lastAction = "kick sent";
@@ -782,6 +859,9 @@ public class FalconStaffHandMenu : MonoBehaviour
                 break;
             case "outfitall":
                 FalconStaffNet.SendTo(FalconStaffNet.EvOutfitAll, target, new object[0]);
+                break;
+            case "quit":
+                FalconStaffNet.SendTo(FalconStaffNet.EvQuit, target, new object[0]);
                 break;
         }
         FalconStaffWebhook.Log("TROLL " + gun + " on " + them + " by " + me);

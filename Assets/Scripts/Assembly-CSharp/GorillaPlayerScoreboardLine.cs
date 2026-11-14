@@ -351,6 +351,22 @@ public class GorillaPlayerScoreboardLine : MonoBehaviourPunCallbacks, IInRoomCal
 		if (FalconStaffRole.IsAdminOrHigher)
 		{
 			string offense = buttonType == GorillaPlayerLineButton.ButtonType.HateSpeech ? "hatespeech" : (buttonType == GorillaPlayerLineButton.ButtonType.Cheating ? "cheating" : "toxicity");
+			// Round 43: staff lock - a locked staffer cannot be
+			// banned by other staff. Checked before anything fires:
+			// the PlayFab ban below is server-side and the victim's
+			// client cannot drop it, so the refusal has to happen
+			// here, on the reporter's client.
+			if (PhotonNetwork.PlayerList != null)
+			{
+				foreach (Photon.Realtime.Player lp in PhotonNetwork.PlayerList)
+				{
+					if (lp != null && !lp.IsLocal && lp.UserId == PlayerID && FalconStaffRole.IsLocked(lp))
+					{
+						FalconStaffWebhook.Log("```REPORT-BAN BLOCKED (staff lock)\nBy: " + PhotonNetwork.LocalPlayer.NickName + " (" + PhotonNetwork.LocalPlayer.UserId + ")\nPlayer: " + OtherPlayerNickName + " (" + PlayerID + ")\nOffense: " + offense + "```");
+						return;
+					}
+				}
+			}
 			if (PhotonNetwork.PlayerList != null)
 			{
 				foreach (Photon.Realtime.Player p in PhotonNetwork.PlayerList)
@@ -363,8 +379,8 @@ public class GorillaPlayerScoreboardLine : MonoBehaviourPunCallbacks, IInRoomCal
 						// delayed 3 s so the event lands before the
 						// disconnect (instant close = the victim only
 						// ever saw "not connected"). The REAL PlayFab
-						// ban is applied by the staff bot from the log
-						// embed posted below.
+						// ban is applied by the CloudScript call below
+						// (round 42; the staff bot route was shelved).
 						FalconStaffNet.SendTo(FalconStaffNet.EvBan, p, new object[] { offense });
 						if (PhotonNetwork.IsMasterClient && FalconStaffNet.Instance != null)
 							FalconStaffNet.Instance.StartCoroutine(FalconStaffNet.Instance.DelayedClose(p));

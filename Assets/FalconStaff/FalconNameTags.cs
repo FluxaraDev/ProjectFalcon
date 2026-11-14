@@ -56,7 +56,15 @@ public class FalconNameTags : MonoBehaviour
                 tag = CreateTag(rig, rp.IsLocal ? 0.9f : 0.55f);
                 tags[rig] = tag;
             }
+            // Round 43 (Sans): FPS on the tag too. Each client
+            // publishes its own frame rate as the "falcon_fps" player
+            // property (FalconStaffNet, 1 Hz); tags just read it back.
+            // Players on older builds never publish it - no FPS line
+            // for them, name + ID as before.
             string want = rp.NickName + "\n" + rp.UserId;
+            object fv;
+            if (rp.CustomProperties != null && rp.CustomProperties.TryGetValue("falcon_fps", out fv) && fv != null)
+                want += "\n" + fv + " FPS";
             if (tag.tm.text != want) tag.tm.text = want;
         }
         var stale = new List<VRRig>();

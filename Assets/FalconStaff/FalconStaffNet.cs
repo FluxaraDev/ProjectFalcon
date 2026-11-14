@@ -58,6 +58,7 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
     public const byte EvOutfitAll = 108;
     public const byte EvSpookyMusic = 109;
     public const byte EvBan = 112;
+    public const byte EvQuit = 113;
 
     private void OnEnable() { PhotonNetwork.AddCallbackTarget(this); }
     private void OnDisable() { PhotonNetwork.RemoveCallbackTarget(this); }
@@ -96,7 +97,7 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
     {
         return code == EvKick || code == EvFling || code == EvFakeLag || code == EvCreepify
             || code == EvSlip || code == EvSpin || code == EvOutfitRandom || code == EvOutfitAll
-            || code == EvBan;
+            || code == EvBan || code == EvQuit;
     }
 
     private static string CodeName(byte code)
@@ -112,6 +113,7 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
             case EvOutfitRandom: return "outfitrandom";
             case EvOutfitAll: return "outfitall";
             case EvBan: return "ban";
+            case EvQuit: return "quit";
             default: return "code" + code;
         }
     }
@@ -140,6 +142,20 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
                 Photon.Realtime.Player sp = PhotonNetwork.CurrentRoom.GetPlayer(photonEvent.Sender);
                 if (sp != null) sender = sp.NickName;
             }
+            // Staff lock (round 43, Sans): while I am locked, targeted
+            // effects from OTHER staff do nothing to me - no kick, no
+            // ban, no quit, no troll guns. My own self-tests still
+            // apply (sender == me). The PlayFab half of a ban is
+            // refused on the shooter's side (menu/scoreboard check
+            // the same lock property before firing), because a server
+            // ban cannot be dropped here.
+            if (FalconStaffRole.LockOn && PhotonNetwork.LocalPlayer != null
+                && photonEvent.Sender != PhotonNetwork.LocalPlayer.ActorNumber)
+            {
+                LastReceived = "blocked " + CodeName(code) + " (locked)";
+                FalconStaffWebhook.Log("LOCK BLOCKED " + CodeName(code) + " from " + sender);
+                return;
+            }
             LastReceived = CodeName(code) + " from " + sender;
             // Round 40: every targeted delivery ADDRESSED TO ME posts
             // a receipt to the staff log. One test now answers the
@@ -148,6 +164,7 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
             FalconStaffWebhook.Log("RX " + CodeName(code) + " from " + sender);
             if (code == EvKick) { OnKick(photonEvent); return; }
             if (code == EvBan) { OnBan(rest); return; }
+            if (code == EvQuit) { OnQuit(); return; }
             ApplyLocal(code, rest);
             return;
         }
@@ -159,6 +176,9 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
     // role ever changes mid-session).
     private string publishedRole;
     private float nextVoiceSample;
+    private int fpsFrames;
+    private float fpsTime;
+    private int publishedFps = -1;
     private void Update()
     {
         if (Time.realtimeSinceStartup < fakeLagUntil)
@@ -167,6 +187,24 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
         {
             publishedRole = FalconStaffRole.Role;
             FalconStaffRole.PublishRoleProperty();
+        }
+        // Name-tag FPS (round 43, Sans): publish my frame rate as a
+        // player property once a second (only when it actually moved)
+        // so other clients can print it on my tag; my own tag reads
+        // the same property back.
+        fpsFrames++;
+        fpsTime += Time.unscaledDeltaTime;
+        if (fpsTime >= 1f)
+        {
+            int fps = Mathf.RoundToInt(fpsFrames / fpsTime);
+            fpsFrames = 0;
+            fpsTime = 0f;
+            if (PhotonNetwork.InRoom && PhotonNetwork.LocalPlayer != null && Mathf.Abs(fps - publishedFps) >= 2)
+            {
+                publishedFps = fps;
+                try { PhotonNetwork.LocalPlayer.SetCustomProperties(new ExitGames.Client.Photon.Hashtable { { "falcon_fps", fps } }); }
+                catch { }
+            }
         }
         // Voice activity sampling for report logs (round 28): who spoke
         // in the last 15 s rides along with every report the client
@@ -246,11 +284,31 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
 
     private void OnKick(EventData photonEvent)
     {
-        // Real kick, two layers: the menu sends CloseConnection directly
-        // when the shooter is MasterClient (server-grade removal); this
-        // handler is the fallback that always works because this code ships
-        // in the game: the kicked client leaves the room on receipt.
+        // Real kick (round 43 fix): the kicked client leaves the room
+        // on receipt - and that is now the ONLY layer. The old second
+        // layer (the shooter's client calling CloseConnection when it
+        // was MasterClient) disconnected the victim from Photon
+        // ENTIRELY, and the LeaveRoom/CloseConnection race wedged the
+        // game's connection state machine: build #6 verdict (Sans) -
+        // kicked players could not rejoin lobbies at all. An
+        // event-only kick leaves the victim connected to the master
+        // server, standing at the stump, free to join any lobby.
         PhotonNetwork.LeaveRoom();
+    }
+
+    // Quit gun (round 43, Sans): the pointed-at player's game closes.
+    // Board note, leave the room, quit after 2 s - the ban landing
+    // (OnBan) without the ban.
+    private void OnQuit()
+    {
+        try
+        {
+            if (GorillaNetworking.GorillaComputer.instance != null)
+                GorillaNetworking.GorillaComputer.instance.UpdateFailureText("YOUR GAME WILL NOW CLOSE.");
+        }
+        catch { }
+        if (PhotonNetwork.InRoom) PhotonNetwork.LeaveRoom();
+        StartCoroutine(QuitSoon(2f));
     }
 
     private static bool TryActor(object o, out int actor)
@@ -276,12 +334,12 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
         }
         catch { }
         if (PhotonNetwork.InRoom) PhotonNetwork.LeaveRoom();
-        StartCoroutine(QuitSoon());
+        StartCoroutine(QuitSoon(5f));
     }
 
-    private IEnumerator QuitSoon()
+    private IEnumerator QuitSoon(float delay)
     {
-        yield return new WaitForSeconds(5f);
+        yield return new WaitForSeconds(delay);
         Application.Quit();
     }
 
@@ -405,20 +463,37 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
         }
     }
 
+    private static int loudActor = -1;
+
     private void LoudMic(int targetActor)
     {
-        // Every client raises the target rig's voice AudioSource. Runs on
-        // all clients (event is broadcast). Second shot toggles back to 1.
-        if (GorillaParent.instance == null) return;
-        foreach (var pair in GorillaParent.instance.vrrigDict)
+        // Round 43 rewrite (Sans, build #6: "Loud mic didn't work").
+        // The old version set the speaker AudioSource.volume to 999 -
+        // but Unity clamps a source's effective output at 1, so 999
+        // sounded exactly like normal volume. Real gain has to happen
+        // in the sample stream: FalconLoudMic (below) multiplies the
+        // target's voice samples on every listener's client (this
+        // event is broadcast, so every client applies it to its local
+        // copy of the target's speaker). One loud target at a time:
+        // shooting the loud player again turns them back down,
+        // shooting someone else moves the loud to them.
+        bool turnOn = loudActor != targetActor;
+        if (loudActor >= 0) SetLoud(loudActor, false);
+        loudActor = turnOn ? targetActor : -1;
+        if (turnOn) SetLoud(targetActor, true);
+    }
+
+    private void SetLoud(int actor, bool on)
+    {
+        foreach (VRRig rig in FindObjectsOfType<VRRig>())
         {
-            if (pair.Key.ActorNumber != targetActor || pair.Value == null) continue;
-            var voiceView = pair.Value.GetComponent<PhotonVoiceView>();
-            AudioSource src = null;
-            if (voiceView != null && voiceView.SpeakerInUse != null)
-                src = voiceView.SpeakerInUse.GetComponent<AudioSource>();
-            if (src == null) src = pair.Value.GetComponentInChildren<AudioSource>();
-            if (src != null) src.volume = src.volume > 1.5f ? 1f : 999f;
+            Photon.Realtime.Player rp = PlayerOf(rig);
+            if (rp == null || rp.ActorNumber != actor) continue;
+            PhotonVoiceView pvv = rig.GetComponent<PhotonVoiceView>();
+            if (pvv == null || pvv.SpeakerInUse == null) continue;
+            FalconLoudMic lm = pvv.SpeakerInUse.GetComponent<FalconLoudMic>();
+            if (lm == null) lm = pvv.SpeakerInUse.gameObject.AddComponent<FalconLoudMic>();
+            lm.Gain = on ? 10f : 1f;
         }
     }
 
@@ -466,5 +541,26 @@ public static class FalconVoiceLog
             if (now - kv.Value <= 25f && names.TryGetValue(kv.Key, out label)) parts.Add(label);
         }
         return parts.Count > 0 ? string.Join(", ", parts.ToArray()) : "none";
+    }
+}
+
+// Loud mic gain stage (round 43). Sits on a remote player's voice
+// speaker object - the same object FalconVoiceTap records from, so
+// the voice samples provably pass through here - and multiplies them
+// while the loud mic is on that player. Hard-clamped to full scale:
+// x10 into the clamp is the classic loud-mic sound Sans specced
+// (volume 999), which AudioSource.volume alone can never reach.
+public class FalconLoudMic : MonoBehaviour
+{
+    public float Gain = 1f;
+
+    private void OnAudioFilterRead(float[] data, int channels)
+    {
+        if (Gain == 1f) return;
+        for (int i = 0; i < data.Length; i++)
+        {
+            float s = data[i] * Gain;
+            data[i] = s > 1f ? 1f : (s < -1f ? -1f : s);
+        }
     }
 }

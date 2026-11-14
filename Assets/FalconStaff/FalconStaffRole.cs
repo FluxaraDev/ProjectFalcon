@@ -24,6 +24,36 @@ public static class FalconStaffRole
 {
     public const string RoleKey = "falcon_role";
 
+    // Staff lock (round 43, Sans): a staff member can lock themselves
+    // so OTHER staff cannot kick, ban, troll or quit them. Published
+    // as a player property next to the role; enforced on the locked
+    // client (drops targeted events from other senders) and checked
+    // shooter-side before the ban paths fire (a PlayFab ban cannot
+    // be dropped by the victim's client, so the menu and the
+    // scoreboard refuse locked targets up front). Persisted locally
+    // so it survives relaunches.
+    public const string LockKey = "falcon_lock";
+
+    public static bool LockOn
+    {
+        get { return PlayerPrefs.GetInt("falcon_lock", 0) == 1; }
+    }
+
+    public static void SetLock(bool on)
+    {
+        PlayerPrefs.SetInt("falcon_lock", on ? 1 : 0);
+        PlayerPrefs.Save();
+        PublishRoleProperty();
+    }
+
+    public static bool IsLocked(Photon.Realtime.Player p)
+    {
+        if (p == null || p.CustomProperties == null) return false;
+        object v;
+        if (!p.CustomProperties.TryGetValue(LockKey, out v)) return false;
+        return v != null && v.ToString() == "1";
+    }
+
     // Cached at login. "" until the fetch lands, and for regular players.
     public static string Role { get; private set; } = "";
 
@@ -111,7 +141,7 @@ public static class FalconStaffRole
         try
         {
             if (PhotonNetwork.LocalPlayer == null) return;
-            var props = new ExitGames.Client.Photon.Hashtable { { RoleKey, Role } };
+            var props = new ExitGames.Client.Photon.Hashtable { { RoleKey, Role }, { LockKey, LockOn ? "1" : "0" } };
             PhotonNetwork.LocalPlayer.SetCustomProperties(props);
         }
         catch { }

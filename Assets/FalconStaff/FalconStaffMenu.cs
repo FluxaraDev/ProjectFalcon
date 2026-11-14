@@ -154,7 +154,9 @@ public class FalconStaffMenu : MonoBehaviour
         if (gun == "kick")
         {
             if (!FalconStaffRole.IsStaffOrHigher) return;
-            if (PhotonNetwork.IsMasterClient) PhotonNetwork.CloseConnection(target);
+            // Round 43: event-only kick (CloseConnection removed -
+            // it disconnected victims from Photon entirely and they
+            // could not rejoin lobbies; see FalconStaffHandMenu).
             FalconStaffNet.SendTo(FalconStaffNet.EvKick, target, new object[0]);
             FalconStaffWebhook.Log("KICK " + them + " by " + me);
             return;

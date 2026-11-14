@@ -9,13 +9,18 @@ using GorillaLocomotion;
 // pressable buttons (GorillaPressableButton pattern: a plate you
 // touch, a label, a debounce). Same footprint as the coordinate
 // cube (0.15 m), slightly larger touch face, gentle pulsate.
-// THREE presses to fire, so nobody calls by accident:
-//   press 1: label "MOD CALL!"
-//   press 2: label "ARE YOU SURE?"
-//   press 3: fires - plate turns red, a billboard popup appears:
+// THREE presses to fire, so nobody calls by accident. Round 43
+// (Sans): the stages speak in COLOR only - the old stage labels
+// ("MOD CALL!" / "ARE YOU SURE?") are gone; the plate's standing
+// label stays "MOD CALL" until the call lands:
+//   idle:    white
+//   press 1: red
+//   press 2: yellow
+//   press 3: fires - plate turns green, the label shows the
+//            outcome, and on a sent call a billboard popup appears:
 //            "fake calls = ban / 25 seconds of ingame audio is
-//            sent to us", and the call + voice clip go to staff
-//            (FalconModCall). Stages reset after 5 s untouched.
+//            sent to us" (call + voice clip go to FalconModCall).
+// Stages reset after 5 s untouched.
 public class FalconModCallButtons : MonoBehaviour
 {
     private class Btn
@@ -52,10 +57,10 @@ public class FalconModCallButtons : MonoBehaviour
     private Font btnFont;
     private float nextFontTry;
 
-    private static readonly Color IdleCol = new Color(0.85f, 0.85f, 0.88f);
-    private static readonly Color ArmCol = new Color(1f, 0.85f, 0.2f);
-    private static readonly Color SureCol = new Color(1f, 0.5f, 0.1f);
-    private static readonly Color FiredCol = new Color(1f, 0.1f, 0.1f);
+    private static readonly Color IdleCol = new Color(0.85f, 0.85f, 0.88f); // white
+    private static readonly Color ArmCol = new Color(1f, 0.12f, 0.12f);    // press 1: red
+    private static readonly Color SureCol = new Color(1f, 0.85f, 0.2f);    // press 2: yellow
+    private static readonly Color FiredCol = new Color(0.2f, 0.9f, 0.3f);  // sent: green
 
     private void Start()
     {
@@ -194,12 +199,11 @@ public class FalconModCallButtons : MonoBehaviour
         b.stage++;
         if (b.stage == 1)
         {
-            if (b.label != null) b.label.text = "MOD CALL!";
+            // Color only (round 43): the label keeps saying MOD CALL.
             if (b.rend != null) b.rend.material.color = ArmCol;
         }
         else if (b.stage == 2)
         {
-            if (b.label != null) b.label.text = "ARE YOU SURE?";
             if (b.rend != null) b.rend.material.color = SureCol;
         }
         else
