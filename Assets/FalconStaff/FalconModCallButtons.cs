@@ -93,8 +93,7 @@ public class FalconModCallButtons : MonoBehaviour
         {
             if (b.label != null) continue;
             b.label = MakeText(b.root, 0.26f, 0.05f, "MOD CALL");
-            b.popup = MakeText(b.root, 0.52f, 0.042f, "fake calls = ban
-25 seconds of ingame audio is sent to us");
+            b.popup = MakeText(b.root, 0.52f, 0.042f, "fake calls = ban\n25 seconds of ingame audio is sent to us");
             b.popup.gameObject.SetActive(false);
         }
     }
