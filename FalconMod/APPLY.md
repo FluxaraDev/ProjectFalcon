@@ -47,6 +47,9 @@ project/update switch is a copy-paste, not a re-derivation.
      ProjectSettings' bundleVersion).
    - `falcon_room_orders` — written by staff tooling only; the
      game just polls it.
+   - `falcon_transfer` — `{"code": "ROOMCODE", "ts": <unix>}`;
+     a fresh order moves every logged-in client into that room
+     (the meeting transfer). Written by staff tooling only.
 7. Roles: `pf.py set-role <PlayFabId> <role>` with role in
    staff / admin / headadmin / admin2 / headadmin2. Tier-2 roles
    (the 2s) get menus, kick and reports but NO instant ban, and
