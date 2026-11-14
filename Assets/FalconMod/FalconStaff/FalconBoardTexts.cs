@@ -95,7 +95,13 @@ public class FalconBoardTexts : MonoBehaviour
         foreach (Text t in Resources.FindObjectsOfTypeAll<Text>())
         {
             if (t == null || !t.gameObject.scene.IsValid()) continue;
-            if (t.text != null && t.text.StartsWith("-NO RACISM"))
+            if (t.text != null && t.text.Trim() == "GORILLA CODE OF CONDUCT")
+            {
+                // Round 48 (Sans): the board header carries the
+                // Falcon name now.
+                t.text = "FALCON CODE OF CONDUCT";
+            }
+            else if (t.text != null && t.text.StartsWith("-NO RACISM"))
             {
                 t.text = CodeOfConduct;
                 FitText(t);
