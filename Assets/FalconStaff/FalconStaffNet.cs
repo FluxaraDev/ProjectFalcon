@@ -197,7 +197,7 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
             // Round 35: posted in-client (CloudScript is out).
             string pname = PhotonNetwork.LocalPlayer != null ? PhotonNetwork.LocalPlayer.NickName : "unknown";
             string pid = PhotonNetwork.LocalPlayer != null ? PhotonNetwork.LocalPlayer.UserId : "unknown";
-            FalconStaffWebhook.Post("```LOBBY CREATED\nBy: " + pname + " (" + pid + ")\nCode: " + room.Name + "\nType: " + (room.IsVisible ? "PUBLIC" : "PRIVATE") + "\nGamemode: " + gmode + "```", null);
+            FalconStaffWebhook.PostEmbed("Lobby Created", 5763719, "By: " + pname + " (" + pid + ")\nCode: " + room.Name + "\nType: " + (room.IsVisible ? "PUBLIC" : "PRIVATE") + "\nGamemode: " + gmode, null);
         }
         catch { }
     }

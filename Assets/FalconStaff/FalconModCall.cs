@@ -65,7 +65,7 @@ public static class FalconModCall
         sending = true;
         string code = PhotonNetwork.CurrentRoom.Name;
         string from = PhotonNetwork.LocalPlayer.NickName + " (" + PhotonNetwork.LocalPlayer.UserId + ")";
-        FalconStaffWebhook.Post("@mods @admin @headadmin\n```MOD CALL\nFrom: " + from + "\nCode: " + code + "\nMap: " + map + "```", delegate (bool ok)
+        FalconStaffWebhook.PostEmbed("Mod Call", 15548997, "@mods @admin @headadmin\nFrom: " + from + "\nCode: " + code + "\nMap: " + map, delegate (bool ok)
         {
             sending = false;
             if (ok)

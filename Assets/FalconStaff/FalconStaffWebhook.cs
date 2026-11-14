@@ -22,7 +22,41 @@ public static class FalconStaffWebhook
 
     public static void Init(MonoBehaviour coroutineHost) { host = coroutineHost; }
 
-    public static void Log(string message) { Post(message, null); }
+    public static void Log(string message)
+    {
+        // Round 39 (Sans): staff posts are Discord EMBEDS now.
+        PostEmbed("Falcon Staff Log", 5793266, message.Replace("```", ""), null);
+    }
+
+    // Rich embed post: colored sidebar, title, timestamp. This is
+    // also the shape the future staff BOT will attach buttons to
+    // (Ban: toxicity / cheating / hatespeech, Shutdown lobby).
+    public static void PostEmbed(string title, int color, string description, Action<bool> done)
+    {
+        string ts = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ");
+        PostPayload("{\"embeds\":[{\"title\":\"" + Escape(title) + "\",\"description\":\"" + Escape(description) + "\",\"color\":" + color + ",\"timestamp\":\"" + ts + "\"}]}", done);
+    }
+
+    private static void PostPayload(string payload, Action<bool> done)
+    {
+        if (host == null) { if (done != null) done(false); return; }
+        if (!hookFetched) { FetchHook(delegate { PostPayload(payload, done); }); return; }
+        if (string.IsNullOrEmpty(hookUrl)) { if (done != null) done(false); return; }
+        host.StartCoroutine(PostPayloadCo(payload, done));
+    }
+
+    private static IEnumerator PostPayloadCo(string payload, Action<bool> done)
+    {
+        byte[] body = Encoding.UTF8.GetBytes(payload);
+        var req = new UnityWebRequest(hookUrl, "POST");
+        req.uploadHandler = new UploadHandlerRaw(body);
+        req.downloadHandler = new DownloadHandlerBuffer();
+        req.SetRequestHeader("Content-Type", "application/json");
+        yield return req.SendWebRequest();
+        bool ok = req.responseCode >= 200 && req.responseCode < 300;
+        req.Dispose();
+        if (done != null) done(ok);
+    }
 
     public static void Post(string content, Action<bool> done)
     {
