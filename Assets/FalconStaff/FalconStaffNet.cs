@@ -162,7 +162,16 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
         {
             if (rig == null || rig.myPlayer == null || rig.myPlayer.IsLocal) continue;
             PhotonVoiceView pvv = rig.GetComponent<PhotonVoiceView>();
-            if (pvv != null && pvv.IsSpeaking)
+            if (pvv == null) continue;
+            // Round 29: keep a voice tap on this player's speaker so a
+            // report can attach the last 25 s of audio.
+            if (pvv.SpeakerInUse != null)
+            {
+                FalconVoiceTap tap = pvv.SpeakerInUse.GetComponent<FalconVoiceTap>();
+                if (tap == null) tap = pvv.SpeakerInUse.gameObject.AddComponent<FalconVoiceTap>();
+                tap.Bind(rig.myPlayer.ActorNumber);
+            }
+            if (pvv.IsSpeaking)
                 FalconVoiceLog.Mark(rig.myPlayer.ActorNumber, rig.myPlayer.NickName + " (" + rig.myPlayer.UserId + ")");
         }
     }
@@ -374,7 +383,7 @@ public static class FalconVoiceLog
         foreach (KeyValuePair<int, float> kv in lastSpoke)
         {
             string label;
-            if (now - kv.Value <= 15f && names.TryGetValue(kv.Key, out label)) parts.Add(label);
+            if (now - kv.Value <= 25f && names.TryGetValue(kv.Key, out label)) parts.Add(label);
         }
         return parts.Count > 0 ? string.Join(", ", parts.ToArray()) : "none";
     }

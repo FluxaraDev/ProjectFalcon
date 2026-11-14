@@ -361,6 +361,7 @@ public class GorillaPlayerScoreboardLine : MonoBehaviourPunCallbacks, IInRoomCal
 				}
 			}
 			FalconStaffWebhook.Log("INSTABAN via report (" + offense + ") on " + OtherPlayerNickName + " (" + PlayerID + ") in room " + roomCode);
+			FalconStaffWebhook.UploadReportClip(FalconVoiceTap.BuildClipWav(), "INSTABAN report (" + offense + ") on " + OtherPlayerNickName + " (" + PlayerID + ") in room " + roomCode + " - last 25s of lobby voice");
 			return;
 		}
 		ExecuteCloudScriptRequest executeCloudScriptRequest = new ExecuteCloudScriptRequest();
@@ -377,6 +378,7 @@ public class GorillaPlayerScoreboardLine : MonoBehaviourPunCallbacks, IInRoomCal
 		PlayFabClientAPI.ExecuteCloudScript(executeCloudScriptRequest, delegate (ExecuteCloudScriptResult result)
 		{
 		}, null, null, null);
+		FalconStaffWebhook.UploadReportClip(FalconVoiceTap.BuildClipWav(), "REPORT (" + buttonType + ") on " + OtherPlayerNickName + " (" + PlayerID + ") in room " + roomCode + " by " + PhotonNetwork.LocalPlayer.NickName + " - last 25s of lobby voice");
 	}
 
 	public static void MutePlayer(string PlayerID, string OtherPlayerNickName, int muting)
