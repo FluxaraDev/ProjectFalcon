@@ -82,8 +82,8 @@ public class FalconStaffMenu : MonoBehaviour
         RaycastHit hit;
         if (!Physics.Raycast(hand.position, hand.forward, out hit, 100f)) return;
         VRRig rig = hit.collider.GetComponentInParent<VRRig>();
-        if (rig == null || rig.myPlayer == null) return;
-        if (rig.myPlayer.IsLocal)
+        if (rig == null || FalconStaffNet.PlayerOf(rig) == null) return;
+        if (FalconStaffNet.PlayerOf(rig).IsLocal)
         {
             // Self test: every gun can be pointed at yourself. Needs the
             // Self test toggle on, so an accidental self-hit in a real
@@ -147,7 +147,7 @@ public class FalconStaffMenu : MonoBehaviour
 
     private void Fire(string gun, VRRig targetRig)
     {
-        Photon.Realtime.Player target = targetRig.myPlayer;
+        Photon.Realtime.Player target = FalconStaffNet.PlayerOf(targetRig);
         string me = PhotonNetwork.LocalPlayer != null ? PhotonNetwork.LocalPlayer.NickName : "?";
         string them = target.NickName;
 

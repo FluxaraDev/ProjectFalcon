@@ -40,7 +40,8 @@ public class FalconNameTags : MonoBehaviour
         var seen = new HashSet<VRRig>();
         foreach (VRRig rig in FindObjectsOfType<VRRig>())
         {
-            if (rig == null || rig.myPlayer == null) continue;
+            Photon.Realtime.Player rp = FalconStaffNet.PlayerOf(rig);
+            if (rig == null || rp == null) continue;
             if (rig.headConstraint == null) continue;
             seen.Add(rig);
             Tag tag;
@@ -52,10 +53,10 @@ public class FalconNameTags : MonoBehaviour
                 // checks tags in the mirror), riding higher (+0.9)
                 // than everyone else's (+0.55) so it stays out of
                 // his own view.
-                tag = CreateTag(rig, rig.myPlayer.IsLocal ? 0.9f : 0.55f);
+                tag = CreateTag(rig, rp.IsLocal ? 0.9f : 0.55f);
                 tags[rig] = tag;
             }
-            string want = rig.myPlayer.NickName + "\n" + rig.myPlayer.UserId;
+            string want = rp.NickName + "\n" + rp.UserId;
             if (tag.tm.text != want) tag.tm.text = want;
         }
         var stale = new List<VRRig>();

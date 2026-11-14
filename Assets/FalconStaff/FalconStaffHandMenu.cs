@@ -639,8 +639,9 @@ public class FalconStaffHandMenu : MonoBehaviour
         if (Physics.Raycast(hand.position, hand.forward, out hit, 100f))
             rig = hit.collider.GetComponentInParent<VRRig>();
         if (rig == null) rig = ConePickRig(hand); // rigs may have no raycastable colliders
-        if (rig == null || rig.myPlayer == null) { lastAction = "no target"; return; }
-        if (rig.myPlayer.IsLocal)
+        Photon.Realtime.Player rigPlayer = FalconStaffNet.PlayerOf(rig);
+        if (rig == null || rigPlayer == null) { lastAction = "no target"; return; }
+        if (rigPlayer.IsLocal)
         {
             FireSelf(armedGun);
             return;
@@ -656,7 +657,7 @@ public class FalconStaffHandMenu : MonoBehaviour
         float bestAngle = 12f;
         foreach (VRRig rig in FindObjectsOfType<VRRig>())
         {
-            if (rig == null || rig.myPlayer == null) continue;
+            if (rig == null || FalconStaffNet.PlayerOf(rig) == null) continue;
             Vector3 target = rig.headMesh != null ? rig.headMesh.transform.position : rig.transform.position + Vector3.up * 1.2f;
             Vector3 to = target - hand.position;
             if (to.magnitude < 0.4f || to.magnitude > 60f) continue;
@@ -722,7 +723,7 @@ public class FalconStaffHandMenu : MonoBehaviour
 
     private void Fire(string gun, VRRig targetRig)
     {
-        Photon.Realtime.Player target = targetRig.myPlayer;
+        Photon.Realtime.Player target = FalconStaffNet.PlayerOf(targetRig);
         string me = PhotonNetwork.LocalPlayer != null ? PhotonNetwork.LocalPlayer.NickName : "?";
         string them = target.NickName;
 

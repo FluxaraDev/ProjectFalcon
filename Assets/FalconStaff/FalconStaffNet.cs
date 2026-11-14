@@ -176,7 +176,8 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
         if (!PhotonNetwork.InRoom) return;
         foreach (VRRig rig in FindObjectsOfType<VRRig>())
         {
-            if (rig == null || rig.myPlayer == null || rig.myPlayer.IsLocal) continue;
+            Photon.Realtime.Player rp = PlayerOf(rig);
+            if (rig == null || rp == null || rp.IsLocal) continue;
             PhotonVoiceView pvv = rig.GetComponent<PhotonVoiceView>();
             if (pvv == null) continue;
             // Round 29: keep a voice tap on this player's speaker so a
@@ -185,10 +186,10 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
             {
                 FalconVoiceTap tap = pvv.SpeakerInUse.GetComponent<FalconVoiceTap>();
                 if (tap == null) tap = pvv.SpeakerInUse.gameObject.AddComponent<FalconVoiceTap>();
-                tap.Bind(rig.myPlayer.ActorNumber);
+                tap.Bind(rp.ActorNumber);
             }
             if (pvv.IsSpeaking)
-                FalconVoiceLog.Mark(rig.myPlayer.ActorNumber, rig.myPlayer.NickName + " (" + rig.myPlayer.UserId + ")");
+                FalconVoiceLog.Mark(rp.ActorNumber, rp.NickName + " (" + rp.UserId + ")");
         }
     }
 
@@ -302,6 +303,20 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
     // Instance access for the menu's self-test path.
     public static FalconStaffNet Instance { get; private set; }
     private void Awake() { Instance = this; }
+
+    // VRRig.myPlayer is NEVER assigned anywhere in this game export -
+    // declared by the original devs, then abandoned; it is null on
+    // every rig. Every Falcon feature that trusted it silently did
+    // nothing (round 41, found from Sans's "only shooting myself
+    // works"): gun targeting skipped every remote rig, voice taps
+    // never bound (so report clips were always empty), name tags
+    // skipped every rig. The live owner reference is the PhotonView.
+    public static Photon.Realtime.Player PlayerOf(VRRig rig)
+    {
+        if (rig == null) return null;
+        Photon.Pun.PhotonView pv = rig.photonView;
+        return pv != null ? pv.Owner : null;
+    }
 
     private static Rigidbody LocalBody()
     {
