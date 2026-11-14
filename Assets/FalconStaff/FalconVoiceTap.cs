@@ -80,6 +80,21 @@ public class FalconVoiceTap : MonoBehaviour
         }
     }
 
+    // Diagnostic for clip failures (round 44): how many taps exist
+    // and how much audio they have captured between them. Posted to
+    // the staff channel when a clip comes up empty, so "no taps
+    // bound on this client" and "taps bound but nobody spoke" are
+    // visibly different failures.
+    public static string DebugStats()
+    {
+        long total = 0;
+        foreach (Buffer b in buffers.Values)
+        {
+            lock (b.gate) { total += b.totalWritten; }
+        }
+        return buffers.Count + " taps, " + total + " samples captured";
+    }
+
     // Mix every player's buffer onto one 25 s timeline ending now and
     // encode 16-bit PCM WAV. Null when nobody actually said anything.
     public static byte[] BuildClipWav()

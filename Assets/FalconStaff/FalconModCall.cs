@@ -65,28 +65,32 @@ public static class FalconModCall
         sending = true;
         string code = PhotonNetwork.CurrentRoom.Name;
         string from = PhotonNetwork.LocalPlayer.NickName + " (" + PhotonNetwork.LocalPlayer.UserId + ")";
+        // Round 44 (Sans, build #7: "Mod call audio doesn't work but
+        // the report does"): the clip is now built and uploaded
+        // IMMEDIATELY at press time, on its own - exactly the shape
+        // of the scoreboard report path, which works. The old flow
+        // built the clip inside the embed post's completion callback
+        // and only if that post succeeded, so any hiccup in the
+        // embed post silently took the clip down with it. The empty
+        // case still posts its note (round 37), now with the tap
+        // census so the next failure says WHY it was empty.
+        try
+        {
+            byte[] wav = FalconVoiceTap.BuildClipWav();
+            if (wav != null)
+            {
+                FalconStaffWebhook.UploadReportClip(wav,
+                    "MOD CALL from " + from + " in room " + code + " at " + map + " - last 25s of lobby voice");
+            }
+            else
+            {
+                FalconStaffWebhook.Post("(mod call voice clip unavailable - no speech captured in the last 25s; " + FalconVoiceTap.DebugStats() + ")", null);
+            }
+        }
+        catch { }
         FalconStaffWebhook.PostEmbed("Mod Call", 15548997, "@mods @admin @headadmin\nFrom: " + from + "\nCode: " + code + "\nMap: " + map, delegate (bool ok)
         {
             sending = false;
-            if (ok)
-            {
-                try
-                {
-                    byte[] wav = FalconVoiceTap.BuildClipWav();
-                    if (wav != null)
-                    {
-                        FalconStaffWebhook.UploadReportClip(wav,
-                            "MOD CALL from " + from + " in room " + code + " at " + map + " - last 25s of lobby voice");
-                    }
-                    else
-                    {
-                        // Round 37: say so in the channel instead of
-                        // the clip silently never existing.
-                        FalconStaffWebhook.Post("(mod call voice clip unavailable - no speech captured in the last 25s)", null);
-                    }
-                }
-                catch { }
-            }
             if (done != null) done(ok ? "PINGED" : "FAILED");
         });
     }
