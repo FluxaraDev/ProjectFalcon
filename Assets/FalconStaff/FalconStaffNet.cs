@@ -210,7 +210,7 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
     public void OnJoinRoomFailed(short returnCode, string message) { }
     public void OnJoinRandomFailed(short returnCode, string message) { }
     public void OnLeftRoom() { }
-    public void OnFriendListUpdate(List<FriendInfo> friendList) { }
+    public void OnFriendListUpdate(List<Photon.Realtime.FriendInfo> friendList) { }
 
     // The one effect table, used by network events AND by self-testing:
     // the menu calls this directly when you shoot yourself, so self tests
