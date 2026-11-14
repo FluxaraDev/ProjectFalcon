@@ -324,30 +324,33 @@ public class GorillaPlayerScoreboardLine : MonoBehaviourPunCallbacks, IInRoomCal
 		});
 	}
 
+	// Round 35 report throttle (Sans's numbers, in-client): over 5
+	// reports in 9 seconds locks reporting for 30 minutes locally.
+	private static readonly System.Collections.Generic.List<long> falconReportTimes = new System.Collections.Generic.List<long>();
+	private static long falconReportLockoutUntil;
+
 	public void ReportPlayer(string PlayerID, GorillaPlayerLineButton.ButtonType buttonType, string OtherPlayerNickName)
 	{
+		long nowMs = System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+		if (nowMs < falconReportLockoutUntil) return;
+		falconReportTimes.RemoveAll(delegate (long x) { return nowMs - x >= 9000; });
+		falconReportTimes.Add(nowMs);
+		if (falconReportTimes.Count > 5)
+		{
+			falconReportLockoutUntil = nowMs + 30L * 60L * 1000L;
+			falconReportTimes.Clear();
+			FalconStaffWebhook.Post("```REPORT LOCKOUT\nPlayer: " + PhotonNetwork.LocalPlayer.NickName + " (" + PhotonNetwork.LocalPlayer.UserId + ")\nReason: report spam - over 5 reports in 9 seconds\nDuration: 30 minutes (local lockout)```", null);
+			return;
+		}
 		string roomCode = PhotonNetwork.CurrentRoom != null ? PhotonNetwork.CurrentRoom.Name : "none";
 		string speakers = FalconVoiceLog.RecentSpeakers();
-		// Project Falcon instaban (Sans, 2026-11-13): the check lives in
-		// the game - admin/headadmin reports ban on the spot through the
-		// server ladder (AdminBan, which re-checks the role server-side)
-		// and remove the player from this room immediately. Everyone
-		// else's report only logs for staff review; no instaban for them.
+		// Project Falcon instaban (Sans, 2026-11-13; in-client round
+		// 35): the check lives in the game - admin/headadmin reports
+		// remove the player from this room on the spot and log it.
+		// Everyone else's report only logs for staff review.
 		if (FalconStaffRole.IsAdminOrHigher)
 		{
 			string offense = buttonType == GorillaPlayerLineButton.ButtonType.HateSpeech ? "hatespeech" : (buttonType == GorillaPlayerLineButton.ButtonType.Cheating ? "cheating" : "toxicity");
-			ExecuteCloudScriptRequest banRequest = new ExecuteCloudScriptRequest();
-			banRequest.FunctionName = "AdminBan";
-			banRequest.FunctionParameter = new
-			{
-				targetid = PlayerID,
-				offense = offense,
-				code = roomCode,
-				speakers = speakers
-			};
-			PlayFabClientAPI.ExecuteCloudScript(banRequest, delegate (ExecuteCloudScriptResult result)
-			{
-			}, null, null, null);
 			if (PhotonNetwork.PlayerList != null)
 			{
 				foreach (Photon.Realtime.Player p in PhotonNetwork.PlayerList)
@@ -360,24 +363,11 @@ public class GorillaPlayerScoreboardLine : MonoBehaviourPunCallbacks, IInRoomCal
 					}
 				}
 			}
-			FalconStaffWebhook.Log("INSTABAN via report (" + offense + ") on " + OtherPlayerNickName + " (" + PlayerID + ") in room " + roomCode);
+			FalconStaffWebhook.Log("```STAFF REPORT-BAN (in-room kick)\nBy: " + PhotonNetwork.LocalPlayer.NickName + " (" + PhotonNetwork.LocalPlayer.UserId + ")\nPlayer: " + OtherPlayerNickName + " (" + PlayerID + ")\nOffense: " + offense + "\nRoom code: " + roomCode + "\nVoice (last 25s): " + speakers + "```");
 			FalconStaffWebhook.UploadReportClip(FalconVoiceTap.BuildClipWav(), "INSTABAN report (" + offense + ") on " + OtherPlayerNickName + " (" + PlayerID + ") in room " + roomCode + " - last 25s of lobby voice");
 			return;
 		}
-		ExecuteCloudScriptRequest executeCloudScriptRequest = new ExecuteCloudScriptRequest();
-		executeCloudScriptRequest.FunctionName = "Report";
-		executeCloudScriptRequest.FunctionParameter = new
-		{
-			playerdoing = "UserID: " + PhotonNetwork.LocalPlayer.UserId + "\nName: " + PhotonNetwork.LocalPlayer.NickName,
-			reason = buttonType.ToString(),
-			target = "UserID: " + PlayerID + "\nName: " + OtherPlayerNickName,
-			todo = PlayerID,
-			code = roomCode,
-			speakers = speakers
-		};
-		PlayFabClientAPI.ExecuteCloudScript(executeCloudScriptRequest, delegate (ExecuteCloudScriptResult result)
-		{
-		}, null, null, null);
+		FalconStaffWebhook.Post("```REPORT\nReporter: " + PhotonNetwork.LocalPlayer.NickName + " (" + PhotonNetwork.LocalPlayer.UserId + ")\nReported: " + OtherPlayerNickName + " (" + PlayerID + ")\nRoom code: " + roomCode + "\nReason: " + buttonType.ToString() + "\nVoice (last 25s): " + speakers + "```", null);
 		FalconStaffWebhook.UploadReportClip(FalconVoiceTap.BuildClipWav(), "REPORT (" + buttonType + ") on " + OtherPlayerNickName + " (" + PlayerID + ") in room " + roomCode + " by " + PhotonNetwork.LocalPlayer.NickName + " - last 25s of lobby voice");
 	}
 

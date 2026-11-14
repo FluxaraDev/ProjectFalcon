@@ -179,10 +179,9 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
         }
     }
 
-    // -------- lobby creation logging (round 28) --------
-    // Fires on the creator's client only; the server composes the
-    // webhook post (LobbyLog) so the log can't be spoofed with
-    // arbitrary text.
+    // -------- lobby creation logging (round 28; in-client round 35) --------
+    // Fires on the creator's client only; posted straight to the
+    // staff webhook (CloudScript is out, per Sans).
     public void OnCreatedRoom()
     {
         try
@@ -195,12 +194,10 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
                 object gm;
                 if (room.CustomProperties.TryGetValue("gameMode", out gm) && gm != null) gmode = gm.ToString();
             }
-            var request = new ExecuteCloudScriptRequest
-            {
-                FunctionName = "LobbyLog",
-                FunctionParameter = new { code = room.Name, @private = !room.IsVisible, gameMode = gmode }
-            };
-            PlayFabClientAPI.ExecuteCloudScript(request, delegate (ExecuteCloudScriptResult result) { }, null, null, null);
+            // Round 35: posted in-client (CloudScript is out).
+            string pname = PhotonNetwork.LocalPlayer != null ? PhotonNetwork.LocalPlayer.NickName : "unknown";
+            string pid = PhotonNetwork.LocalPlayer != null ? PhotonNetwork.LocalPlayer.UserId : "unknown";
+            FalconStaffWebhook.Post("```LOBBY CREATED\nBy: " + pname + " (" + pid + ")\nCode: " + room.Name + "\nType: " + (room.IsVisible ? "PUBLIC" : "PRIVATE") + "\nGamemode: " + gmode + "```", null);
         }
         catch { }
     }

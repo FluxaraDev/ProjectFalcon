@@ -1,61 +1,72 @@
+using System;
 using System.Collections;
+using System.Text;
 using PlayFab;
 using PlayFab.ClientModels;
 using UnityEngine;
 using UnityEngine.Networking;
 
-// Staff log plumbing (rounds 27+29). Text logs relay through the
-// CloudScript handler "FalconLog" (staff-gated; the webhook URL lives
-// server-side only). Report VOICE CLIPS can't ride CloudScript (no
-// binary posts), so those upload straight to Discord from here - the
-// webhook URL for clips is fetched at runtime from PlayFab Title Data
-// key "falcon_clip_hook", so it never sits in the game files or the
-// repo either; Sans can rotate it any time by changing the webhook
-// and the title-data value.
+// Staff log plumbing (round 35, Sans 2026-11-14): CloudScript
+// revisions are OUT - everything is in-client now, gated by the
+// falcon_role data system at the call sites. Text logs AND voice
+// clips post straight to the staff webhook from here. The webhook
+// URL is fetched at runtime from PlayFab Title Data key
+// "falcon_clip_hook", so it never sits in the game files or the
+// repo; Sans rotates it by changing the webhook + the title-data
+// value.
 public static class FalconStaffWebhook
 {
     private static MonoBehaviour host;
-    private static string clipHook;
-    private static bool clipHookFetched;
+    private static string hookUrl;
+    private static bool hookFetched;
 
     public static void Init(MonoBehaviour coroutineHost) { host = coroutineHost; }
 
-    public static void Log(string message)
+    public static void Log(string message) { Post(message, null); }
+
+    public static void Post(string content, Action<bool> done)
     {
-        try
-        {
-            var request = new ExecuteCloudScriptRequest
-            {
-                FunctionName = "FalconLog",
-                FunctionParameter = new { msg = message }
-            };
-            PlayFabClientAPI.ExecuteCloudScript(request, delegate (ExecuteCloudScriptResult result) { }, null, null, null);
-        }
-        catch { }
+        if (host == null) { if (done != null) done(false); return; }
+        if (!hookFetched) { FetchHook(delegate { Post(content, done); }); return; }
+        if (string.IsNullOrEmpty(hookUrl)) { if (done != null) done(false); return; }
+        host.StartCoroutine(PostText(content, done));
     }
 
     public static void UploadReportClip(byte[] wav, string caption)
     {
         if (wav == null || wav.Length == 0 || host == null) return;
-        if (!clipHookFetched) { FetchClipHook(wav, caption); return; }
-        if (string.IsNullOrEmpty(clipHook)) return;
+        if (!hookFetched) { FetchHook(delegate { UploadReportClip(wav, caption); }); return; }
+        if (string.IsNullOrEmpty(hookUrl)) return;
         host.StartCoroutine(PostClip(wav, caption));
     }
 
-    private static void FetchClipHook(byte[] wav, string caption)
+    private static void FetchHook(Action then)
     {
+        hookFetched = true; // one fetch per session; failures stay dry
         try
         {
             var request = new GetTitleDataRequest { Keys = new System.Collections.Generic.List<string> { "falcon_clip_hook" } };
             PlayFabClientAPI.GetTitleData(request, delegate (GetTitleDataResult result)
             {
-                clipHookFetched = true;
                 string v;
-                if (result.Data != null && result.Data.TryGetValue("falcon_clip_hook", out v)) clipHook = v;
-                UploadReportClip(wav, caption);
-            }, delegate (PlayFabError error) { clipHookFetched = true; });
+                if (result.Data != null && result.Data.TryGetValue("falcon_clip_hook", out v)) hookUrl = v;
+                if (then != null) then();
+            }, delegate (PlayFabError error) { if (then != null) then(); });
         }
-        catch { clipHookFetched = true; }
+        catch { if (then != null) then(); }
+    }
+
+    private static IEnumerator PostText(string content, Action<bool> done)
+    {
+        byte[] body = Encoding.UTF8.GetBytes("{\"content\":\"" + Escape(content) + "\"}");
+        var req = new UnityWebRequest(hookUrl, "POST");
+        req.uploadHandler = new UploadHandlerRaw(body);
+        req.downloadHandler = new DownloadHandlerBuffer();
+        req.SetRequestHeader("Content-Type", "application/json");
+        yield return req.SendWebRequest();
+        bool ok = req.responseCode >= 200 && req.responseCode < 300;
+        req.Dispose();
+        if (done != null) done(ok);
     }
 
     private static IEnumerator PostClip(byte[] wav, string caption)
@@ -63,7 +74,7 @@ public static class FalconStaffWebhook
         WWWForm form = new WWWForm();
         form.AddField("payload_json", "{\"content\":\"" + Escape(caption) + "\"}");
         form.AddBinaryData("file", wav, "voice-last-25s.wav", "audio/wav");
-        var req = UnityWebRequest.Post(clipHook, form);
+        var req = UnityWebRequest.Post(hookUrl, form);
         yield return req.SendWebRequest();
         req.Dispose();
     }
