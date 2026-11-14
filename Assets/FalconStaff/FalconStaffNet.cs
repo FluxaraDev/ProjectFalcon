@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using ExitGames.Client.Photon;
 using GorillaLocomotion;
@@ -59,8 +60,18 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback
 
     public static void SendTo(byte code, Photon.Realtime.Player target, object[] data)
     {
-        var opts = new RaiseEventOptions { TargetActors = new[] { target.ActorNumber } };
-        PhotonNetwork.RaiseEvent(code, data, opts, SendOptions.SendReliable);
+        // Round 26: targeted effects ride the BROADCAST path with the
+        // target's actor number prefixed into the payload, and only the
+        // addressed client applies them (see OnEvent). Alt build #1
+        // verdict (Sans, 2026-11-13): the TargetActors form of
+        // RaiseEvent never landed a single troll effect or kick on the
+        // other player, while broadcast events (the rave) demonstrably
+        // reached the whole lobby - so targeted effects now travel the
+        // path that is proven to arrive.
+        object[] payload = new object[(data != null ? data.Length : 0) + 1];
+        payload[0] = target.ActorNumber;
+        if (data != null) Array.Copy(data, 0, payload, 1, data.Length);
+        PhotonNetwork.RaiseEvent(code, payload, RaiseEventOptions.Default, SendOptions.SendReliable);
     }
 
     public static void SendToAll(byte code, object[] data)
@@ -70,10 +81,71 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback
 
     // ---------- receiving ----------
 
+    // Last targeted effect this client received and applied, shown in
+    // the staff menu footer ("rx fling from NAME") - delivery problems
+    // become visible on the victim's own screen instead of silent.
+    public static string LastReceived = "";
+
+    private static bool IsTargeted(byte code)
+    {
+        return code == EvKick || code == EvFling || code == EvFakeLag || code == EvCreepify
+            || code == EvSlip || code == EvSpin || code == EvOutfitRandom || code == EvOutfitAll;
+    }
+
+    private static string CodeName(byte code)
+    {
+        switch (code)
+        {
+            case EvKick: return "kick";
+            case EvFling: return "fling";
+            case EvFakeLag: return "fakelag";
+            case EvCreepify: return "creepify";
+            case EvSlip: return "slip";
+            case EvSpin: return "spin";
+            case EvOutfitRandom: return "outfitrandom";
+            case EvOutfitAll: return "outfitall";
+            default: return "code" + code;
+        }
+    }
+
     public void OnEvent(EventData photonEvent)
     {
-        if (photonEvent.Code == EvKick) { OnKick(photonEvent); return; }
-        ApplyLocal(photonEvent.Code, photonEvent.CustomData as object[]);
+        byte code = photonEvent.Code;
+        object[] data = photonEvent.CustomData as object[];
+        if (IsTargeted(code))
+        {
+            // Addressed delivery (round 26): payload[0] is the target
+            // actor. Everyone receives the broadcast; only the addressed
+            // client applies it. There is deliberately NO staff immunity
+            // here - staff can troll each other (Sans's directive).
+            if (data == null || data.Length == 0 || !(data[0] is int)) return;
+            if (PhotonNetwork.LocalPlayer == null || (int)data[0] != PhotonNetwork.LocalPlayer.ActorNumber) return;
+            object[] rest = new object[data.Length - 1];
+            Array.Copy(data, 1, rest, 0, rest.Length);
+            string sender = "?";
+            if (PhotonNetwork.CurrentRoom != null)
+            {
+                Photon.Realtime.Player sp = PhotonNetwork.CurrentRoom.GetPlayer(photonEvent.Sender);
+                if (sp != null) sender = sp.NickName;
+            }
+            LastReceived = CodeName(code) + " from " + sender;
+            if (code == EvKick) { OnKick(photonEvent); return; }
+            ApplyLocal(code, rest);
+            return;
+        }
+        ApplyLocal(code, data);
+    }
+
+    // Keep the published role property fresh: the fetch usually lands
+    // before joining a room, but re-publish once in a room (and if the
+    // role ever changes mid-session).
+    private string publishedRole;
+    private void Update()
+    {
+        if (!PhotonNetwork.InRoom) return;
+        if (publishedRole == FalconStaffRole.Role) return;
+        publishedRole = FalconStaffRole.Role;
+        FalconStaffRole.PublishRoleProperty();
     }
 
     // The one effect table, used by network events AND by self-testing:

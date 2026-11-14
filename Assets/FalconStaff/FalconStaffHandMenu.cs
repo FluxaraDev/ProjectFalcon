@@ -70,6 +70,8 @@ public class FalconStaffHandMenu : MonoBehaviour
     private bool prevMenu;
     private bool prevTrigger;
     private float nextSnowball;
+    private int pendingKickActor = -1;
+    private float pendingKickUntil;
     private float footerTimer;
     private string lastRole = null;
 
@@ -490,7 +492,7 @@ public class FalconStaffHandMenu : MonoBehaviour
             Vector3 p = coordCube.CubePosition;
             cube = string.Format(" | Cube {0:0.0}, {1:0.0}, {2:0.0}{3}", p.x, p.y, p.z, coordCube.Held ? " (held)" : "");
         }
-        footerText.text = "Armed: " + (armedGun == "" ? "none" : armedGun) + playing + cube + (lastAction == "" ? "" : " | " + lastAction);
+        footerText.text = "Armed: " + (armedGun == "" ? "none" : armedGun) + playing + cube + (lastAction == "" ? "" : " | " + lastAction) + (FalconStaffNet.LastReceived == "" ? "" : " | rx " + FalconStaffNet.LastReceived);
     }
 
     private string DiagStatusString()
@@ -575,9 +577,24 @@ public class FalconStaffHandMenu : MonoBehaviour
         }
         EnsurePointerLine();
         Vector3 from = hand.position + hand.forward * 0.05f;
-        Vector3 to = hand.position + hand.forward * 4f;
+        // Round 26: the no-hit length was 4 m, so aiming at the sky or
+        // through a collider-less rig made the laser visibly cut off
+        // mid-air (Sans, alt build #1). Default reach is now 30 m; a
+        // physics hit shortens it, and with a gun armed the cone-picked
+        // target shortens it to exactly touch the victim.
+        float endDist = 30f;
         RaycastHit hit;
-        if (Physics.Raycast(hand.position, hand.forward, out hit, 100f)) to = hit.point;
+        if (Physics.Raycast(hand.position, hand.forward, out hit, 100f)) endDist = Mathf.Min(endDist, hit.distance);
+        if (armedGun != "" && armedGun != "snowball")
+        {
+            VRRig picked = ConePickRig(hand);
+            if (picked != null)
+            {
+                Vector3 tp = picked.headMesh != null ? picked.headMesh.transform.position : picked.transform.position + Vector3.up * 1.2f;
+                endDist = Mathf.Min(endDist, Vector3.Distance(hand.position, tp));
+            }
+        }
+        Vector3 to = hand.position + hand.forward * endDist;
         Vector3 dir = to - from;
         float len = dir.magnitude;
         if (len < 0.05f) { pointerBeam.SetActive(false); return; }
@@ -687,6 +704,15 @@ public class FalconStaffHandMenu : MonoBehaviour
         lastAction = "selftest " + gun;
     }
 
+    private static string TargetRole(Photon.Realtime.Player p)
+    {
+        if (p == null || p.CustomProperties == null) return "";
+        object v;
+        if (!p.CustomProperties.TryGetValue(FalconStaffRole.RoleKey, out v)) return "";
+        string r = v as string;
+        return r != null ? r : "";
+    }
+
     private void Fire(string gun, VRRig targetRig)
     {
         Photon.Realtime.Player target = targetRig.myPlayer;
@@ -696,6 +722,23 @@ public class FalconStaffHandMenu : MonoBehaviour
         if (gun == "kick")
         {
             if (!FalconStaffRole.IsStaffOrHigher) { lastAction = "denied (role)"; return; }
+            // Round 26 (Sans): kicking staff asks first. The target's
+            // role rides their Photon player properties (published by
+            // FalconStaffRole at login). First shot on an admin or
+            // headadmin only arms the confirm and says so in the
+            // footer; a second shot at the same player within 5 s
+            // actually kicks. Regular players kick instantly as before.
+            string targetRole = TargetRole(target);
+            bool confirmPending = pendingKickActor == target.ActorNumber && Time.time < pendingKickUntil;
+            if ((targetRole == "admin" || targetRole == "headadmin") && !confirmPending)
+            {
+                pendingKickActor = target.ActorNumber;
+                pendingKickUntil = Time.time + 5f;
+                lastAction = "STAFF " + targetRole.ToUpperInvariant() + " - shoot again to kick";
+                FalconStaffWebhook.Log("KICK CONFIRM ASKED " + them + " (" + targetRole + ") by " + me);
+                return;
+            }
+            pendingKickActor = -1;
             if (PhotonNetwork.IsMasterClient) PhotonNetwork.CloseConnection(target);
             FalconStaffNet.SendTo(FalconStaffNet.EvKick, target, new object[0]);
             FalconStaffWebhook.Log("KICK " + them + " by " + me);

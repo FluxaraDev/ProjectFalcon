@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Photon.Pun;
 using PlayFab;
 using PlayFab.ClientModels;
 using UnityEngine;
@@ -93,6 +94,27 @@ public static class FalconStaffRole
         else
             Role = "";
         Debug.Log("[FalconStaff] role = " + (Role == "" ? "none" : Role));
+        PublishRoleProperty();
+    }
+
+    // Round 26: publish the role as a Photon player property so OTHER
+    // clients can read it - the kick gun's "this person is staff, are
+    // you sure?" confirm needs the target's role on the shooter's
+    // client, and PlayFab read-only data is only readable for your OWN
+    // account. UX/safety prompt only: real authority stays server-side
+    // (the property is client-set, so a modded client could fake one -
+    // worst case it makes the confirm appear, it grants nothing).
+    // FalconStaffNet re-publishes on room join in case the fetch lands
+    // before Photon connects.
+    public static void PublishRoleProperty()
+    {
+        try
+        {
+            if (PhotonNetwork.LocalPlayer == null) return;
+            var props = new ExitGames.Client.Photon.Hashtable { { RoleKey, Role } };
+            PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+        }
+        catch { }
     }
 
     // Tolerant parse (round 17): server-side the value is whatever
