@@ -38,7 +38,7 @@ using UnityEngine;
 public static class FalconStaffSettings
 {
     public static int SnowballMs = 100;   // spam interval, 1..1000 ms, step 10
-    public static int SnowballBurst = 1;  // snowballs per fire, 1..100 (round 30; >30 warns: lobby lag)
+    public static int SnowballBurst = 1;  // snowballs per fire, 1..50 (round 30; cap 50 round 47 - a 100-burst hung a lobby; >30 warns: lobby lag)
     public static int SpinSpeed = 9;      // game turn-speed units, 1..30
     public static float FlingForce = 30f; // fling velocity magnitude, 5..100
 

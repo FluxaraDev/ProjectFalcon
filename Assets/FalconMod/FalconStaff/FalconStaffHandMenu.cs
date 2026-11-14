@@ -470,8 +470,8 @@ public class FalconStaffHandMenu : MonoBehaviour
             ContentText(0f, -54f, 120f, 24f, 13, FalconStaffSettings.FlingForce.ToString("0"));
 
             ContentText(0f, -84f, 268f, 18f, 11, "Snowballs per fire (burst)");
-            ContentButton(-100f, -110f, 52f, 24f, "-10", () => { FalconStaffSettings.SnowballBurst = Mathf.Clamp(FalconStaffSettings.SnowballBurst - 10, 1, 100); RebuildContent(); }, () => 0);
-            ContentButton(100f, -110f, 52f, 24f, "+10", () => { FalconStaffSettings.SnowballBurst = Mathf.Clamp(FalconStaffSettings.SnowballBurst + 10, 1, 100); RebuildContent(); }, () => 0);
+            ContentButton(-100f, -110f, 52f, 24f, "-10", () => { FalconStaffSettings.SnowballBurst = Mathf.Clamp(FalconStaffSettings.SnowballBurst - 10, 1, 50); RebuildContent(); }, () => 0);
+            ContentButton(100f, -110f, 52f, 24f, "+10", () => { FalconStaffSettings.SnowballBurst = Mathf.Clamp(FalconStaffSettings.SnowballBurst + 10, 1, 50); RebuildContent(); }, () => 0);
             ContentText(0f, -110f, 120f, 24f, 13, "x" + FalconStaffSettings.SnowballBurst);
 
             ContentText(0f, -146f, 268f, 36f, 11, FalconStaffSettings.SnowballBurst > 30
@@ -879,7 +879,7 @@ public class FalconStaffHandMenu : MonoBehaviour
         // Round 18: real snowballs via the game's own launch path.
         // Round 30: burst - N snowballs per fire (Settings tab, 1..100),
         // slight spread so they don't stack into one.
-        int burst = Mathf.Clamp(FalconStaffSettings.SnowballBurst, 1, 100);
+        int burst = Mathf.Clamp(FalconStaffSettings.SnowballBurst, 1, 50);
         bool anyOk = false;
         for (int i = 0; i < burst; i++)
         {
