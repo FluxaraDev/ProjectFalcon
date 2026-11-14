@@ -76,7 +76,12 @@ public static class FalconStaffWebhook
         form.AddBinaryData("file", wav, "voice-last-25s.wav", "audio/wav");
         var req = UnityWebRequest.Post(hookUrl, form);
         yield return req.SendWebRequest();
+        long code = req.responseCode;
         req.Dispose();
+        // Round 37: a failed clip upload used to vanish silently -
+        // now the staff channel itself hears about it.
+        if (code < 200 || code >= 300)
+            host.StartCoroutine(PostText("(voice clip upload FAILED: HTTP " + code + ", " + wav.Length + " bytes)", null));
     }
 
     private static string Escape(string s)

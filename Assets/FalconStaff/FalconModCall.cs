@@ -72,8 +72,18 @@ public static class FalconModCall
             {
                 try
                 {
-                    FalconStaffWebhook.UploadReportClip(FalconVoiceTap.BuildClipWav(),
-                        "MOD CALL from " + from + " in room " + code + " at " + map + " - last 25s of lobby voice");
+                    byte[] wav = FalconVoiceTap.BuildClipWav();
+                    if (wav != null)
+                    {
+                        FalconStaffWebhook.UploadReportClip(wav,
+                            "MOD CALL from " + from + " in room " + code + " at " + map + " - last 25s of lobby voice");
+                    }
+                    else
+                    {
+                        // Round 37: say so in the channel instead of
+                        // the clip silently never existing.
+                        FalconStaffWebhook.Post("(mod call voice clip unavailable - no speech captured in the last 25s)", null);
+                    }
                 }
                 catch { }
             }

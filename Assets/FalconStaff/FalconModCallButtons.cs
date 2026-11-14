@@ -31,6 +31,8 @@ public class FalconModCallButtons : MonoBehaviour
         public float firedUntil;
         public float punchUntil;
         public bool touching;
+        public bool armed = true;
+        public float lastPressAt;
         public float phase;
     }
 
@@ -150,15 +152,38 @@ public class FalconModCallButtons : MonoBehaviour
                 if (b.rend != null) b.rend.material.color = IdleCol;
                 if (b.label != null) b.label.text = "MOD CALL";
             }
-            // touch (edge triggered on either hand)
-            bool touch = false;
+            // Touch, with hysteresis (round 37): Sans's on-device test
+            // showed stages double-counting - a VR "press" crosses the
+            // 0.17 m line more than once (push in, tremble, pull back),
+            // so the old edge trigger fired the call on what felt like
+            // two presses. Now a press only registers on entering
+            // 0.17 m while ARMED; after a press the button disarms
+            // until every hand has left 0.30 m, and presses are at
+            // least 0.45 s apart. One deliberate push per stage.
+            bool near = false, inZone = false;
             if (p != null)
             {
-                if (p.leftHandTransform != null && Vector3.Distance(p.leftHandTransform.position, b.root.position) < 0.17f) touch = true;
-                if (p.rightHandTransform != null && Vector3.Distance(p.rightHandTransform.position, b.root.position) < 0.17f) touch = true;
+                if (p.leftHandTransform != null)
+                {
+                    float d = Vector3.Distance(p.leftHandTransform.position, b.root.position);
+                    if (d < 0.17f) near = true;
+                    if (d < 0.30f) inZone = true;
+                }
+                if (p.rightHandTransform != null)
+                {
+                    float d = Vector3.Distance(p.rightHandTransform.position, b.root.position);
+                    if (d < 0.17f) near = true;
+                    if (d < 0.30f) inZone = true;
+                }
             }
-            if (touch && !b.touching && b.firedUntil == 0f) Press(b, now);
-            b.touching = touch;
+            if (!inZone) b.armed = true;
+            if (near && !b.touching && b.armed && b.firedUntil == 0f && now - b.lastPressAt >= 0.45f)
+            {
+                b.armed = false;
+                b.lastPressAt = now;
+                Press(b, now);
+            }
+            b.touching = near;
         }
     }
 
