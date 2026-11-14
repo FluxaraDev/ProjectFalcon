@@ -5,8 +5,8 @@ using GorillaLocomotion;
 // ITEMS page, available to EVERY player - not staff-gated. Two
 // toggles, both default ON:
 //   option 1: long arms (Player.FalconArmScale 1.4x reach)
-//   option 2: speed boost (jump 9.1 / mult 1.54 - Sans's 1.4x pair;
-//             the old menu's 12 / 2.0 was "way too high")
+//   option 2: speed boost (Sans's values, 2026-11-13 round 31:
+//             maxJumpSpeed 999 = the cap removed, jumpMultiplier 1.4)
 //
 // Optional Preds were option 3 and are REMOVED (Sans, build #10
 // isolation, final): the preds' interaction with movement broke the
@@ -19,8 +19,8 @@ public static class FalconPlayerOptions
     public static bool NameTags = true;
 
     public const float ArmScale = 1.4f;
-    public const float JumpSpeed = 9.1f;
-    public const float JumpMult = 1.54f;
+    public const float JumpSpeed = 999f;
+    public const float JumpMult = 1.4f;
     private const float StockJumpSpeed = 6.5f;
     private const float StockJumpMult = 1.1f;
 
@@ -44,22 +44,26 @@ public static class FalconPlayerOptions
     }
 }
 
-// Keeps the options applied: PhotonNetworkController resets the jump
-// pair to stock on every room join, so while speed boost is ON the
-// driver re-asserts it on a slow tick.
+// Keeps the options applied. THREE stock writers reset the jump
+// pair - PhotonNetworkController on room join, VRRig from its speed
+// array, VRRig from its own serialized fields - and the old 0.25 s
+// re-assert tick lost that race half the time (Sans, round 31: "only
+// works half the time"). Now asserted EVERY frame in LateUpdate,
+// after every stock Update has run, writing only on drift. The rave
+// manages the pair itself while it runs.
 public class FalconOptionsDriver : MonoBehaviour
 {
-    private float next;
-
     private void Start()
     {
         FalconPlayerOptions.ApplyAll();
     }
 
-    private void Update()
+    private void LateUpdate()
     {
-        if (Time.time < next) return;
-        next = Time.time + 0.25f;
-        if (FalconPlayerOptions.SpeedBoost) FalconPlayerOptions.ApplySpeed();
+        if (!FalconPlayerOptions.SpeedBoost || FalconRave.IsRaving) return;
+        Player p = Player.Instance;
+        if (p == null) return;
+        if (p.maxJumpSpeed != FalconPlayerOptions.JumpSpeed) p.maxJumpSpeed = FalconPlayerOptions.JumpSpeed;
+        if (p.jumpMultiplier != FalconPlayerOptions.JumpMult) p.jumpMultiplier = FalconPlayerOptions.JumpMult;
     }
 }
