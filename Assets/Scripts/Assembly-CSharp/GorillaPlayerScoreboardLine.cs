@@ -373,6 +373,18 @@ public class GorillaPlayerScoreboardLine : MonoBehaviourPunCallbacks, IInRoomCal
 				}
 			}
 			FalconStaffWebhook.Log("```STAFF REPORT-BAN (in-room kick)\nBy: " + PhotonNetwork.LocalPlayer.NickName + " (" + PhotonNetwork.LocalPlayer.UserId + ")\nPlayer: " + OtherPlayerNickName + " (" + PlayerID + ")\nOffense: " + offense + "\nRoom code: " + roomCode + "\nVoice (last 25s): " + speakers + "```");
+			// Round 42 (Sans): the REAL PlayFab ban. CloudScript
+			// revision 12 is published LIVE and proven end to end
+			// (fixture test: AdminBan -> strike 1, 24 h -> the
+			// account's login was blocked -> revoked + reset). The
+			// handler re-checks the caller's falcon_role server-side,
+			// applies the strike ladder, and posts its own log.
+			PlayFab.PlayFabClientAPI.ExecuteCloudScript(new PlayFab.ClientModels.ExecuteCloudScriptRequest
+			{
+				FunctionName = "AdminBan",
+				FunctionParameter = new { targetId = PlayerID, offense = offense, code = roomCode, speakers = speakers },
+				GeneratePlayStreamEvent = false
+			}, delegate (PlayFab.ClientModels.ExecuteCloudScriptResult r) { }, delegate (PlayFab.PlayFabError e) { });
 			FalconStaffWebhook.UploadReportClip(FalconVoiceTap.BuildClipWav(), "INSTABAN report (" + offense + ") on " + OtherPlayerNickName + " (" + PlayerID + ") in room " + roomCode + " - last 25s of lobby voice");
 			return;
 		}
