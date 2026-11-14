@@ -348,7 +348,7 @@ public class GorillaPlayerScoreboardLine : MonoBehaviourPunCallbacks, IInRoomCal
 		// 35): the check lives in the game - admin/headadmin reports
 		// remove the player from this room on the spot and log it.
 		// Everyone else's report only logs for staff review.
-		if (FalconStaffRole.IsAdminOrHigher)
+		if (FalconStaffRole.CanInstantBan)
 		{
 			string offense = buttonType == GorillaPlayerLineButton.ButtonType.HateSpeech ? "hatespeech" : (buttonType == GorillaPlayerLineButton.ButtonType.Cheating ? "cheating" : "toxicity");
 			// Round 43: staff lock - a locked staffer cannot be
