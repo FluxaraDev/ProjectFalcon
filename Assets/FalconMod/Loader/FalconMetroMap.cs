@@ -68,8 +68,8 @@ public static class FalconMetroMap
                     normals[v] = new Vector3(br.ReadSingle(), br.ReadSingle(), br.ReadSingle());
                     uvs[v] = new Vector2(br.ReadSingle(), br.ReadSingle());
                 }
-                var indices = new uint[icount];
-                for (int ix = 0; ix < icount; ix++) indices[ix] = br.ReadUInt32();
+                var indices = new int[icount];
+                for (int ix = 0; ix < icount; ix++) indices[ix] = (int)br.ReadUInt32();
 
                 var mesh = new Mesh();
                 mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
@@ -89,7 +89,7 @@ public static class FalconMetroMap
                 var mr = go.AddComponent<MeshRenderer>();
                 mr.sharedMaterial = mat;
                 mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                mr.receiveShadow = false;
+                mr.receiveShadows = false;
             }
         }
         return root;
