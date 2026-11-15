@@ -73,6 +73,7 @@ public class FalconLoader : MonoBehaviour
 
     private IEnumerator Start()
     {
+        beat = Time.realtimeSinceStartup;
         // Park the FalconStaff bootstrap root for the whole load: it
         // is DontDestroyOnLoad (spawned by the first scene's
         // RuntimeInitializeOnLoadMethod) and its parts belong in the
@@ -93,12 +94,21 @@ public class FalconLoader : MonoBehaviour
         TryBloom();
 
         // ---- the ANTICHEAT STATION: staged checks, on screen --------
-        var stages = FalconAntiCheat.Stages();
+        // Round 58: stage SETUP is fail-open - if the stage list
+        // itself cannot be built, the load goes on without it (a
+        // stage that runs and errors still flags, per-stage below).
+        // And every stageText write is null-guarded: if the UI build
+        // failed, the checks and the load must still complete -
+        // build #10 trapped Sans in this scene entirely.
+        var stages = new List<FalconAntiCheat.Stage>();
+        try { stages = FalconAntiCheat.Stages(); }
+        catch (Exception e) { Debug.Log("FalconLoader: anticheat stage setup failed: " + e.Message); }
         var flags = new List<string>();
         var done = new List<string>();
         for (int i = 0; i < stages.Count; i++)
         {
-            stageText.text = StageLines(done, stages[i].Name);
+            beat = Time.realtimeSinceStartup;
+            if (stageText != null) stageText.text = StageLines(done, stages[i].Name);
             List<string> f = null;
             try { f = stages[i].Run(); }
             catch (Exception e) { f = new List<string> { stages[i].Name + " error: " + e.Message }; }
@@ -107,11 +117,12 @@ public class FalconLoader : MonoBehaviour
             SetProgress((i + 1) / (float)stages.Count * 0.6f, "ANTICHEAT STATION");
             yield return new WaitForSeconds(0.5f);
         }
-        stageText.text = StageLines(done, null);
+        if (stageText != null) stageText.text = StageLines(done, null);
         FalconAntiCheat.SaveResult(flags);
 
         if (flags.Count > 0)
         {
+            denied = true; // a real deny - the watchdog stands down
             SetProgress(1f, "ACCESS DENIED");
             if (statusText != null) statusText.text = "ACCESS DENIED";
             if (statusText != null) statusText.color = new Color(1f, 0.35f, 0.3f);
@@ -125,7 +136,36 @@ public class FalconLoader : MonoBehaviour
             yield break; // the main scene never loads
         }
 
-        yield return LoadMain();
+        BeginLoadMain();
+    }
+
+    // Round 58 watchdog: the loader must NEVER be able to trap the
+    // player (build #10: a dead flow = stuck in this scene, no way
+    // into the game). The load coroutine updates `beat` as it
+    // progresses; if 20 s pass with no heartbeat and no real deny
+    // was issued, the flow is presumed dead and Update force-starts
+    // the main load. A real ACCESS DENIED sets `denied` and the
+    // watchdog stands down - denies stay denies.
+    private float beat;
+    private bool denied;
+    private bool loadingMain;
+
+    private void Update()
+    {
+        if (denied || loadingMain) return;
+        if (beat <= 0f) return;
+        if (Time.realtimeSinceStartup - beat > 20f)
+        {
+            Debug.Log("FalconLoader: watchdog - load flow stalled, forcing main load");
+            BeginLoadMain();
+        }
+    }
+
+    private void BeginLoadMain()
+    {
+        if (loadingMain) return;
+        loadingMain = true;
+        StartCoroutine(LoadMain());
     }
 
     private string StageLines(List<string> done, string current)
@@ -397,6 +437,7 @@ public class FalconLoader : MonoBehaviour
         op.allowSceneActivation = false;
         while (op.progress < 0.9f)
         {
+            beat = Time.realtimeSinceStartup;
             SetProgress(0.6f + 0.4f * (op.progress / 0.9f), null);
             yield return null;
         }
