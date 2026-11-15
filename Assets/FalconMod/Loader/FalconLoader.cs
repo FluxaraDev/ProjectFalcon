@@ -33,19 +33,17 @@ public class FalconLoader : MonoBehaviour
 
     private const string MainScene = "GorillaTagSJR";
 
-    // Round 60: the map conversion itself was wrong until now -
-    // extract_metro mirrored the transform matrix but not the points,
-    // which scrambled the city (Sans, build #10: "upside down +
-    // inverted"). With the fixed blob the city stands right-side up
-    // (verified bounds y -10.4..29.3; the downtown skyscraper cluster
-    // centers near (-2.7, -173.3)). The loader shot is composed from
-    // renders of the fixed data: an aerial over the downtown. His
-    // included spotlight hangs over the downtown center and pools
-    // straight down on it, like his editor render.
-    private static readonly Vector3 CamPos = new Vector3(-82.7f, 48f, -243.3f);
-    private static readonly Vector3 CamForward = new Vector3(0.733f, -0.229f, 0.641f);
-    private static readonly Vector3 SpotPos = new Vector3(-2.7f, 35f, -173.3f);
-    private static readonly Vector3 SpotAim = new Vector3(-0.15f, -1f, -0.2f);
+    // Round 61 (Sans): the camera sits AT the block - his scene's
+    // Camera/XRCamPos marker position - looking down-city along the
+    // camera node's own forward. (Round 60's aerial was far, up and
+    // tilted by comparison; renders from the block frame the
+    // downtown - hero spire tower center - like his Prisma shot.)
+    // His included light is a POINT light at the authored light
+    // position, mid-towers over the downtown's south edge; the pool
+    // and rims in his render radiate from it in every direction.
+    private static readonly Vector3 CamPos = new Vector3(-3.13f, 23.30f, -157.71f);
+    private static readonly Vector3 CamForward = new Vector3(-0.354f, -0.351f, -0.867f);
+    private static readonly Vector3 LightPos = new Vector3(-4.71f, 18.62f, -161.55f);
 
     private Text statusText;
     private Text stageText;
@@ -192,24 +190,24 @@ public class FalconLoader : MonoBehaviour
 
     private void BuildLights()
     {
-        // Round 60 (Sans, 2026-11-15): the loader sky is the game's
-        // time-of-day 5.5 dusk - the dusky violet grade of his Prisma
-        // renders - via the procedural skybox and skybox ambient, no
-        // fog. Only in this scene: RenderSettings are per-scene, so
-        // SJR keeps the game's own lighting exactly as stock. (Round
-        // 59's bright default-Unity grade superseded by the 5.5 spec.)
+        // Rounds 60-61 (Sans, 2026-11-15): the loader sky is the
+        // game's time-of-day 5.5 dusk, graded DARK like his Prisma
+        // render - near-black sky, the city mostly silhouette, the
+        // point light doing the work - via the procedural skybox and
+        // skybox ambient, no fog. Only in this scene: RenderSettings
+        // are per-scene, so SJR keeps the game's own lighting as stock.
         RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Skybox;
-        RenderSettings.ambientIntensity = 1f;
+        RenderSettings.ambientIntensity = 0.25f; // round 61: DARK, like his render - the point light does the work
         RenderSettings.fog = false;
         var skyShader = Shader.Find("Skybox/Procedural");
         if (skyShader != null)
         {
             var sky = new Material(skyShader);
-            sky.SetColor("_SkyTint", new Color(0.35f, 0.28f, 0.45f, 1f));
-            sky.SetColor("_GroundColor", new Color(0.28f, 0.18f, 0.13f, 1f));
-            sky.SetFloat("_Exposure", 0.8f);
+            sky.SetColor("_SkyTint", new Color(0.16f, 0.12f, 0.24f, 1f));
+            sky.SetColor("_GroundColor", new Color(0.10f, 0.06f, 0.05f, 1f));
+            sky.SetFloat("_Exposure", 0.35f);
             sky.SetFloat("_SunSize", 0.05f);
-            sky.SetFloat("_AtmosphereThickness", 1.5f);
+            sky.SetFloat("_AtmosphereThickness", 1.2f);
             RenderSettings.skybox = sky;
         }
         DynamicGI.UpdateEnvironment();
@@ -223,17 +221,19 @@ public class FalconLoader : MonoBehaviour
         QualitySettings.shadows = ShadowQuality.All;
         QualitySettings.shadowDistance = 220f;
 
-        // His spotlight, rebuilt from the glTF's own values.
-        var spotGo = new GameObject("FalconSpot");
-        spotGo.transform.position = SpotPos;
-        spotGo.transform.rotation = Quaternion.LookRotation(SpotAim.normalized, Vector3.up);
+        // His included point light (round 61, Sans: "beam from the
+        // included point light"), at the authored light position
+        // with the glTF's own color and intensity. A real PointLight:
+        // it radiates over the downtown in every direction and pools
+        // on the streets, like his editor render. Soft shadows on -
+        // the loader forces shadow support at the top of this method.
+        var spotGo = new GameObject("FalconPointLight");
+        spotGo.transform.position = LightPos;
         var spot = spotGo.AddComponent<Light>();
-        spot.type = LightType.Spot;
+        spot.type = LightType.Point;
         spot.color = new Color(0.255f, 0.047f, 0.365f);
-        spot.intensity = 3.0f;
-        spot.range = 320f;
-        spot.spotAngle = 150f;
-        spot.innerSpotAngle = 40f;
+        spot.intensity = 4.0f;
+        spot.range = 180f;
         spot.shadows = LightShadows.Soft;
         spot.shadowStrength = 0.9f;
 
@@ -423,9 +423,9 @@ public class FalconLoader : MonoBehaviour
             var profile = ScriptableObject.CreateInstance(profType);
             var settings = Activator.CreateInstance(bloomType);
             bloomType.GetField("enabled").SetValue(settings, true);
-            SetParam(bloomType, settings, "intensity", 1.8f);   // round 52: heavier, against the dark scene
-            SetParam(bloomType, settings, "threshold", 0.05f);
-            SetParam(bloomType, settings, "softKnee", 0.4f);
+            SetParam(bloomType, settings, "intensity", 3.0f);   // round 61 (Sans): "a lot of bloom"
+            SetParam(bloomType, settings, "threshold", 0.0f);
+            SetParam(bloomType, settings, "softKnee", 0.5f);
             var addSettings = profType.GetMethod("AddSettings", new[] { typeof(ScriptableObject) });
             if (addSettings != null) addSettings.Invoke(profile, new object[] { settings });
 
