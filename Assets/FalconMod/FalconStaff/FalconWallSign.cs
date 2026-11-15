@@ -12,13 +12,19 @@ public class FalconWallSign : MonoBehaviour
     private static readonly Vector3 SignPosition = new Vector3(-147.43f, 31.63f, -93.09f);
     private GameObject signRoot;
     private float nextTry;
+    private int tries;
 
     private void Update()
     {
         if (signRoot == null)
         {
+            // Round 52 perf: cap the retries. TryBuild does full-scene
+            // FindObjectsOfType scans; if the TMP font never shows up
+            // it must not scan the whole scene every 2 s forever.
+            if (tries >= 12) return;
             if (Time.time < nextTry) return;
             nextTry = Time.time + 2f;
+            tries++;
             TryBuild();
             return;
         }

@@ -88,8 +88,8 @@ public static class FalconMetroMap
                 go.AddComponent<MeshFilter>().sharedMesh = mesh;
                 var mr = go.AddComponent<MeshRenderer>();
                 mr.sharedMaterial = mat;
-                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                mr.receiveShadows = false;
+                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On; // round 52: loader spotlight throws real shadows (Sans: "no shadows")
+                mr.receiveShadows = true;
             }
         }
         return root;

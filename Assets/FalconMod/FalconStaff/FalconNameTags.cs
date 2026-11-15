@@ -14,13 +14,24 @@ public class FalconNameTags : MonoBehaviour
     private readonly Dictionary<VRRig, Tag> tags = new Dictionary<VRRig, Tag>();
     private Font tagFont;
     private float nextScan;
+    // Round 52 perf: cached rig list + reused scratch collections
+    // (see SyncTags) - no per-tick scene walks or allocations.
+    private readonly List<VRRig> rigCache = new List<VRRig>();
+    private readonly HashSet<VRRig> seen = new HashSet<VRRig>();
+    private readonly List<VRRig> stale = new List<VRRig>();
+    private float nextRefresh;
 
     private void Update()
     {
         if (Time.time >= nextScan)
         {
             nextScan = Time.time + 0.5f;
-            Scan();
+            SyncTags();
+        }
+        if (Time.time >= nextRefresh)
+        {
+            nextRefresh = Time.time + 2.5f;
+            RefreshRigs();
         }
         Camera cam = Camera.main;
         if (cam == null) return;
@@ -30,15 +41,28 @@ public class FalconNameTags : MonoBehaviour
         }
     }
 
-    private void Scan()
+    // Round 52 perf (Sans's lag spikes every 0.5 s): the old Scan()
+    // ran a full FindObjectsOfType<VRRig>() scene walk plus a fresh
+    // HashSet and List every 0.5 s, forever, with tags on by default.
+    // Now the scene walk happens at most every 2.5 s into a cached
+    // list, the 0.5 s tick only syncs text against the cache, and the
+    // scratch collections are reused - no steady-state allocation.
+    private void RefreshRigs()
+    {
+        rigCache.Clear();
+        rigCache.AddRange(FindObjectsOfType<VRRig>());
+    }
+
+    private void SyncTags()
     {
         if (!FalconPlayerOptions.NameTags)
         {
             if (tags.Count > 0) ClearAll();
             return;
         }
-        var seen = new HashSet<VRRig>();
-        foreach (VRRig rig in FindObjectsOfType<VRRig>())
+        if (rigCache.Count == 0 && tags.Count == 0) RefreshRigs();
+        seen.Clear();
+        foreach (VRRig rig in rigCache)
         {
             Photon.Realtime.Player rp = FalconStaffNet.PlayerOf(rig);
             if (rig == null || rp == null) continue;
@@ -67,7 +91,7 @@ public class FalconNameTags : MonoBehaviour
                 want += "\n" + fv + " FPS";
             if (tag.tm.text != want) tag.tm.text = want;
         }
-        var stale = new List<VRRig>();
+        stale.Clear();
         foreach (KeyValuePair<VRRig, Tag> kv in tags)
             if (!seen.Contains(kv.Key)) stale.Add(kv.Key);
         foreach (VRRig rig in stale) { Destroy(tags[rig].go); tags.Remove(rig); }
