@@ -35,9 +35,14 @@ public class FalconLoader : MonoBehaviour
 
     // His editor spotlight's position, converted glTF -> Unity.
     private static readonly Vector3 SpotPos = new Vector3(-4.707f, 18.624f, -161.549f);
-    // His editor camera's forward (converted), roll leveled off by
-    // LookRotation with world up - pitch and yaw as he composed them.
-    private static readonly Vector3 CamForward = new Vector3(0.354f, 0.351f, 0.867f);
+    // Round 57: the editor CAMERA node's converted forward pitched
+    // UP over the rooftops - the whole map tops out at y=20.8 with
+    // the camera at 18.6, so only ~14% of it was ever in front of
+    // that view (build #10 verdict: sky and slivers). Per Sans's own
+    // spec - "camera and UI should be where the light is pointing" -
+    // the rig now looks down the spotlight beam (SpotAim), where the
+    // city actually is. Roll stays leveled off by LookRotation.
+    private static readonly Vector3 CamForward = new Vector3(-0.244f, -0.503f, -0.829f);
     // The spotlight beam direction: the converted node quaternion
     // points the beam up in Unity terms, but his editor render pools
     // the light on the city below - so the beam aims down-city.
@@ -51,13 +56,18 @@ public class FalconLoader : MonoBehaviour
     private CanvasGroup fadeGroup;
     private AudioSource music;
     private GameObject staffRoot;
+    private ShadowQuality prevShadows;
+    private float prevShadowDist = -1f;
 
     private Font Font
     {
         get
         {
             if (gameFont != null) return gameFont;
-            return Resources.GetBuiltinResource<Font>("Arial.ttf");
+            // Round 57: the builtin Arial lookup can throw in a
+            // built player - never let a font fallback kill the load.
+            try { return Resources.GetBuiltinResource<Font>("Arial.ttf"); }
+            catch { return null; }
         }
     }
 
@@ -74,9 +84,13 @@ public class FalconLoader : MonoBehaviour
         PlaceRig();
         BuildLights();
         try { FalconMetroMap.Build(); } catch (Exception e) { Debug.Log("FalconLoader: metro map build failed: " + e.Message); }
-        BuildUi();
-        TryBloom();
+        // Round 57 flow hardening: music first, and every cosmetic
+        // step isolated - in build #10 a single failure in this
+        // stretch took the UI, the music, the bloom, the anticheat
+        // stages and the scene load down with it (silent, stuck).
         PlayMusic();
+        try { BuildUi(); } catch (Exception e) { Debug.Log("FalconLoader: UI build failed: " + e.Message); }
+        TryBloom();
 
         // ---- the ANTICHEAT STATION: staged checks, on screen --------
         var stages = FalconAntiCheat.Stages();
@@ -130,6 +144,14 @@ public class FalconLoader : MonoBehaviour
         // Yaw + the composed pitch only - LookRotation against world
         // up can never roll the horizon.
         rig.transform.rotation = Quaternion.LookRotation(CamForward.normalized, Vector3.up);
+        // Round 57: the cameras clear to the loader's dark - the
+        // scene skeleton's pale skybox is not ours (build #10:
+        // "still the pale sky").
+        foreach (var cam in rig.GetComponentsInChildren<Camera>(true))
+        {
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.backgroundColor = new Color(0.04f, 0f, 0.09f);
+        }
     }
 
     private void BuildLights()
@@ -137,6 +159,19 @@ public class FalconLoader : MonoBehaviour
         // Dark like his editor - the round-50 overbright ambient is gone.
         RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
         RenderSettings.ambientLight = new Color(0.10f, 0.03f, 0.16f);
+        // Round 57: kill the skeleton scene's skybox outright -
+        // rounds 50/52 restyled lights and fog but never the sky,
+        // so the pale sample sky rendered behind everything.
+        RenderSettings.skybox = null;
+        // Round 57: this project's Android quality tiers ship with
+        // realtime shadows OFF (QualitySettings shadows: 0) - that,
+        // not the lights, is why build #10 had no shadows. Force
+        // them on for the loader only; LoadMain restores the game's
+        // own settings before SJR activates.
+        prevShadows = QualitySettings.shadows;
+        prevShadowDist = QualitySettings.shadowDistance;
+        QualitySettings.shadows = ShadowQuality.All;
+        QualitySettings.shadowDistance = 220f;
         RenderSettings.fog = true;
         RenderSettings.fogMode = FogMode.Linear;
         RenderSettings.fogColor = new Color(0.04f, 0.0f, 0.09f);
@@ -166,6 +201,7 @@ public class FalconLoader : MonoBehaviour
             {
                 dl.color = new Color(0.718f, 0f, 1f);
                 dl.intensity = 0.9f;
+                dl.shadows = LightShadows.Soft; // authored scene had m_Type 0 (none)
             }
         }
     }
@@ -287,7 +323,6 @@ public class FalconLoader : MonoBehaviour
             if (rig == null) return;
             var cams = rig.GetComponentsInChildren<Camera>(true);
             if (cams.Length == 0) return;
-            Camera cam = cams[0];
 
             var layerType = Type.GetType("UnityEngine.Rendering.PostProcessing.PostProcessLayer, Unity.Postprocessing.Runtime");
             var resType = Type.GetType("UnityEngine.Rendering.PostProcessing.PostProcessResources, Unity.Postprocessing.Runtime");
@@ -296,11 +331,17 @@ public class FalconLoader : MonoBehaviour
             var bloomType = Type.GetType("UnityEngine.Rendering.PostProcessing.Bloom, Unity.Postprocessing.Runtime");
             if (layerType == null || volType == null || profType == null || bloomType == null) return;
 
-            var layer = cam.gameObject.AddComponent(layerType);
+            // Round 57: EVERY eye camera gets the layer - round 52
+            // armed only cams[0], which is not necessarily an eye
+            // that renders (build #10: "NO BLOOM").
             var resources = Resources.Load("PostProcessResources", resType);
-            if (resources != null)
-                layerType.GetMethod("Init", new[] { resType }).Invoke(layer, new object[] { resources });
-            layerType.GetField("volumeLayer").SetValue(layer, (LayerMask)1);
+            foreach (var cam in cams)
+            {
+                var layer = cam.gameObject.AddComponent(layerType);
+                if (resources != null)
+                    layerType.GetMethod("Init", new[] { resType }).Invoke(layer, new object[] { resources });
+                layerType.GetField("volumeLayer").SetValue(layer, (LayerMask)1);
+            }
 
             var profile = ScriptableObject.CreateInstance(profType);
             var settings = Activator.CreateInstance(bloomType);
@@ -374,6 +415,13 @@ public class FalconLoader : MonoBehaviour
             if (fadeGroup != null) fadeGroup.alpha = k;
             if (music != null) music.volume = startVol * (1f - k);
             yield return null;
+        }
+        // Round 57: hand the game back its own quality settings
+        // (the loader forced realtime shadows on for its scene only).
+        if (prevShadowDist >= 0f)
+        {
+            QualitySettings.shadows = prevShadows;
+            QualitySettings.shadowDistance = prevShadowDist;
         }
         if (staffRoot != null) staffRoot.SetActive(true);
         op.allowSceneActivation = true;
