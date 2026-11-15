@@ -14,7 +14,6 @@ using Player = GorillaLocomotion.Player;
 public class FalconFly : MonoBehaviour
 {
     public static bool Enabled;
-    private const float Speed = 6f;
 
     private Rigidbody rb;
     private bool gravityOff;
@@ -43,7 +42,7 @@ public class FalconFly : MonoBehaviour
         Vector3 wish = head.forward * left.y + head.right * left.x + Vector3.up * right.y;
         if (wish.sqrMagnitude > 1f) wish.Normalize();
         if (wish.sqrMagnitude > 0.0001f)
-            p.transform.position += wish * Speed * Time.deltaTime;
+            p.transform.position += wish * FalconStaffSettings.FlySpeed * Time.deltaTime;
     }
 
     private static Vector2 ReadAxis(XRNode node)

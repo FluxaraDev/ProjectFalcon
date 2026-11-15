@@ -41,6 +41,9 @@ public static class FalconStaffSettings
     public static int SnowballBurst = 1;  // snowballs per fire, 1..50 (round 30; cap 50 round 47 - a 100-burst hung a lobby; >30 warns: lobby lag)
     public static int SpinSpeed = 9;      // game turn-speed units, 1..30
     public static float FlingForce = 30f; // fling velocity magnitude, 5..100
+    public static float FlySpeed = 6f;    // thumbstick fly, 1..20 m/s (round 54)
+    public static float TinyScale = 0.5f; // shrink gun scale, 0.1..0.9 (round 54)
+    public static float GrowScale = 2f;   // grow gun scale, 1.2..4 (round 54)
 
     public static float SpinDegPerSec { get { return SpinSpeed * 60f; } } // speed 9 = 540 deg/s
 }
@@ -82,11 +85,13 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
         payload[0] = target.ActorNumber;
         if (data != null) Array.Copy(data, 0, payload, 1, data.Length);
         PhotonNetwork.RaiseEvent(code, payload, RaiseEventOptions.Default, SendOptions.SendReliable);
+        FalconSessionLog.Log("SEND " + CodeName(code) + " -> " + (target != null ? target.NickName : "?"));
     }
 
     public static void SendToAll(byte code, object[] data)
     {
         PhotonNetwork.RaiseEvent(code, data, RaiseEventOptions.Default, SendOptions.SendReliable);
+        FalconSessionLog.Log("SENDALL " + CodeName(code));
     }
 
     // Close lobby (round 45, Sans): the Staff tab's close button.
@@ -101,6 +106,7 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
         string me = PhotonNetwork.LocalPlayer != null ? PhotonNetwork.LocalPlayer.NickName : "?";
         SendToAll(EvCloseAll, new object[0]);
         FalconStaffWebhook.Log("LOBBY CLOSED by " + me + " (room " + code + ")");
+        FalconSessionLog.Log("CLOSE LOBBY room " + code);
     }
 
     // ---------- receiving ----------
@@ -194,6 +200,7 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
                 }
             }
             LastReceived = CodeName(code) + " from " + sender;
+            FalconSessionLog.Log("RX " + LastReceived);
             // Round 40: every targeted delivery ADDRESSED TO ME posts
             // a receipt to the staff log. One test now answers the
             // dead-guns question by itself: no RX post = the event
@@ -329,11 +336,17 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
     }
 
     public void OnCreateRoomFailed(short returnCode, string message) { }
-    public void OnJoinedRoom() { }
+    public void OnJoinedRoom()
+    {
+        string rn = PhotonNetwork.CurrentRoom != null ? PhotonNetwork.CurrentRoom.Name : "?";
+        int n = PhotonNetwork.PlayerList != null ? PhotonNetwork.PlayerList.Length : 0;
+        FalconSessionLog.Log("JOINED ROOM " + rn + " (" + n + " players)");
+    }
     public void OnJoinRoomFailed(short returnCode, string message) { }
     public void OnJoinRandomFailed(short returnCode, string message) { }
     public void OnLeftRoom()
     {
+        FalconSessionLog.Log("LEFT ROOM");
         // Actor numbers are per-room: never carry loud/size state
         // into the next room, where the same number is a stranger.
         loudActor = -1;

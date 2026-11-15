@@ -197,6 +197,7 @@ public class FalconModCallButtons : MonoBehaviour
         b.punchUntil = now + 0.12f;
         b.stageAt = now;
         b.stage++;
+        FalconSessionLog.Log("MOD CALL BUTTON " + b.map + " press, stage " + b.stage);
         if (b.stage == 1)
         {
             // Color only (round 43): the label keeps saying MOD CALL.

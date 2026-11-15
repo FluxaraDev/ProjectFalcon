@@ -156,6 +156,7 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
     // ENTER pressed on the RAVE page.
     public static void TryStartFromComputer()
     {
+        FalconSessionLog.Log("RAVE start requested (computer)");
         if (Instance == null) return;
         if (IsRaving)
         {
@@ -217,6 +218,7 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
     // instantly - event to everyone else, local end here.
     public static void StopRaveFromMenu()
     {
+        FalconSessionLog.Log("RAVE stop requested (menu)");
         if (Instance == null) return;
         if (!IsRaving)
         {

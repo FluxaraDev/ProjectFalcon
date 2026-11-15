@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 // Spawns the Falcon Staff system at runtime when the game scene loads.
 // No Unity Editor scene editing is needed: the staff object, its network
@@ -34,5 +35,7 @@ public static class FalconStaffBootstrap
         go.AddComponent<FalconModCallButtons>();
         go.AddComponent<FalconRoomOrders>();
         go.AddComponent<FalconFrameLog>();
+        FalconSessionLog.Log("BOOTSTRAP spawned, scene " + SceneManager.GetActiveScene().name);
+        SceneManager.sceneLoaded += (scene, mode) => FalconSessionLog.Log("SCENE " + scene.name);
     }
 }

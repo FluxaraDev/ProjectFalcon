@@ -55,6 +55,7 @@ public class FalconRoomOrders : MonoBehaviour, IMatchmakingCallbacks
         if (PhotonNetwork.InRoom) return;
         if (!PhotonNetwork.IsConnectedAndReady) return;
         string code = pendingCode;
+        FalconSessionLog.Log("TRANSFER: joining room " + code);
         if (!PhotonNetwork.JoinRoom(code))
             pendingCode = null;
     }
@@ -90,6 +91,7 @@ public class FalconRoomOrders : MonoBehaviour, IMatchmakingCallbacks
         if (actedKey == key) return;
         actedKey = key;
         FalconStaffWebhook.Log("ROOM SHUTDOWN - bot order executed (this client left)\nroom: " + code);
+        FalconSessionLog.Log("ROOM ORDER: shutdown, left room " + code);
         PhotonNetwork.LeaveRoom();
     }
 

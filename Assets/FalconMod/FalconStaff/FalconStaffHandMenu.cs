@@ -31,7 +31,7 @@ public class FalconStaffHandMenu : MonoBehaviour
     private static readonly Vector3 PanelLocalEuler = new Vector3(0f, 0f, 0f); // was 180 - read backwards on device (build #9)
     private const float PanelScale = 0.0009f; // canvas unit -> meters
     private const float PanelW = 300f;
-    private const float PanelH = 380f;
+    private const float PanelH = 420f; // round 54: room for the new Settings rows
 
     // ---- colors ----
     private static readonly Color BgColor = new Color(0.05f, 0.05f, 0.08f, 0.88f);
@@ -47,6 +47,7 @@ public class FalconStaffHandMenu : MonoBehaviour
         public float cx, cy, w, h;
         public Image img;
         public System.Func<int> state; // 0 normal, 1 on, 2 armed
+        public string label;
         public System.Action onClick;
     }
 
@@ -166,7 +167,7 @@ public class FalconStaffHandMenu : MonoBehaviour
 
         if (open && hovered != null)
         {
-            if (trigEdge && hovered.onClick != null) hovered.onClick();
+            if (trigEdge && hovered.onClick != null) { FalconSessionLog.Log("TAP " + hovered.label); hovered.onClick(); }
         }
         else if (staff && armedGun == "snowball")
         {
@@ -302,7 +303,7 @@ public class FalconStaffHandMenu : MonoBehaviour
         Image img = MakeImage(parent, cx, cy, w, h, BtnNormal);
         Text t = MakeText(parent, cx, cy, w, h, 13, TextAnchor.MiddleCenter);
         t.text = label;
-        return new Btn { cx = cx, cy = cy, w = w, h = h, img = img, onClick = onClick, state = state };
+        return new Btn { cx = cx, cy = cy, w = w, h = h, img = img, label = label, onClick = onClick, state = state };
     }
 
     // ---------------- content ----------------
@@ -370,6 +371,7 @@ public class FalconStaffHandMenu : MonoBehaviour
             ContentButton(68f, 30f, 132f, 24f, FalconStaffRole.LockOn ? "Staff lock: ON" : "Staff lock: OFF", () =>
             {
                 FalconStaffRole.SetLock(!FalconStaffRole.LockOn);
+                FalconSessionLog.Log(FalconStaffRole.LockOn ? "LOCK ON" : "LOCK OFF");
                 lastAction = FalconStaffRole.LockOn ? "lock on - staff can't touch you" : "lock off";
                 RebuildContent();
             }, () => FalconStaffRole.LockOn ? 1 : 0);
@@ -440,7 +442,7 @@ public class FalconStaffHandMenu : MonoBehaviour
         {
             ContentText(0f, 84f, 268f, 20f, 12, "Long arms + speed live on the computer ITEMS page.");
             ContentButton(0f, 54f, 268f, 26f, "Fly: " + (FalconFly.Enabled ? "ON" : "OFF"),
-                () => { FalconFly.Enabled = !FalconFly.Enabled; lastAction = FalconFly.Enabled ? "fly on" : "fly off"; RebuildContent(); },
+                () => { FalconFly.Enabled = !FalconFly.Enabled; FalconSessionLog.Log(FalconFly.Enabled ? "FLY ON" : "FLY OFF"); lastAction = FalconFly.Enabled ? "fly on" : "fly off"; RebuildContent(); },
                 () => FalconFly.Enabled ? 1 : 0);
             ContentText(0f, 24f, 268f, 32f, 11, "Thumbstick fly: left stick moves where\nyour head points, right stick Y = up/down.");
             ContentButton(0f, -12f, 268f, 26f, "Coord cube: " + (coordCube != null && coordCube.CubeEnabled ? "ON" : "OFF"),
@@ -452,31 +454,47 @@ public class FalconStaffHandMenu : MonoBehaviour
         else if (tab == 4 && FalconStaffRole.IsHeadAdmin)
         {
             // Settings tab (Jacob's suggestion): gun tuning with
-            // steppers. Snowball: 1..1000 ms in jumps of 10. Spin:
-            // game speed units (9 = stock spec). Fling: velocity.
-            ContentText(0f, 84f, 268f, 18f, 11, "Snowball spam interval");
-            ContentButton(-100f, 58f, 52f, 24f, "-10", () => { FalconStaffSettings.SnowballMs = Mathf.Clamp(FalconStaffSettings.SnowballMs - 10, 1, 1000); RebuildContent(); }, () => 0);
-            ContentButton(100f, 58f, 52f, 24f, "+10", () => { FalconStaffSettings.SnowballMs = Mathf.Clamp(FalconStaffSettings.SnowballMs + 10, 1, 1000); RebuildContent(); }, () => 0);
-            ContentText(0f, 58f, 120f, 24f, 13, FalconStaffSettings.SnowballMs + " ms");
+            // steppers. Round 54 (Sans): fly speed + shrink/grow scale
+            // steppers and the SAVE LOG button join the tab; rows
+            // compressed to fit (panel is 420 tall since round 54).
+            // Every change lands in the session log.
+            ContentText(0f, 170f, 268f, 18f, 11, "Snowball spam interval");
+            ContentButton(-100f, 146f, 52f, 24f, "-10", () => { FalconStaffSettings.SnowballMs = Mathf.Clamp(FalconStaffSettings.SnowballMs - 10, 1, 1000); FalconSessionLog.Log("SET snowball ms = " + FalconStaffSettings.SnowballMs); RebuildContent(); }, () => 0);
+            ContentButton(100f, 146f, 52f, 24f, "+10", () => { FalconStaffSettings.SnowballMs = Mathf.Clamp(FalconStaffSettings.SnowballMs + 10, 1, 1000); FalconSessionLog.Log("SET snowball ms = " + FalconStaffSettings.SnowballMs); RebuildContent(); }, () => 0);
+            ContentText(0f, 146f, 120f, 24f, 13, FalconStaffSettings.SnowballMs + " ms");
 
-            ContentText(0f, 28f, 268f, 18f, 11, "Spin speed (sent to target)");
-            ContentButton(-100f, 2f, 52f, 24f, "-1", () => { FalconStaffSettings.SpinSpeed = Mathf.Clamp(FalconStaffSettings.SpinSpeed - 1, 1, 30); RebuildContent(); }, () => 0);
-            ContentButton(100f, 2f, 52f, 24f, "+1", () => { FalconStaffSettings.SpinSpeed = Mathf.Clamp(FalconStaffSettings.SpinSpeed + 1, 1, 30); RebuildContent(); }, () => 0);
-            ContentText(0f, 2f, 120f, 24f, 13, "speed " + FalconStaffSettings.SpinSpeed);
+            ContentText(0f, 124f, 268f, 18f, 11, "Spin speed (sent to target)");
+            ContentButton(-100f, 100f, 52f, 24f, "-1", () => { FalconStaffSettings.SpinSpeed = Mathf.Clamp(FalconStaffSettings.SpinSpeed - 1, 1, 30); FalconSessionLog.Log("SET spin = " + FalconStaffSettings.SpinSpeed); RebuildContent(); }, () => 0);
+            ContentButton(100f, 100f, 52f, 24f, "+1", () => { FalconStaffSettings.SpinSpeed = Mathf.Clamp(FalconStaffSettings.SpinSpeed + 1, 1, 30); FalconSessionLog.Log("SET spin = " + FalconStaffSettings.SpinSpeed); RebuildContent(); }, () => 0);
+            ContentText(0f, 100f, 120f, 24f, 13, "speed " + FalconStaffSettings.SpinSpeed);
 
-            ContentText(0f, -28f, 268f, 18f, 11, "Fling force");
-            ContentButton(-100f, -54f, 52f, 24f, "-5", () => { FalconStaffSettings.FlingForce = Mathf.Clamp(FalconStaffSettings.FlingForce - 5f, 5f, 100f); RebuildContent(); }, () => 0);
-            ContentButton(100f, -54f, 52f, 24f, "+5", () => { FalconStaffSettings.FlingForce = Mathf.Clamp(FalconStaffSettings.FlingForce + 5f, 5f, 100f); RebuildContent(); }, () => 0);
-            ContentText(0f, -54f, 120f, 24f, 13, FalconStaffSettings.FlingForce.ToString("0"));
+            ContentText(0f, 78f, 268f, 18f, 11, "Fling force");
+            ContentButton(-100f, 54f, 52f, 24f, "-5", () => { FalconStaffSettings.FlingForce = Mathf.Clamp(FalconStaffSettings.FlingForce - 5f, 5f, 100f); FalconSessionLog.Log("SET fling = " + FalconStaffSettings.FlingForce.ToString("0")); RebuildContent(); }, () => 0);
+            ContentButton(100f, 54f, 52f, 24f, "+5", () => { FalconStaffSettings.FlingForce = Mathf.Clamp(FalconStaffSettings.FlingForce + 5f, 5f, 100f); FalconSessionLog.Log("SET fling = " + FalconStaffSettings.FlingForce.ToString("0")); RebuildContent(); }, () => 0);
+            ContentText(0f, 54f, 120f, 24f, 13, FalconStaffSettings.FlingForce.ToString("0"));
 
-            ContentText(0f, -84f, 268f, 18f, 11, "Snowballs per fire (burst)");
-            ContentButton(-100f, -110f, 52f, 24f, "-10", () => { FalconStaffSettings.SnowballBurst = Mathf.Clamp(FalconStaffSettings.SnowballBurst - 10, 1, 50); RebuildContent(); }, () => 0);
-            ContentButton(100f, -110f, 52f, 24f, "+10", () => { FalconStaffSettings.SnowballBurst = Mathf.Clamp(FalconStaffSettings.SnowballBurst + 10, 1, 50); RebuildContent(); }, () => 0);
-            ContentText(0f, -110f, 120f, 24f, 13, "x" + FalconStaffSettings.SnowballBurst);
+            ContentText(0f, 32f, 268f, 18f, 11, "Snowballs per fire (burst)");
+            ContentButton(-100f, 8f, 52f, 24f, "-10", () => { FalconStaffSettings.SnowballBurst = Mathf.Clamp(FalconStaffSettings.SnowballBurst - 10, 1, 50); FalconSessionLog.Log("SET burst = " + FalconStaffSettings.SnowballBurst); RebuildContent(); }, () => 0);
+            ContentButton(100f, 8f, 52f, 24f, "+10", () => { FalconStaffSettings.SnowballBurst = Mathf.Clamp(FalconStaffSettings.SnowballBurst + 10, 1, 50); FalconSessionLog.Log("SET burst = " + FalconStaffSettings.SnowballBurst); RebuildContent(); }, () => 0);
+            ContentText(0f, 8f, 120f, 24f, 13, FalconStaffSettings.SnowballBurst > 30 ? "x" + FalconStaffSettings.SnowballBurst + " LAG!" : "x" + FalconStaffSettings.SnowballBurst);
 
-            ContentText(0f, -146f, 268f, 36f, 11, FalconStaffSettings.SnowballBurst > 30
-                ? "WARNING: burst over 30 can lag the lobby.\nUse at your own discretion as staff."
-                : "Snowball + fling apply on your client.\nSpin speed rides the shot to the target.");
+            ContentText(0f, -14f, 268f, 18f, 11, "Fly speed");
+            ContentButton(-100f, -38f, 52f, 24f, "-1", () => { FalconStaffSettings.FlySpeed = Mathf.Clamp(FalconStaffSettings.FlySpeed - 1f, 1f, 20f); FalconSessionLog.Log("SET fly speed = " + FalconStaffSettings.FlySpeed.ToString("0")); RebuildContent(); }, () => 0);
+            ContentButton(100f, -38f, 52f, 24f, "+1", () => { FalconStaffSettings.FlySpeed = Mathf.Clamp(FalconStaffSettings.FlySpeed + 1f, 1f, 20f); FalconSessionLog.Log("SET fly speed = " + FalconStaffSettings.FlySpeed.ToString("0")); RebuildContent(); }, () => 0);
+            ContentText(0f, -38f, 120f, 24f, 13, FalconStaffSettings.FlySpeed.ToString("0") + " m/s");
+
+            ContentText(0f, -60f, 268f, 18f, 11, "Shrink (tiny gun) scale");
+            ContentButton(-100f, -84f, 52f, 24f, "-.1", () => { FalconStaffSettings.TinyScale = Mathf.Clamp(FalconStaffSettings.TinyScale - 0.1f, 0.1f, 0.9f); FalconSessionLog.Log("SET tiny scale = " + FalconStaffSettings.TinyScale.ToString("0.0")); RebuildContent(); }, () => 0);
+            ContentButton(100f, -84f, 52f, 24f, "+.1", () => { FalconStaffSettings.TinyScale = Mathf.Clamp(FalconStaffSettings.TinyScale + 0.1f, 0.1f, 0.9f); FalconSessionLog.Log("SET tiny scale = " + FalconStaffSettings.TinyScale.ToString("0.0")); RebuildContent(); }, () => 0);
+            ContentText(0f, -84f, 120f, 24f, 13, FalconStaffSettings.TinyScale.ToString("0.0") + "x");
+
+            ContentText(0f, -106f, 268f, 18f, 11, "Grow gun scale");
+            ContentButton(-100f, -130f, 52f, 24f, "-.2", () => { FalconStaffSettings.GrowScale = Mathf.Clamp(FalconStaffSettings.GrowScale - 0.2f, 1.2f, 4f); FalconSessionLog.Log("SET grow scale = " + FalconStaffSettings.GrowScale.ToString("0.0")); RebuildContent(); }, () => 0);
+            ContentButton(100f, -130f, 52f, 24f, "+.2", () => { FalconStaffSettings.GrowScale = Mathf.Clamp(FalconStaffSettings.GrowScale + 0.2f, 1.2f, 4f); FalconSessionLog.Log("SET grow scale = " + FalconStaffSettings.GrowScale.ToString("0.0")); RebuildContent(); }, () => 0);
+            ContentText(0f, -130f, 120f, 24f, 13, FalconStaffSettings.GrowScale.ToString("0.0") + "x");
+
+            ContentButton(0f, -166f, 268f, 26f, "SAVE LOG", () => { bool ok = FalconSessionLog.Save(); lastAction = ok ? "log saved (files/session_log.txt)" : "LOG SAVE FAILED"; RebuildContent(); }, () => 0);
+            ContentText(0f, -194f, 268f, 18f, 10, "Session is logged silently in memory - SAVE LOG writes it once.");
         }
         else
         {
@@ -712,10 +730,10 @@ public class FalconStaffHandMenu : MonoBehaviour
                 FalconStaffNet.Instance.ApplyLocal(FalconStaffNet.EvLoudMic, new object[] { me });
                 break;
             case "tiny":
-                FalconStaffNet.ApplySizeEvent(me, 0.5f);
+                FalconStaffNet.ApplySizeEvent(me, FalconStaffSettings.TinyScale);
                 break;
             case "grow":
-                FalconStaffNet.ApplySizeEvent(me, 2f);
+                FalconStaffNet.ApplySizeEvent(me, FalconStaffSettings.GrowScale);
                 break;
             case "outfitrandom":
                 FalconStaffNet.Instance.ApplyLocal(FalconStaffNet.EvOutfitRandom, new object[0]);
@@ -859,10 +877,10 @@ public class FalconStaffHandMenu : MonoBehaviour
                 FalconStaffNet.SendTo(FalconStaffNet.EvQuit, target, new object[0]);
                 break;
             case "tiny":
-                FalconStaffNet.SendToAll(FalconStaffNet.EvTiny, new object[] { target.ActorNumber, 0.5f });
+                FalconStaffNet.SendToAll(FalconStaffNet.EvTiny, new object[] { target.ActorNumber, FalconStaffSettings.TinyScale });
                 break;
             case "grow":
-                FalconStaffNet.SendToAll(FalconStaffNet.EvGrow, new object[] { target.ActorNumber, 2f });
+                FalconStaffNet.SendToAll(FalconStaffNet.EvGrow, new object[] { target.ActorNumber, FalconStaffSettings.GrowScale });
                 break;
         }
         FalconStaffWebhook.Log("TROLL " + gun + " on " + them + " by " + me);

@@ -23,6 +23,8 @@ public static class FalconModCall
     // done receives one of: PINGED / COOLDOWN / BANNED / FAILED / NOT IN A LOBBY
     public static void TryCallFromButton(string map, Action<string> done)
     {
+        var innerDone = done;
+        done = delegate (string outcome) { FalconSessionLog.Log("MOD CALL " + map + " -> " + outcome); if (innerDone != null) innerDone(outcome); };
         if (sending) { if (done != null) done("FAILED"); return; }
         if (!PhotonNetwork.InRoom || PhotonNetwork.CurrentRoom == null)
         {
