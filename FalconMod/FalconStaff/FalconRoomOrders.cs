@@ -92,7 +92,7 @@ public class FalconRoomOrders : MonoBehaviour, IMatchmakingCallbacks
         actedKey = key;
         FalconStaffWebhook.Log("ROOM SHUTDOWN - bot order executed (this client left)\nroom: " + code);
         FalconSessionLog.Log("ROOM ORDER: shutdown, left room " + code);
-        PhotonNetwork.LeaveRoom();
+        FalconStaffNet.ExitToStump();
     }
 
     private void CheckTransfer(string json, long now)
@@ -115,7 +115,7 @@ public class FalconRoomOrders : MonoBehaviour, IMatchmakingCallbacks
         actedTransferTs = ts;
         pendingCode = code;
         FalconStaffWebhook.Log("TRANSFER - moving to room " + code);
-        if (PhotonNetwork.InRoom) PhotonNetwork.LeaveRoom();
+        if (PhotonNetwork.InRoom) FalconStaffNet.ExitToStump();
     }
 
     private static bool TryParseTransfer(string json, out string code, out long ts)

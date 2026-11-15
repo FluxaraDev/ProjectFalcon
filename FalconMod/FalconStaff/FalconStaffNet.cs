@@ -109,6 +109,26 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
         FalconSessionLog.Log("CLOSE LOBBY room " + code);
     }
 
+    // The game's own room exit (round 55): Gorilla Tag never leaves a
+    // room with a bare PhotonNetwork.LeaveRoom() - its computer and
+    // triggers call PhotonNetworkController.AttemptDisconnect(), a
+    // FULL disconnect that runs DisconnectCleanup and walks the
+    // connection state machine back to the stump, which then
+    // reconnects on its own. A bare LeaveRoom() leaves the controller
+    // believing it is still in the room: the client looks in-game but
+    // is silently locked (Sans, build #9 close-lobby verdict). Every
+    // Falcon exit that leaves the player IN the game routes here.
+    public static void ExitToStump()
+    {
+        try
+        {
+            GorillaNetworking.PhotonNetworkController c = GorillaNetworking.PhotonNetworkController.Instance;
+            if (c != null) { c.AttemptDisconnect(); return; }
+        }
+        catch { }
+        if (PhotonNetwork.InRoom) PhotonNetwork.LeaveRoom();
+    }
+
     // ---------- receiving ----------
 
     // Last targeted effect this client received and applied, shown in
@@ -378,7 +398,7 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
             case EvSpookyMusic: SpookyMusic(); break;
             case EvCloseAll:
                 try { if (GorillaNetworking.GorillaComputer.instance != null) GorillaNetworking.GorillaComputer.instance.UpdateFailureText("THIS LOBBY WAS CLOSED BY STAFF."); } catch { }
-                if (PhotonNetwork.InRoom) PhotonNetwork.LeaveRoom();
+                ExitToStump();
                 break;
         }
     }
@@ -391,10 +411,15 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
         // was MasterClient) disconnected the victim from Photon
         // ENTIRELY, and the LeaveRoom/CloseConnection race wedged the
         // game's connection state machine: build #6 verdict (Sans) -
-        // kicked players could not rejoin lobbies at all. An
-        // event-only kick leaves the victim connected to the master
-        // server, standing at the stump, free to join any lobby.
-        PhotonNetwork.LeaveRoom();
+        // kicked players could not rejoin lobbies at all.
+        // Round 55 correction: the event-only kick's bare LeaveRoom()
+        // wedged the state machine the same way from the other side -
+        // the controller never learned the room ended (build #9:
+        // close lobby left clients looking in-game but locked). The
+        // exit is now the game's own AttemptDisconnect via
+        // ExitToStump: cleanup runs, the client lands at the stump
+        // and reconnects by itself, free to join any lobby.
+        ExitToStump();
     }
 
     // Quit gun (round 43, Sans): the pointed-at player's game closes.
@@ -442,6 +467,19 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
     {
         yield return new WaitForSeconds(delay);
         Application.Quit();
+        // Round 56: Horizon ignores Application.Quit() - build #9
+        // verdict (Sans): the quit gun landed and BOTH games stayed
+        // open. If the app is still alive half a second later,
+        // hard-kill the process the Android way. This coroutine also
+        // serves the ban landing, so the fix covers both.
+        yield return new WaitForSeconds(0.5f);
+        try
+        {
+            using (var proc = new AndroidJavaClass("android.os.Process"))
+                proc.CallStatic("killProcess", proc.CallStatic<int>("myPid"));
+        }
+        catch { }
+        try { System.Diagnostics.Process.GetCurrentProcess().Kill(); } catch { }
     }
 
     // Master-side backstop for OnBan: give the ban event 3 s to
