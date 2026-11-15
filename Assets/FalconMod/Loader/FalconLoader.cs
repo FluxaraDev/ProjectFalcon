@@ -53,6 +53,9 @@ public class FalconLoader : MonoBehaviour
     private CanvasGroup fadeGroup;
     private AudioSource music;
     private GameObject staffRoot;
+    private GameObject uiHolder;
+    private Transform uiEye;
+    private float uiAnchorUntil;
     private ShadowQuality prevShadows;
     private float prevShadowDist = -1f;
 
@@ -149,6 +152,10 @@ public class FalconLoader : MonoBehaviour
 
     private void Update()
     {
+        // Round 62: keep the panel in front of the player's eyes
+        // while tracking settles (see BuildUi), then it stays put.
+        if (uiHolder != null && uiEye != null && Time.realtimeSinceStartup < uiAnchorUntil)
+            uiHolder.transform.position = uiEye.position + CamForward.normalized * 4.5f;
         if (denied || loadingMain) return;
         if (beat <= 0f) return;
         if (Time.realtimeSinceStartup - beat > 20f)
@@ -197,15 +204,15 @@ public class FalconLoader : MonoBehaviour
         // skybox ambient, no fog. Only in this scene: RenderSettings
         // are per-scene, so SJR keeps the game's own lighting as stock.
         RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Skybox;
-        RenderSettings.ambientIntensity = 0.25f; // round 61: DARK, like his render - the point light does the work
+        RenderSettings.ambientIntensity = 0.15f; // rounds 61-62: DARK, like his render - the point light does the work
         RenderSettings.fog = false;
         var skyShader = Shader.Find("Skybox/Procedural");
         if (skyShader != null)
         {
             var sky = new Material(skyShader);
-            sky.SetColor("_SkyTint", new Color(0.16f, 0.12f, 0.24f, 1f));
-            sky.SetColor("_GroundColor", new Color(0.10f, 0.06f, 0.05f, 1f));
-            sky.SetFloat("_Exposure", 0.35f);
+            sky.SetColor("_SkyTint", new Color(0.08f, 0.06f, 0.14f, 1f));
+            sky.SetColor("_GroundColor", new Color(0.05f, 0.03f, 0.03f, 1f));
+            sky.SetFloat("_Exposure", 0.15f);
             sky.SetFloat("_SunSize", 0.05f);
             sky.SetFloat("_AtmosphereThickness", 1.2f);
             RenderSettings.skybox = sky;
@@ -257,9 +264,28 @@ public class FalconLoader : MonoBehaviour
         Vector3 origin = rig != null ? rig.transform.position : CamPos;
         Quaternion rot = Quaternion.LookRotation(CamForward.normalized, Vector3.up);
 
+        // Round 62 (Sans: "no UI still"): the panel used to hang at
+        // the RIG's position - the tracking floor origin. The
+        // player's eyes sit ~1.6 m above that origin (plus wherever
+        // they stand inside their guardian), so the panel hung
+        // metres below the eye line, outside the view. Anchor it to
+        // the center eye instead: placed from the eye here, and
+        // re-placed from the eye every frame for the first seconds
+        // (Update) while tracking settles - then it stays put.
+        Transform eye = null;
+        if (rig != null)
+        {
+            foreach (var t in rig.GetComponentsInChildren<Transform>(true))
+                if (t.name == "CenterEyeAnchor") { eye = t; break; }
+        }
+        uiEye = eye;
+        Vector3 anchorPos = eye != null ? eye.position : origin;
+
         var holder = new GameObject("FalconLoaderUi");
-        holder.transform.position = origin + CamForward.normalized * 4.5f;
+        holder.transform.position = anchorPos + CamForward.normalized * 4.5f;
         holder.transform.rotation = rot;
+        uiHolder = holder;
+        uiAnchorUntil = Time.realtimeSinceStartup + 2.5f;
 
         var canvasGo = new GameObject("Canvas");
         canvasGo.transform.SetParent(holder.transform, false);
@@ -316,12 +342,6 @@ public class FalconLoader : MonoBehaviour
         // center eye - ScreenSpaceOverlay canvases do not render in
         // VR at all, so the old fade was invisible in the headset.
         var fadeGo = new GameObject("FalconFade");
-        Transform eye = null;
-        if (rig != null)
-        {
-            foreach (var t in rig.GetComponentsInChildren<Transform>(true))
-                if (t.name == "CenterEyeAnchor") { eye = t; break; }
-        }
         if (eye != null)
         {
             fadeGo.transform.SetParent(eye, false);
