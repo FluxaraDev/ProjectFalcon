@@ -178,7 +178,7 @@ public class FalconRoomOrders : MonoBehaviour, IMatchmakingCallbacks
 
     public void OnJoinRandomFailed(short returnCode, string message) { }
     public void OnCreateRoomFailed(short returnCode, string message) { }
-    public void OnFriendListUpdate(List<FriendInfo> friendList) { }
+    public void OnFriendListUpdate(List<Photon.Realtime.FriendInfo> friendList) { }
     public void OnCreatedRoom() { }
     public void OnLeftRoom() { }
 }
