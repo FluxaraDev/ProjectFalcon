@@ -788,6 +788,13 @@ public class FalconStaffHandMenu : MonoBehaviour
         if (gun == "ban")
         {
             if (!FalconStaffRole.CanInstantBan) { lastAction = "denied (role)"; return; }
+            // Round 62 (Sans): staff cannot ban staff - at all.
+            if (FalconStaffRole.IsStaff(target))
+            {
+                lastAction = "STAFF - can't ban staff";
+                FalconStaffWebhook.Log("BAN REFUSED (staff target) on " + them + " by " + me);
+                return;
+            }
             // Ban gun (round 43, Sans): point, shoot, banned - with
             // the reason picked on the Staff tab. Same landing as a
             // scoreboard report-ban (rounds 40/42): EvBan shows the
