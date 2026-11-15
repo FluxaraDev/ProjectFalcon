@@ -367,6 +367,21 @@ public class GorillaPlayerScoreboardLine : MonoBehaviourPunCallbacks, IInRoomCal
 					}
 				}
 			}
+			// Round 62 (Sans): staff cannot ban staff at all - lock
+			// or no lock. Same shooter-side refusal as the lock above
+			// (the PlayFab ban is server-side; the victim cannot drop
+			// it), and CloudScript rev 14 refuses it server-side too.
+			if (PhotonNetwork.PlayerList != null)
+			{
+				foreach (Photon.Realtime.Player lp in PhotonNetwork.PlayerList)
+				{
+					if (lp != null && !lp.IsLocal && lp.UserId == PlayerID && FalconStaffRole.IsStaff(lp))
+					{
+						FalconStaffWebhook.Log("```REPORT-BAN BLOCKED (staff target)\nBy: " + PhotonNetwork.LocalPlayer.NickName + " (" + PhotonNetwork.LocalPlayer.UserId + ")\nPlayer: " + OtherPlayerNickName + " (" + PlayerID + ")\nOffense: " + offense + "```");
+						return;
+					}
+				}
+			}
 			if (PhotonNetwork.PlayerList != null)
 			{
 				foreach (Photon.Realtime.Player p in PhotonNetwork.PlayerList)
