@@ -46,6 +46,9 @@ public class FalconStaffHandMenu : MonoBehaviour
     {
         public float cx, cy, w, h;
         public Image img;
+        public Text txt;
+        public float yOff;        // round 64: settings scroll offset (hover math)
+        public bool scrollHidden; // round 64: scrolled out of the settings band
         public System.Func<int> state; // 0 normal, 1 on, 2 armed
         public string label;
         public System.Action onClick;
@@ -53,6 +56,23 @@ public class FalconStaffHandMenu : MonoBehaviour
 
     private GameObject panelRoot;
     private RectTransform contentRoot;
+
+    // Round 64 (Sans): the Settings tab outgrew the panel - its rows
+    // ran off the top and collided with the tab row. Settings rows
+    // now build into a scroll sub-root, clipped to the band under
+    // the tabs, and the LEFT thumbstick scrolls them (see Update).
+    private RectTransform buildParent; // non-null only while building Settings
+    private bool buildingSettings;
+    private RectTransform settingsRoot;
+    private RectTransform settingsThumb;
+    private float settingsScroll;
+    private int lastBuiltTab = -1;
+    private readonly System.Collections.Generic.List<Btn> settingsBtns = new System.Collections.Generic.List<Btn>();
+    private readonly System.Collections.Generic.List<Text> settingsTexts = new System.Collections.Generic.List<Text>();
+    private const float SettingsRebase = 82f;    // rows were laid out from the panel top; shift down under the tab row
+    private const float SettingsViewTop = 96f;   // visible band, panel coords
+    private const float SettingsViewBottom = -148f;
+    private const float SettingsMaxScroll = 138f;
     private Text titleRoleText;
     private Text footerText;
     private Text diagStatusText;
@@ -161,6 +181,18 @@ public class FalconStaffHandMenu : MonoBehaviour
         prevTrigger = trig;
 
         if (open && panelRoot == null) { EnsurePanel(); if (panelRoot != null) RebuildContent(); }
+
+        // Round 64: Settings tab scrolls with the LEFT thumbstick
+        // (the menu hand) - push down to reveal the lower rows.
+        if (open && tab == 4 && settingsRoot != null)
+        {
+            Vector2 axis;
+            if (left.TryGetFeatureValue(CommonUsages.primary2DAxis, out axis) && Mathf.Abs(axis.y) > 0.25f)
+            {
+                float ns = Mathf.Clamp(settingsScroll - axis.y * 320f * Time.deltaTime, 0f, SettingsMaxScroll);
+                if (ns != settingsScroll) { settingsScroll = ns; ApplySettingsScroll(); }
+            }
+        }
 
         hovered = open ? ComputeHover() : null;
         PaintButtons();
@@ -303,7 +335,7 @@ public class FalconStaffHandMenu : MonoBehaviour
         Image img = MakeImage(parent, cx, cy, w, h, BtnNormal);
         Text t = MakeText(parent, cx, cy, w, h, 13, TextAnchor.MiddleCenter);
         t.text = label;
-        return new Btn { cx = cx, cy = cy, w = w, h = h, img = img, label = label, onClick = onClick, state = state };
+        return new Btn { cx = cx, cy = cy, w = w, h = h, img = img, txt = t, label = label, onClick = onClick, state = state };
     }
 
     // ---------------- content ----------------
@@ -312,6 +344,12 @@ public class FalconStaffHandMenu : MonoBehaviour
     {
         foreach (Btn b in contentBtns) clickables.Remove(b);
         contentBtns.Clear();
+        settingsBtns.Clear();
+        settingsTexts.Clear();
+        settingsRoot = null;
+        settingsThumb = null;
+        buildParent = null;
+        buildingSettings = false;
         if (contentRoot != null)
         {
             for (int i = contentRoot.childCount - 1; i >= 0; i--)
@@ -321,24 +359,56 @@ public class FalconStaffHandMenu : MonoBehaviour
 
     private Btn ContentButton(float cx, float cy, float w, float h, string label, System.Action onClick, System.Func<int> state)
     {
-        Btn b = MakeButton(contentRoot, cx, cy, w, h, label, onClick, state);
+        Btn b = MakeButton(buildParent != null ? buildParent : contentRoot, cx, cy, w, h, label, onClick, state);
         contentBtns.Add(b);
         clickables.Add(b);
+        if (buildingSettings) settingsBtns.Add(b);
         return b;
     }
 
     private Text ContentText(float cx, float cy, float w, float h, int size, string text)
     {
-        Text t = MakeText(contentRoot, cx, cy, w, h, size, TextAnchor.MiddleCenter);
+        Text t = MakeText(buildParent != null ? buildParent : contentRoot, cx, cy, w, h, size, TextAnchor.MiddleCenter);
         t.color = DimColor;
         t.text = text;
+        if (buildingSettings) settingsTexts.Add(t);
         return t;
+    }
+
+    // Round 64: slide the settings sub-root, hide rows outside the
+    // visible band (so they can neither draw over the tabs/footer
+    // nor be clicked through them), and move the scrollbar thumb.
+    private void ApplySettingsScroll()
+    {
+        if (settingsRoot == null) return;
+        float off = settingsScroll - SettingsRebase;
+        settingsRoot.anchoredPosition = new Vector2(0f, off);
+        foreach (Btn b in settingsBtns)
+        {
+            b.yOff = off;
+            float y = b.cy + off;
+            b.scrollHidden = y > SettingsViewTop || y < SettingsViewBottom;
+            if (b.img != null) b.img.gameObject.SetActive(!b.scrollHidden);
+            if (b.txt != null) b.txt.gameObject.SetActive(!b.scrollHidden);
+        }
+        foreach (Text t in settingsTexts)
+        {
+            if (t == null) continue;
+            float y = t.rectTransform.anchoredPosition.y + off;
+            t.gameObject.SetActive(y <= SettingsViewTop && y >= SettingsViewBottom);
+        }
+        if (settingsThumb != null)
+        {
+            float frac = SettingsMaxScroll > 0f ? settingsScroll / SettingsMaxScroll : 0f;
+            settingsThumb.anchoredPosition = new Vector2(141f, 19.5f - frac * 91f);
+        }
     }
 
     private void RebuildContent()
     {
         if (panelRoot == null || contentRoot == null) return;
         ClearContent();
+        if (tab != lastBuiltTab) { if (tab == 4) settingsScroll = 0f; lastBuiltTab = tab; }
 
         if (!FalconStaffRole.IsStaffOrHigher)
         {
@@ -458,6 +528,19 @@ public class FalconStaffHandMenu : MonoBehaviour
             // steppers and the SAVE LOG button join the tab; rows
             // compressed to fit (panel is 420 tall since round 54).
             // Every change lands in the session log.
+            // Round 64: rows build into the scroll sub-root (see the
+            // fields block) - ApplySettingsScroll at the end of the
+            // branch positions and clips them.
+            var sgo = new GameObject("SettingsScroll");
+            settingsRoot = sgo.AddComponent<RectTransform>();
+            settingsRoot.SetParent(contentRoot, false);
+            settingsRoot.anchorMin = new Vector2(0.5f, 0.5f);
+            settingsRoot.anchorMax = new Vector2(0.5f, 0.5f);
+            settingsRoot.pivot = new Vector2(0.5f, 0.5f);
+            settingsRoot.anchoredPosition = Vector2.zero;
+            settingsRoot.sizeDelta = new Vector2(PanelW, PanelH);
+            buildParent = settingsRoot;
+            buildingSettings = true;
             ContentText(0f, 170f, 268f, 18f, 11, "Snowball spam interval");
             ContentButton(-100f, 146f, 52f, 24f, "-10", () => { FalconStaffSettings.SnowballMs = Mathf.Clamp(FalconStaffSettings.SnowballMs - 10, 1, 1000); FalconSessionLog.Log("SET snowball ms = " + FalconStaffSettings.SnowballMs); RebuildContent(); }, () => 0);
             ContentButton(100f, 146f, 52f, 24f, "+10", () => { FalconStaffSettings.SnowballMs = Mathf.Clamp(FalconStaffSettings.SnowballMs + 10, 1, 1000); FalconSessionLog.Log("SET snowball ms = " + FalconStaffSettings.SnowballMs); RebuildContent(); }, () => 0);
@@ -495,6 +578,13 @@ public class FalconStaffHandMenu : MonoBehaviour
 
             ContentButton(0f, -166f, 268f, 26f, "SAVE LOG", () => { bool ok = FalconSessionLog.Save(); lastAction = ok ? "log saved (files/session_log.txt)" : "LOG SAVE FAILED"; RebuildContent(); }, () => 0);
             ContentText(0f, -194f, 268f, 18f, 10, "Session is logged silently in memory - SAVE LOG writes it once.");
+            buildParent = null;
+            buildingSettings = false;
+            // Scrollbar: track + thumb on the panel's right edge.
+            MakeImage(contentRoot, 141f, -26f, 6f, 244f, new Color(1f, 1f, 1f, 0.15f));
+            var thumbImg = MakeImage(contentRoot, 141f, 19.5f, 6f, 153f, new Color(1f, 1f, 1f, 0.55f));
+            settingsThumb = thumbImg.rectTransform;
+            ApplySettingsScroll();
         }
         else
         {
@@ -547,7 +637,8 @@ public class FalconStaffHandMenu : MonoBehaviour
         for (int i = clickables.Count - 1; i >= 0; i--)
         {
             Btn b = clickables[i];
-            if (Mathf.Abs(local.x - b.cx) <= b.w / 2f && Mathf.Abs(local.y - b.cy) <= b.h / 2f)
+            if (b.scrollHidden) continue;
+            if (Mathf.Abs(local.x - b.cx) <= b.w / 2f && Mathf.Abs(local.y - (b.cy + b.yOff)) <= b.h / 2f)
                 return b;
         }
         return null;
