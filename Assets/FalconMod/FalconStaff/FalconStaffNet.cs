@@ -452,6 +452,16 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
     // applied by the Discord staff bot from the report log embed.
     private void OnBan(object[] rest)
     {
+        // Round 62 (Sans): staff cannot be banned by staff. A staff
+        // victim's client refuses the ban event outright - this also
+        // covers shooters on older builds, whose CloudScript call is
+        // refused server-side by rev 14 the same way.
+        if (FalconStaffRole.IsStaffOrHigher)
+        {
+            FalconStaffWebhook.Log("BAN BLOCKED (staff target) - ban event refused by " + PhotonNetwork.LocalPlayer.NickName);
+            FalconSessionLog.Log("BAN BLOCKED (staff target)");
+            return;
+        }
         string offense = rest != null && rest.Length > 0 && rest[0] is string ? (string)rest[0] : "toxicity";
         try
         {
