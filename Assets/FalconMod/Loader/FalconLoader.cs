@@ -184,39 +184,46 @@ public class FalconLoader : MonoBehaviour
         // Yaw + the composed pitch only - LookRotation against world
         // up can never roll the horizon.
         rig.transform.rotation = Quaternion.LookRotation(CamForward.normalized, Vector3.up);
-        // Round 57: the cameras clear to the loader's dark - the
-        // scene skeleton's pale skybox is not ours (build #10:
-        // "still the pale sky").
+        // Round 59: cameras clear to the skybox - the default
+        // Unity sky is the loader's backdrop (round 57's dark solid
+        // clear was part of the superseded custom grade).
         foreach (var cam in rig.GetComponentsInChildren<Camera>(true))
-        {
-            cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = new Color(0.04f, 0f, 0.09f);
-        }
+            cam.clearFlags = CameraClearFlags.Skybox;
     }
 
     private void BuildLights()
     {
-        // Dark like his editor - the round-50 overbright ambient is gone.
-        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-        RenderSettings.ambientLight = new Color(0.10f, 0.03f, 0.16f);
-        // Round 57: kill the skeleton scene's skybox outright -
-        // rounds 50/52 restyled lights and fog but never the sky,
-        // so the pale sample sky rendered behind everything.
-        RenderSettings.skybox = null;
-        // Round 57: this project's Android quality tiers ship with
-        // realtime shadows OFF (QualitySettings shadows: 0) - that,
-        // not the lights, is why build #10 had no shadows. Force
-        // them on for the loader only; LoadMain restores the game's
-        // own settings before SJR activates.
+        // Round 59 (Sans's settled spec, restated 2026-11-15): the
+        // loading screen uses DEFAULT UNITY lighting - the default
+        // procedural skybox and skybox ambient, no fog, no custom
+        // grade, not Gorilla Tag's tint. Only in this scene:
+        // RenderSettings are per-scene, so SJR keeps the game's own
+        // lighting exactly as stock. (Rounds 52/57 graded this scene
+        // dark/editor-style - superseded by the restated spec.)
+        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Skybox;
+        RenderSettings.ambientIntensity = 1f;
+        RenderSettings.fog = false;
+        var skyShader = Shader.Find("Skybox/Procedural");
+        if (skyShader != null)
+        {
+            var sky = new Material(skyShader);
+            sky.SetColor("_SkyTint", new Color(0.5f, 0.5f, 0.5f, 1f));
+            sky.SetColor("_GroundColor", new Color(0.369f, 0.349f, 0.341f, 1f));
+            sky.SetFloat("_Exposure", 1f);
+            sky.SetFloat("_SunSize", 0.04f);
+            sky.SetFloat("_AtmosphereThickness", 1f);
+            RenderSettings.skybox = sky;
+        }
+        DynamicGI.UpdateEnvironment();
+        // Round 57 (kept): this project's Android quality tiers ship
+        // with realtime shadows OFF (QualitySettings shadows: 0) -
+        // that, not the lights, is why build #10 had no shadows.
+        // Force them on for the loader only; LoadMain restores the
+        // game's own settings before SJR activates.
         prevShadows = QualitySettings.shadows;
         prevShadowDist = QualitySettings.shadowDistance;
         QualitySettings.shadows = ShadowQuality.All;
         QualitySettings.shadowDistance = 220f;
-        RenderSettings.fog = true;
-        RenderSettings.fogMode = FogMode.Linear;
-        RenderSettings.fogColor = new Color(0.04f, 0.0f, 0.09f);
-        RenderSettings.fogStartDistance = 30f;
-        RenderSettings.fogEndDistance = 240f;
 
         // His spotlight, rebuilt from the glTF's own values.
         var spotGo = new GameObject("FalconSpot");
@@ -307,12 +314,32 @@ public class FalconLoader : MonoBehaviour
         frt.offsetMin = Vector2.zero; frt.offsetMax = Vector2.zero;
         flagText.gameObject.SetActive(false);
 
-        // Full-screen fade overlay (screen space, renders over the
-        // VR view at activation time).
+        // Round 59: the fade is a world-space panel riding the
+        // center eye - ScreenSpaceOverlay canvases do not render in
+        // VR at all, so the old fade was invisible in the headset.
         var fadeGo = new GameObject("FalconFade");
+        Transform eye = null;
+        if (rig != null)
+        {
+            foreach (var t in rig.GetComponentsInChildren<Transform>(true))
+                if (t.name == "CenterEyeAnchor") { eye = t; break; }
+        }
+        if (eye != null)
+        {
+            fadeGo.transform.SetParent(eye, false);
+            fadeGo.transform.localPosition = new Vector3(0f, 0f, 0.45f);
+            fadeGo.transform.localRotation = Quaternion.identity;
+        }
+        else
+        {
+            fadeGo.transform.position = origin + CamForward.normalized * 0.45f;
+            fadeGo.transform.rotation = rot;
+        }
         var fc = fadeGo.AddComponent<Canvas>();
-        fc.renderMode = RenderMode.ScreenSpaceOverlay;
-        fc.sortingOrder = 999;
+        fc.renderMode = RenderMode.WorldSpace;
+        var fcrt = fadeGo.GetComponent<RectTransform>();
+        fcrt.sizeDelta = new Vector2(200f, 140f);
+        fadeGo.transform.localScale = new Vector3(0.005f, 0.005f, 0.005f);
         fadeGroup = fadeGo.AddComponent<CanvasGroup>();
         fadeGroup.alpha = 0f;
         fadeGroup.blocksRaycasts = false;
@@ -322,6 +349,18 @@ public class FalconLoader : MonoBehaviour
         fir.anchorMin = Vector2.zero; fir.anchorMax = Vector2.one;
         fir.offsetMin = Vector2.zero; fir.offsetMax = Vector2.zero;
         fimg.AddComponent<Image>().color = Color.black;
+
+        // Round 59: all loader UI lives on the Default layer - if
+        // the rig cameras' culling masks exclude the UI layer, a
+        // canvas on layer 5 never reaches the headset's eyes.
+        SetLayerRecursive(holder, 0);
+        SetLayerRecursive(fadeGo, 0);
+    }
+
+    private static void SetLayerRecursive(GameObject go, int layer)
+    {
+        foreach (var t in go.GetComponentsInChildren<Transform>(true))
+            t.gameObject.layer = layer;
     }
 
     private Text MakeText(Transform parent, string name, string text, int size, TextAnchor anchor, Color color)
