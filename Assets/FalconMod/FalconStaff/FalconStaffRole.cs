@@ -85,6 +85,19 @@ public static class FalconStaffRole
         return v != null && v.ToString() == "1";
     }
 
+    // Round 62 (Sans): staff cannot ban staff - in any path. Reads
+    // the target's published falcon_role property (the canonical
+    // role, present only on staff clients).
+    public static bool IsStaff(Photon.Realtime.Player p)
+    {
+        if (p == null || p.CustomProperties == null) return false;
+        object v;
+        if (!p.CustomProperties.TryGetValue(RoleKey, out v)) return false;
+        if (v == null) return false;
+        string s = v.ToString().Trim().Trim('"').ToLowerInvariant();
+        return s.Contains("admin") || s.Contains("staff");
+    }
+
     private static bool ParseTier2(string raw)
     {
         if (string.IsNullOrEmpty(raw)) return false;
