@@ -33,10 +33,12 @@ public static class FalconAntiCheat
         return new List<Stage>
         {
             new Stage { Name = "VERIFYING BUILD", Run = CheckBuild },
+            new Stage { Name = "APK INTEGRITY", Run = CheckSignature },
             new Stage { Name = "CHECKING DEVICE", Run = CheckDevice },
             new Stage { Name = "ROOT CHECK", Run = CheckRoot },
             new Stage { Name = "FRIDA SCAN", Run = CheckFrida },
             new Stage { Name = "MOD LOADER SCAN", Run = CheckLoaders },
+            new Stage { Name = "LIBRARY AUDIT", Run = CheckLibs },
             new Stage { Name = "SELF TEST", Run = CheckSelfTest },
         };
     }
@@ -69,6 +71,66 @@ public static class FalconAntiCheat
         if (Application.identifier != OfficialId)
             flags.Add("unofficial build - package is '" + Application.identifier + "', official is '" + OfficialId + "'");
         return flags;
+    }
+
+    // ---- stage 1b: APK signing certificate (round 63, Sans) ---------
+    // The mod route Sans described: extract the APK, drop a menu .so
+    // into lib/, patch classes.dex (UnityPlayer) with a loadLibrary
+    // const-string, repackage. A repack CANNOT carry the official
+    // signature - it must be re-signed with a foreign key - so the
+    // installed app's signing cert is pinned to the Falcon release
+    // keystore's fingerprint. One check covers the lib, the dex
+    // patch and every other APK edit at once. Unreadable cert = no
+    // positive evidence = fail open (same rule as the other stages).
+    private const string OfficialCertSha256 = "D84F136958C2886249A0DFB94A1E7D2574679100252ADD152C2F24BFD81832";
+
+    private static List<string> CheckSignature()
+    {
+        var flags = new List<string>();
+        if (Application.platform != RuntimePlatform.Android) return flags; // already flagged in stage 1
+        try
+        {
+            string hex = SigningCertSha256();
+            if (hex == null) return flags;
+            if (hex != OfficialCertSha256)
+                flags.Add("repacked APK - the signing certificate is not the official Falcon key (cert SHA-256 " + hex.Substring(0, 16) + "...). Repacked/modded builds are denied.");
+        }
+        catch { }
+        return flags;
+    }
+
+    private static string SigningCertSha256()
+    {
+        try
+        {
+            var unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
+            var activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
+            var pm = activity.Call<AndroidJavaObject>("getPackageManager");
+            string pkg = Application.identifier;
+            AndroidJavaObject[] sigs = null;
+            try
+            {
+                var info = pm.Call<AndroidJavaObject>("getPackageInfo", pkg, 0x08000000); // GET_SIGNING_CERTIFICATES (API 28+)
+                var signingInfo = info.Get<AndroidJavaObject>("signingInfo");
+                sigs = signingInfo.Call<AndroidJavaObject[]>("getApkContentsSigners");
+            }
+            catch { }
+            if (sigs == null || sigs.Length == 0)
+            {
+                var info = pm.Call<AndroidJavaObject>("getPackageInfo", pkg, 64); // GET_SIGNATURES (legacy)
+                sigs = info.Get<AndroidJavaObject[]>("signatures");
+            }
+            if (sigs == null || sigs.Length == 0) return null;
+            byte[] cert = sigs[0].Call<byte[]>("toByteArray");
+            using (var sha = System.Security.Cryptography.SHA256.Create())
+            {
+                byte[] hash = sha.ComputeHash(cert);
+                var sb = new System.Text.StringBuilder(hash.Length * 2);
+                foreach (byte b in hash) sb.Append(b.ToString("X2"));
+                return sb.ToString();
+            }
+        }
+        catch { return null; }
     }
 
     // ---- stage 2: is this a Quest? ----------------------------------
@@ -200,6 +262,75 @@ public static class FalconAntiCheat
         return flags;
     }
 
+    // ---- stage 5b: library audit (round 63, Sans) --------------------
+    // Every .so mapped into the process, judged by WHERE it loaded
+    // from (the maps text is lowercased, so all compares are too):
+    //  - system/vendor/apex/odm/product: allowed by prefix, so a
+    //    Horizon update renaming its own libs cannot false-flag.
+    //  - the game's OWN install folder: the filename must be one of
+    //    the stock set below - this is the check that catches a menu
+    //    .so dropped into lib/ by an APK repack (the APK INTEGRITY
+    //    stage catches the repack itself; this names the lib).
+    //  - another app's install folder: flagged.
+    //  - app data / shared storage: legit game libs never load from
+    //    there - flagged with no allowlist needed.
+    //  - /data/local/tmp is FRIDA SCAN's flag, not repeated here.
+    // The stock set is what the project ships (Unity trio + Photon
+    // Voice pair + the Oculus plugins in the export). If a native
+    // plugin is ever added to the project, add its filename here.
+    private static readonly string[] KnownLibs =
+    {
+        "libunity.so", "libil2cpp.so", "libmain.so", "lib_burst_generated.so",
+        "libopus_egpv.so", "libwebrtc-audio.so",
+        "liboculusxrplugin.so", "libovrlipsync.so",
+        "libaudiopluginoculusspatializer.so", "libovrplatformloader.so",
+        "libmonodebuggerhandling.so",
+    };
+
+    // Every unique .so path seen by the audit, appended to the
+    // anticheat_log by SaveResult - the ground-truth list for
+    // trimming KnownLibs if a stock lib is ever missed.
+    private static readonly List<string> LastLibs = new List<string>();
+
+    private static List<string> CheckLibs()
+    {
+        var flags = new List<string>();
+        string maps = Maps;
+        if (string.IsNullOrEmpty(maps)) return flags;
+        LastLibs.Clear();
+        var seen = new HashSet<string>();
+        foreach (string rawLine in maps.Split('\n'))
+        {
+            string line = rawLine.Trim();
+            int slash = line.IndexOf('/');
+            if (slash < 0) continue;
+            string path = line.Substring(slash).Trim();
+            if (path.EndsWith(" (deleted)")) path = path.Substring(0, path.Length - 10).Trim();
+            if (!path.EndsWith(".so")) continue;
+            if (!seen.Add(path)) continue;
+            LastLibs.Add(path);
+            if (path.Contains("/data/local/tmp/")) continue; // FRIDA SCAN owns this flag
+            if (path.StartsWith("/system/") || path.StartsWith("/vendor/") || path.StartsWith("/apex/")
+                || path.StartsWith("/odm/") || path.StartsWith("/product/")) continue;
+            string file = path.Substring(path.LastIndexOf('/') + 1);
+            if (path.Contains("/data/app/"))
+            {
+                if (path.Contains(OfficialId.ToLowerInvariant()))
+                {
+                    bool known = false;
+                    foreach (string k in KnownLibs) if (file == k) { known = true; break; }
+                    if (!known) flags.Add("extra library in the game's own lib folder: " + file + " - not part of the official build");
+                }
+                else flags.Add("library loaded from another app: " + file);
+                continue;
+            }
+            if (path.Contains("/data/data/") || path.Contains("/data/user/") || path.Contains("/storage/") || path.Contains("/sdcard/"))
+                flags.Add("library loaded from data/storage: " + file);
+            // anything else (dev/anon mappings) is not judged
+        }
+        return flags;
+    }
+
     // ---- stage 6: self test ------------------------------------------
     private static List<string> CheckSelfTest()
     {
@@ -229,6 +360,8 @@ public static class FalconAntiCheat
                 body = "[" + stamp + "] RESULT: CLEAN (all stages passed)\r\n";
             else
                 body = "[" + stamp + "] FLAGGED:\r\n - " + string.Join("\r\n - ", flags.ToArray()) + "\r\n";
+            if (LastLibs.Count > 0)
+                body += "LIBS OBSERVED: " + string.Join(", ", LastLibs.ToArray()) + "\r\n";
             File.AppendAllText(path, body);
         }
         catch { }
