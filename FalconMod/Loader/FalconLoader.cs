@@ -33,20 +33,19 @@ public class FalconLoader : MonoBehaviour
 
     private const string MainScene = "GorillaTagSJR";
 
-    // His editor spotlight's position, converted glTF -> Unity.
-    private static readonly Vector3 SpotPos = new Vector3(-4.707f, 18.624f, -161.549f);
-    // Round 57: the editor CAMERA node's converted forward pitched
-    // UP over the rooftops - the whole map tops out at y=20.8 with
-    // the camera at 18.6, so only ~14% of it was ever in front of
-    // that view (build #10 verdict: sky and slivers). Per Sans's own
-    // spec - "camera and UI should be where the light is pointing" -
-    // the rig now looks down the spotlight beam (SpotAim), where the
-    // city actually is. Roll stays leveled off by LookRotation.
-    private static readonly Vector3 CamForward = new Vector3(-0.244f, -0.503f, -0.829f);
-    // The spotlight beam direction: the converted node quaternion
-    // points the beam up in Unity terms, but his editor render pools
-    // the light on the city below - so the beam aims down-city.
-    private static readonly Vector3 SpotAim = new Vector3(-0.244f, -0.503f, -0.829f);
+    // Round 60: the map conversion itself was wrong until now -
+    // extract_metro mirrored the transform matrix but not the points,
+    // which scrambled the city (Sans, build #10: "upside down +
+    // inverted"). With the fixed blob the city stands right-side up
+    // (verified bounds y -10.4..29.3; the downtown skyscraper cluster
+    // centers near (-2.7, -173.3)). The loader shot is composed from
+    // renders of the fixed data: an aerial over the downtown. His
+    // included spotlight hangs over the downtown center and pools
+    // straight down on it, like his editor render.
+    private static readonly Vector3 CamPos = new Vector3(-82.7f, 48f, -243.3f);
+    private static readonly Vector3 CamForward = new Vector3(0.733f, -0.229f, 0.641f);
+    private static readonly Vector3 SpotPos = new Vector3(-2.7f, 35f, -173.3f);
+    private static readonly Vector3 SpotAim = new Vector3(-0.15f, -1f, -0.2f);
 
     private Text statusText;
     private Text stageText;
@@ -180,7 +179,7 @@ public class FalconLoader : MonoBehaviour
     {
         var rig = GameObject.Find("OVRCameraRig");
         if (rig == null) return;
-        rig.transform.position = SpotPos;
+        rig.transform.position = CamPos;
         // Yaw + the composed pitch only - LookRotation against world
         // up can never roll the horizon.
         rig.transform.rotation = Quaternion.LookRotation(CamForward.normalized, Vector3.up);
@@ -193,13 +192,12 @@ public class FalconLoader : MonoBehaviour
 
     private void BuildLights()
     {
-        // Round 59 (Sans's settled spec, restated 2026-11-15): the
-        // loading screen uses DEFAULT UNITY lighting - the default
-        // procedural skybox and skybox ambient, no fog, no custom
-        // grade, not Gorilla Tag's tint. Only in this scene:
-        // RenderSettings are per-scene, so SJR keeps the game's own
-        // lighting exactly as stock. (Rounds 52/57 graded this scene
-        // dark/editor-style - superseded by the restated spec.)
+        // Round 60 (Sans, 2026-11-15): the loader sky is the game's
+        // time-of-day 5.5 dusk - the dusky violet grade of his Prisma
+        // renders - via the procedural skybox and skybox ambient, no
+        // fog. Only in this scene: RenderSettings are per-scene, so
+        // SJR keeps the game's own lighting exactly as stock. (Round
+        // 59's bright default-Unity grade superseded by the 5.5 spec.)
         RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Skybox;
         RenderSettings.ambientIntensity = 1f;
         RenderSettings.fog = false;
@@ -207,11 +205,11 @@ public class FalconLoader : MonoBehaviour
         if (skyShader != null)
         {
             var sky = new Material(skyShader);
-            sky.SetColor("_SkyTint", new Color(0.5f, 0.5f, 0.5f, 1f));
-            sky.SetColor("_GroundColor", new Color(0.369f, 0.349f, 0.341f, 1f));
-            sky.SetFloat("_Exposure", 1f);
-            sky.SetFloat("_SunSize", 0.04f);
-            sky.SetFloat("_AtmosphereThickness", 1f);
+            sky.SetColor("_SkyTint", new Color(0.35f, 0.28f, 0.45f, 1f));
+            sky.SetColor("_GroundColor", new Color(0.28f, 0.18f, 0.13f, 1f));
+            sky.SetFloat("_Exposure", 0.8f);
+            sky.SetFloat("_SunSize", 0.05f);
+            sky.SetFloat("_AtmosphereThickness", 1.5f);
             RenderSettings.skybox = sky;
         }
         DynamicGI.UpdateEnvironment();
@@ -256,7 +254,7 @@ public class FalconLoader : MonoBehaviour
     private void BuildUi()
     {
         var rig = GameObject.Find("OVRCameraRig");
-        Vector3 origin = rig != null ? rig.transform.position : SpotPos;
+        Vector3 origin = rig != null ? rig.transform.position : CamPos;
         Quaternion rot = Quaternion.LookRotation(CamForward.normalized, Vector3.up);
 
         var holder = new GameObject("FalconLoaderUi");
