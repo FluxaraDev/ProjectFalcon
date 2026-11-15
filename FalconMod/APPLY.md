@@ -86,3 +86,8 @@ project/update switch is a copy-paste, not a re-derivation.
 109 spooky music · 110/111 rave start/end · 112 ban · 113 quit ·
 114 close lobby · 115 tiny · 116 grow. Never use 200+ (PUN
 reserves them — that was the round-22 room-kick bug).
+
+## Loading scene + entry anti-cheat (round 50)
+- `Assets/FalconMod/Loader/FalconLoading.unity` is build scene 0 (EditorBuildSettings), GorillaTagSJR is scene 1. The loader parks the OVRCameraRig where the metro map's editor spotlight pointed, builds the backdrop from Resources/metro_*.txt (base64 chunks of an FMM1 blob made by extract_metro.py from Sans's glTF), plays Resources/falcon_load_music (binary - web-upload it), and runs FalconAntiCheat ONCE: official package id, Quest identity words (oculus/quest/meta/eureka/hollywood/panther in OS+device strings), PC denied, root, Frida (file/port/maps), external .so from /data/local/tmp, MelonLoader, FusionCore/BepInEx. Flags are shown in-world and appended to Android/data/<package>/anticheat_log. Clean -> async load with percent bar + name tip, "ENJOY PROJECT FALCON", fade to black + music fade, then activation. Main scenes carry NO checks (open SJR directly for editor testing).
+- Bloom: Packages/manifest.json gains com.unity.postprocessing 3.2.2; FalconLoader wires it by reflection (compiles/runs without the package too).
+- The FalconStaff bootstrap root is deactivated during loading and reactivated at handover so staff objects never appear in the backdrop.
