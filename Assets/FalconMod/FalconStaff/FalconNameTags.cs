@@ -10,7 +10,7 @@ using UnityEngine;
 // camera like the game's built-in tags.
 public class FalconNameTags : MonoBehaviour
 {
-    private class Tag { public GameObject go; public TextMesh tm; }
+    private class Tag { public GameObject go; public TextMesh tm; public bool local; }
     private readonly Dictionary<VRRig, Tag> tags = new Dictionary<VRRig, Tag>();
     private Font tagFont;
     private float nextScan;
@@ -37,7 +37,25 @@ public class FalconNameTags : MonoBehaviour
         if (cam == null) return;
         foreach (KeyValuePair<VRRig, Tag> kv in tags)
         {
-            if (kv.Value.go != null) kv.Value.go.transform.rotation = cam.transform.rotation;
+            if (kv.Value.go == null) continue;
+            if (kv.Value.local)
+            {
+                // Round 53 (Sans): your own tag must not copy your head
+                // rotation - it pitched and rolled with his head and he
+                // could only read it in the mirror. Hold the rig's yaw,
+                // upright, like the game's own name text.
+                Transform hc = kv.Key != null ? kv.Key.headConstraint : null;
+                if (hc != null)
+                {
+                    Vector3 f = hc.forward; f.y = 0f;
+                    if (f.sqrMagnitude > 0.001f)
+                        kv.Value.go.transform.rotation = Quaternion.LookRotation(f.normalized, Vector3.up);
+                }
+            }
+            else
+            {
+                kv.Value.go.transform.rotation = cam.transform.rotation;
+            }
         }
     }
 
@@ -78,6 +96,7 @@ public class FalconNameTags : MonoBehaviour
                 // than everyone else's (+0.55) so it stays out of
                 // his own view.
                 tag = CreateTag(rig, rp.IsLocal ? 0.9f : 0.55f);
+                tag.local = rp.IsLocal;
                 tags[rig] = tag;
             }
             // Round 43 (Sans): FPS on the tag too. Each client
@@ -89,6 +108,8 @@ public class FalconNameTags : MonoBehaviour
             object fv;
             if (rp.CustomProperties != null && rp.CustomProperties.TryGetValue("falcon_fps", out fv) && fv != null)
                 want += "\n" + fv + " FPS";
+            else if (rp.IsLocal && FalconStaffNet.LocalFps > 0)
+                want += "\n" + FalconStaffNet.LocalFps + " FPS"; // round 53: own tag reads the local measurement directly
             if (tag.tm.text != want) tag.tm.text = want;
         }
         stale.Clear();

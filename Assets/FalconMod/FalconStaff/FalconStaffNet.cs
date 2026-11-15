@@ -239,6 +239,8 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
     private string publishedRole;
     private float nextVoiceSample;
     private int fpsFrames;
+    public static int LocalFps;
+    private static bool fpsPublishLogged;
     private float fpsTime;
     private int publishedFps = -1;
     private void Update()
@@ -261,11 +263,18 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
             int fps = Mathf.RoundToInt(fpsFrames / fpsTime);
             fpsFrames = 0;
             fpsTime = 0f;
+            LocalFps = fps; // round 53: the local tag reads this directly (no Photon property needed)
             if (PhotonNetwork.InRoom && PhotonNetwork.LocalPlayer != null && Mathf.Abs(fps - publishedFps) >= 2)
             {
                 publishedFps = fps;
                 try { PhotonNetwork.LocalPlayer.SetCustomProperties(new ExitGames.Client.Photon.Hashtable { { "falcon_fps", fps } }); }
-                catch { }
+                catch (System.Exception e)
+                {
+                    // Round 53: was a silent catch - if this throws, the
+                    // FPS name tag can never work and nobody sees why
+                    // (Sans, build #9: "still no fps name tag"). Log once.
+                    if (!fpsPublishLogged) { fpsPublishLogged = true; Debug.Log("Falcon fps publish failed: " + e.Message); }
+                }
             }
         }
         // Voice activity sampling for report logs (round 28): who spoke
