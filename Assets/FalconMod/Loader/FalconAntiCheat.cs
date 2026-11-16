@@ -82,7 +82,13 @@ public static class FalconAntiCheat
     // keystore's fingerprint. One check covers the lib, the dex
     // patch and every other APK edit at once. Unreadable cert = no
     // positive evidence = fail open (same rule as the other stages).
-    private const string OfficialCertSha256 = "D84F136958C2886249A0DFB94A1E7D2574679100252ADD152C2F24BFD81832";
+    // Round 67: this pin was WRONG for two days - the fingerprint
+    // was mistyped when the keystore was generated (two chars,
+    // "E0", dropped at position 38; the constant was 62 chars, not
+    // 64), so build #12's official key false-flagged. The value
+    // below is re-read from falcon-release.keystore itself
+    // (keytool, 2026-11-16) - trust the file, never a transcription.
+    private const string OfficialCertSha256 = "D84F136958C2886249A0DFB94A1E7D25746791E002522ADD152C2F24BFD81832";
 
     private static List<string> CheckSignature()
     {
@@ -93,7 +99,7 @@ public static class FalconAntiCheat
             string hex = SigningCertSha256();
             if (hex == null) return flags;
             if (hex != OfficialCertSha256)
-                flags.Add("repacked APK - the signing certificate is not the official Falcon key (cert SHA-256 " + hex.Substring(0, 16) + "...). Repacked/modded builds are denied.");
+                flags.Add("repacked APK - the signing certificate is not the official Falcon key (cert SHA-256 " + hex + "). Repacked/modded builds are denied."); // round 67: full hash in the flag - a mismatch must be diagnosable from one log read
         }
         catch { }
         return flags;
@@ -271,9 +277,15 @@ public static class FalconAntiCheat
     //    the stock set below - this is the check that catches a menu
     //    .so dropped into lib/ by an APK repack (the APK INTEGRITY
     //    stage catches the repack itself; this names the lib).
-    //  - another app's install folder: flagged.
-    //  - app data / shared storage: legit game libs never load from
-    //    there - flagged with no allowlist needed.
+    //  - another app's install folder: NOT judged (round 67 - the
+    //    round-63 rule flagged every Meta lib on the headset: the
+    //    OpenXR runtime is its own app and its libs load into every
+    //    VR process by design, and overlay tools like the OVR
+    //    Metrics Tool do the same; build #12 false-flagged them
+    //    all). A menu cannot ride in from another app's folder
+    //    without that app loading it, which is not the repack route.
+    //  - the game's OWN data folder / shared storage: legit game
+    //    libs never load from there - flagged.
     //  - /data/local/tmp is FRIDA SCAN's flag, not repeated here.
     // The stock set is what the project ships (Unity trio + Photon
     // Voice pair + the Oculus plugins in the export). If a native
@@ -321,11 +333,15 @@ public static class FalconAntiCheat
                     foreach (string k in KnownLibs) if (file == k) { known = true; break; }
                     if (!known) flags.Add("extra library in the game's own lib folder: " + file + " - not part of the official build");
                 }
-                else flags.Add("library loaded from another app: " + file);
+                // round 67: another app's folder is not judged -
+                // the Meta OpenXR runtime + overlay tools load from
+                // their own install folders into every VR process.
                 continue;
             }
-            if (path.Contains("/data/data/") || path.Contains("/data/user/") || path.Contains("/storage/") || path.Contains("/sdcard/"))
-                flags.Add("library loaded from data/storage: " + file);
+            if (path.Contains("/storage/") || path.Contains("/sdcard/"))
+                flags.Add("library loaded from shared storage: " + file);
+            else if ((path.Contains("/data/data/") || path.Contains("/data/user/")) && path.Contains(OfficialId.ToLowerInvariant()))
+                flags.Add("library loaded from the game's data folder: " + file);
             // anything else (dev/anon mappings) is not judged
         }
         return flags;

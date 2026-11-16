@@ -82,6 +82,21 @@ public static class FalconMetroMap
                 var mat = new Material(shader);
                 if (texIdx >= 0 && texIdx < textures.Length) mat.mainTexture = textures[texIdx];
                 mat.color = color;
+                // Round 68: matte, not plastic. Runtime Standard
+                // materials default to 0.5 smoothness - under the
+                // loader lights the whole map sheened like molded
+                // plastic (build #12: "too much shine"). Rough
+                // concrete: gloss near zero, metal zero.
+                mat.SetFloat("_Metallic", 0f);
+                mat.SetFloat("_Glossiness", 0.18f);
+                // Round 65: the ground/water sheet spans the whole
+                // map flat - it catches the directional full-face
+                // and blew out neon blue in build #11, where Sans's
+                // render has it dark teal. Dim just that sheet,
+                // identified by its bounds (150 m+ across, flat).
+                var mb = mesh.bounds;
+                if (mb.size.x > 150f && mb.size.z > 150f && mb.size.y < 2f)
+                    mat.color = new Color(color.r * 0.3f, color.g * 0.3f, color.b * 0.3f, color.a);
 
                 var go = new GameObject("metro_mat_" + m);
                 go.transform.SetParent(root.transform, false);

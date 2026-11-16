@@ -55,7 +55,9 @@ public class FalconLoader : MonoBehaviour
     private GameObject staffRoot;
     private GameObject uiHolder;
     private Transform uiEye;
-    private float uiAnchorUntil;
+    private bool uiParked;
+    private GameObject mapRoot;
+    private Quaternion mapYaw = Quaternion.identity;
     private ShadowQuality prevShadows;
     private float prevShadowDist = -1f;
 
@@ -82,9 +84,12 @@ public class FalconLoader : MonoBehaviour
         staffRoot = GameObject.Find("FalconStaff");
         if (staffRoot != null) staffRoot.SetActive(false);
 
-        PlaceRig();
+        // Round 65: one frame for XR tracking to deliver a real
+        // eye pose before anything measures it.
+        yield return null;
+        SetupCameras();
+        PlaceMap();
         BuildLights();
-        try { FalconMetroMap.Build(); } catch (Exception e) { Debug.Log("FalconLoader: metro map build failed: " + e.Message); }
         // Round 57 flow hardening: music first, and every cosmetic
         // step isolated - in build #10 a single failure in this
         // stretch took the UI, the music, the bloom, the anticheat
@@ -152,10 +157,28 @@ public class FalconLoader : MonoBehaviour
 
     private void Update()
     {
-        // Round 62: keep the panel in front of the player's eyes
-        // while tracking settles (see BuildUi), then it stays put.
-        if (uiHolder != null && uiEye != null && Time.realtimeSinceStartup < uiAnchorUntil)
-            uiHolder.transform.position = uiEye.position + CamForward.normalized * 4.5f;
+        // Round 65: if the eye anchor did not exist when the UI
+        // was built, park the panel + fade on it the moment it
+        // appears (both are head-locked once parked, see BuildUi).
+        if (!uiParked && uiHolder != null)
+        {
+            var e = FindEye();
+            if (e != null)
+            {
+                uiEye = e;
+                uiHolder.transform.SetParent(e, false);
+                uiHolder.transform.localPosition = new Vector3(0f, 0f, 4.5f);
+                uiHolder.transform.localRotation = Quaternion.identity;
+                var fg = GameObject.Find("FalconFade");
+                if (fg != null && fg.transform.parent == null)
+                {
+                    fg.transform.SetParent(e, false);
+                    fg.transform.localPosition = new Vector3(0f, 0f, 0.45f);
+                    fg.transform.localRotation = Quaternion.identity;
+                }
+                uiParked = true;
+            }
+        }
         if (denied || loadingMain) return;
         if (beat <= 0f) return;
         if (Time.realtimeSinceStartup - beat > 20f)
@@ -180,19 +203,62 @@ public class FalconLoader : MonoBehaviour
         return s;
     }
 
-    private void PlaceRig()
+    // Round 65 (build #11 verdicts: "STILL TILTED", "no UI in
+    // sight", the grade nothing like his render): the rig is NEVER
+    // moved or rotated any more. Rounds 57-62 rotated the RIG to
+    // the authored shot, but a tracked headset composes its own
+    // live rotation on top - Sans's head yaw/pitch at load stacked
+    // with the authored ones and the city came out steep-dived and
+    // diagonal. Instead the MAP comes to the player: PlaceMap yaws
+    // the whole backdrop around the authored camera point and lands
+    // that point exactly on the player's eye, so looking straight
+    // ahead frames the downtown the way his Prisma shot does, and
+    // the horizon is always his own. The panel is head-locked to
+    // the eye (BuildUi) - the parking the fade already used.
+    private Transform FindEye()
+    {
+        var rig = GameObject.Find("OVRCameraRig");
+        if (rig == null) return null;
+        foreach (var t in rig.GetComponentsInChildren<Transform>(true))
+            if (t.name == "CenterEyeAnchor") return t;
+        foreach (var cam in rig.GetComponentsInChildren<Camera>(true))
+            return cam.transform;
+        return null;
+    }
+
+    private void SetupCameras()
     {
         var rig = GameObject.Find("OVRCameraRig");
         if (rig == null) return;
-        rig.transform.position = CamPos;
-        // Yaw + the composed pitch only - LookRotation against world
-        // up can never roll the horizon.
-        rig.transform.rotation = Quaternion.LookRotation(CamForward.normalized, Vector3.up);
-        // Round 59: cameras clear to the skybox - the default
-        // Unity sky is the loader's backdrop (round 57's dark solid
-        // clear was part of the superseded custom grade).
         foreach (var cam in rig.GetComponentsInChildren<Camera>(true))
-            cam.clearFlags = CameraClearFlags.Skybox;
+        {
+            // Round 68: SOLID clear, no skybox. Every skybox route
+            // (rounds 57-62) rendered bright on device - build #12:
+            // "this night sky looks like day". A solid near-black
+            // purple cannot do that; the city and its glow carry
+            // the frame, like his render.
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.backgroundColor = new Color(0.015f, 0.008f, 0.03f, 1f);
+        }
+    }
+
+    private void PlaceMap()
+    {
+        GameObject root = null;
+        try { root = FalconMetroMap.Build(); }
+        catch (Exception e) { Debug.Log("FalconLoader: metro map build failed: " + e.Message); }
+        if (root == null) return;
+        mapRoot = root;
+        var eye = FindEye();
+        if (eye == null) return; // authored orientation - still a backdrop
+        Vector3 f = eye.forward; f.y = 0f;
+        if (f.sqrMagnitude < 0.001f) return;
+        f.Normalize();
+        Vector3 cf = CamForward; cf.y = 0f; cf.Normalize();
+        float dy = Mathf.Atan2(f.x, f.z) - Mathf.Atan2(cf.x, cf.z);
+        mapYaw = Quaternion.Euler(0f, dy * Mathf.Rad2Deg, 0f);
+        root.transform.rotation = mapYaw;
+        root.transform.position = eye.position - mapYaw * CamPos;
     }
 
     private void BuildLights()
@@ -203,21 +269,28 @@ public class FalconLoader : MonoBehaviour
         // point light doing the work - via the procedural skybox and
         // skybox ambient, no fog. Only in this scene: RenderSettings
         // are per-scene, so SJR keeps the game's own lighting as stock.
-        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Skybox;
-        RenderSettings.ambientIntensity = 0.15f; // rounds 61-62: DARK, like his render - the point light does the work
-        RenderSettings.fog = false;
-        var skyShader = Shader.Find("Skybox/Procedural");
-        if (skyShader != null)
-        {
-            var sky = new Material(skyShader);
-            sky.SetColor("_SkyTint", new Color(0.08f, 0.06f, 0.14f, 1f));
-            sky.SetColor("_GroundColor", new Color(0.05f, 0.03f, 0.03f, 1f));
-            sky.SetFloat("_Exposure", 0.15f);
-            sky.SetFloat("_SunSize", 0.05f);
-            sky.SetFloat("_AtmosphereThickness", 1.2f);
-            RenderSettings.skybox = sky;
-        }
-        DynamicGI.UpdateEnvironment();
+        // Round 65: ambient is FLAT now, not skybox-driven. The
+        // skybox-ambient path (rounds 59-62) never landed dark on
+        // device - build #11's ground sheet blew out bright blue
+        // under it. A flat deep-purple ambient is deterministic:
+        // shadow sides keep a whisper of his render's purple fill
+        // and nothing can wash white. The procedural sky material
+        // below is now only the visible background, not the light.
+        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+        RenderSettings.ambientLight = new Color(0.06f, 0.03f, 0.10f, 1f);
+        // (fog is configured with the sky block below, round 68)
+        // Round 68: no skybox at all (see SetupCameras) - and the
+        // two depth cues his render has that the loader lacked:
+        // env reflections nearly off (the plastic sheen), and a
+        // whisper of exponential fog in the clear color, so the
+        // map's far edge melts into the dark instead of ending at
+        // a hard void line ("the void is consuming the bottom").
+        RenderSettings.skybox = null;
+        RenderSettings.reflectionIntensity = 0.15f;
+        RenderSettings.fog = true;
+        RenderSettings.fogMode = FogMode.Exponential;
+        RenderSettings.fogColor = new Color(0.015f, 0.008f, 0.03f, 1f);
+        RenderSettings.fogDensity = 0.0016f;
         // Round 57 (kept): this project's Android quality tiers ship
         // with realtime shadows OFF (QualitySettings shadows: 0) -
         // that, not the lights, is why build #10 had no shadows.
@@ -235,14 +308,41 @@ public class FalconLoader : MonoBehaviour
         // on the streets, like his editor render. Soft shadows on -
         // the loader forces shadow support at the top of this method.
         var spotGo = new GameObject("FalconPointLight");
-        spotGo.transform.position = LightPos;
+        // Round 65: the light rides the map pivot - PlaceMap moved
+        // the authored world, so the authored light position is a
+        // LOCAL position under the map root now.
+        if (mapRoot != null)
+        {
+            spotGo.transform.SetParent(mapRoot.transform, false);
+            spotGo.transform.localPosition = LightPos;
+        }
+        else spotGo.transform.position = LightPos;
         var spot = spotGo.AddComponent<Light>();
         spot.type = LightType.Point;
         spot.color = new Color(0.255f, 0.047f, 0.365f);
-        spot.intensity = 4.0f;
-        spot.range = 180f;
+        spot.intensity = 6.0f; // round 65: wider, stronger pool - his render bathes the whole downtown
+        spot.range = 260f;
         spot.shadows = LightShadows.Soft;
         spot.shadowStrength = 0.9f;
+
+        // Round 68: the visible glow core. Post-processing bloom
+        // has never landed on device, and a bare PointLight throws
+        // light but shows no source - Sans: "no gloss on the point
+        // light at all". A camera-facing radial-gradient sprite at
+        // the light's position gives the downtown the hot magenta
+        // core his Prisma render has, package or no package.
+        try
+        {
+            var glowTex = MakeGlowTexture();
+            var glowGo = new GameObject("FalconGlow");
+            if (mapRoot != null) { glowGo.transform.SetParent(mapRoot.transform, false); glowGo.transform.localPosition = LightPos; }
+            else glowGo.transform.position = LightPos;
+            var sr = glowGo.AddComponent<SpriteRenderer>();
+            sr.sprite = Sprite.Create(glowTex, new Rect(0f, 0f, glowTex.width, glowTex.height), new Vector2(0.5f, 0.5f), 128f);
+            sr.color = new Color(0.85f, 0.25f, 1f, 0.55f);
+            glowGo.transform.localScale = new Vector3(110f, 110f, 1f);
+        }
+        catch { }
 
         // His directional (violet, 0.91) restyles the scene's sun.
         var sun = GameObject.Find("FalconSun");
@@ -252,7 +352,16 @@ public class FalconLoader : MonoBehaviour
             if (dl != null)
             {
                 dl.color = new Color(0.718f, 0f, 1f);
-                dl.intensity = 0.9f;
+                // Round 65: yawed with the map pivot, so the light
+                // still rakes across the downtown from the same
+                // side. Kept strong (0.8) for contrast - build #12
+                // verdict was "too flat, not enough shadows", and
+                // the neon-blue blowout is now handled at the
+                // source: FalconMetroMap dims the ground sheet
+                // itself, and the flat ambient no longer fills the
+                // shadow sides back in.
+                dl.intensity = 0.8f;
+                dl.transform.rotation = mapYaw * dl.transform.rotation;
                 dl.shadows = LightShadows.Soft; // authored scene had m_Type 0 (none)
             }
         }
@@ -264,28 +373,35 @@ public class FalconLoader : MonoBehaviour
         Vector3 origin = rig != null ? rig.transform.position : CamPos;
         Quaternion rot = Quaternion.LookRotation(CamForward.normalized, Vector3.up);
 
-        // Round 62 (Sans: "no UI still"): the panel used to hang at
-        // the RIG's position - the tracking floor origin. The
-        // player's eyes sit ~1.6 m above that origin (plus wherever
-        // they stand inside their guardian), so the panel hung
-        // metres below the eye line, outside the view. Anchor it to
-        // the center eye instead: placed from the eye here, and
-        // re-placed from the eye every frame for the first seconds
-        // (Update) while tracking settles - then it stays put.
-        Transform eye = null;
-        if (rig != null)
-        {
-            foreach (var t in rig.GetComponentsInChildren<Transform>(true))
-                if (t.name == "CenterEyeAnchor") { eye = t; break; }
-        }
+        // Round 65 (Sans, build #11: "No UI in sight" - and the
+        // first-ever loader HAD one): round 62 placed the panel in
+        // WORLD space along the AUTHORED forward from the eye. If
+        // Sans's head yaw at load differed from the authored yaw,
+        // the panel sat off-view or behind him for the whole load -
+        // present in the scene, never in a frame. The panel is now
+        // HEAD-LOCKED to the eye anchor (parented, local z 4.5) -
+        // the exact parking the fade below already used - so it is
+        // centered in view wherever he looks, for the whole load.
+        // If the eye does not exist yet, Update parks it the moment
+        // it appears.
+        Transform eye = FindEye();
         uiEye = eye;
-        Vector3 anchorPos = eye != null ? eye.position : origin;
 
         var holder = new GameObject("FalconLoaderUi");
-        holder.transform.position = anchorPos + CamForward.normalized * 4.5f;
-        holder.transform.rotation = rot;
         uiHolder = holder;
-        uiAnchorUntil = Time.realtimeSinceStartup + 2.5f;
+        if (eye != null)
+        {
+            holder.transform.SetParent(eye, false);
+            holder.transform.localPosition = new Vector3(0f, 0f, 4.5f);
+            holder.transform.localRotation = Quaternion.identity;
+            uiParked = true;
+        }
+        else
+        {
+            holder.transform.position = origin + CamForward.normalized * 4.5f;
+            holder.transform.rotation = rot;
+            uiParked = false;
+        }
 
         var canvasGo = new GameObject("Canvas");
         canvasGo.transform.SetParent(holder.transform, false);
@@ -410,34 +526,49 @@ public class FalconLoader : MonoBehaviour
         if (barFill != null) barFill.anchorMax = new Vector2(p, 1f);
     }
 
+    private static Texture2D MakeGlowTexture()
+    {
+        int n = 128;
+        var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+        var px = new Color[n * n];
+        float half = n / 2f;
+        for (int y = 0; y < n; y++)
+            for (int x = 0; x < n; x++)
+            {
+                float d = Mathf.Sqrt((x - half) * (x - half) + (y - half) * (y - half)) / half;
+                float a = Mathf.Clamp01(1f - d);
+                px[y * n + x] = new Color(1f, 1f, 1f, a * a);
+            }
+        tex.SetPixels(px);
+        tex.Apply();
+        return tex;
+    }
+
     private void TryBloom()
     {
         // Post Processing v2 via reflection - compiles and runs with
         // or without the package; garnish only, all try/caught.
+        // Round 68: the volume is built FIRST and every camera is
+        // armed inside its own try - in the old order one throwing
+        // camera Init silently killed the volume creation below it,
+        // which fits "no bloom at all" in every build so far. Every
+        // step now logs, so the next logcat names the dead link.
         try
         {
             var rig = GameObject.Find("OVRCameraRig");
-            if (rig == null) return;
+            if (rig == null) { Debug.Log("FalconLoader bloom: no rig"); return; }
             var cams = rig.GetComponentsInChildren<Camera>(true);
-            if (cams.Length == 0) return;
+            if (cams.Length == 0) { Debug.Log("FalconLoader bloom: no cameras"); return; }
 
             var layerType = Type.GetType("UnityEngine.Rendering.PostProcessing.PostProcessLayer, Unity.Postprocessing.Runtime");
             var resType = Type.GetType("UnityEngine.Rendering.PostProcessing.PostProcessResources, Unity.Postprocessing.Runtime");
             var volType = Type.GetType("UnityEngine.Rendering.PostProcessing.PostProcessVolume, Unity.Postprocessing.Runtime");
             var profType = Type.GetType("UnityEngine.Rendering.PostProcessing.PostProcessProfile, Unity.Postprocessing.Runtime");
             var bloomType = Type.GetType("UnityEngine.Rendering.PostProcessing.Bloom, Unity.Postprocessing.Runtime");
-            if (layerType == null || volType == null || profType == null || bloomType == null) return;
-
-            // Round 57: EVERY eye camera gets the layer - round 52
-            // armed only cams[0], which is not necessarily an eye
-            // that renders (build #10: "NO BLOOM").
-            var resources = Resources.Load("PostProcessResources", resType);
-            foreach (var cam in cams)
+            if (layerType == null || volType == null || profType == null || bloomType == null || resType == null)
             {
-                var layer = cam.gameObject.AddComponent(layerType);
-                if (resources != null)
-                    layerType.GetMethod("Init", new[] { resType }).Invoke(layer, new object[] { resources });
-                layerType.GetField("volumeLayer").SetValue(layer, (LayerMask)1);
+                Debug.Log("FalconLoader bloom: post types missing (layer=" + (layerType != null) + " vol=" + (volType != null) + " prof=" + (profType != null) + " bloom=" + (bloomType != null) + " res=" + (resType != null) + ")");
+                return;
             }
 
             var profile = ScriptableObject.CreateInstance(profType);
@@ -453,8 +584,25 @@ public class FalconLoader : MonoBehaviour
             var vol = volGo.AddComponent(volType);
             volType.GetField("isGlobal").SetValue(vol, true);
             volType.GetField("sharedProfile").SetValue(vol, profile);
+
+            var resources = Resources.Load("PostProcessResources", resType);
+            Debug.Log("FalconLoader bloom: volume up, resources " + (resources != null ? "found" : "NULL"));
+            int armed = 0;
+            foreach (var cam in cams)
+            {
+                try
+                {
+                    var layer = cam.gameObject.AddComponent(layerType);
+                    if (resources != null)
+                        layerType.GetMethod("Init", new[] { resType }).Invoke(layer, new object[] { resources });
+                    layerType.GetField("volumeLayer").SetValue(layer, (LayerMask)1);
+                    armed++;
+                }
+                catch (Exception ce) { Debug.Log("FalconLoader bloom: camera arm failed: " + ce.Message); }
+            }
+            Debug.Log("FalconLoader bloom: armed on " + armed + "/" + cams.Length + " cameras");
         }
-        catch { }
+        catch (Exception e) { Debug.Log("FalconLoader bloom: failed: " + e.Message); }
     }
 
     private void SetParam(Type bloomType, object settings, string field, float value)

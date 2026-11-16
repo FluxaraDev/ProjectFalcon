@@ -358,6 +358,16 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
     public void OnCreateRoomFailed(short returnCode, string message) { }
     public void OnJoinedRoom()
     {
+        // Round 66 (Sans, build #11: "you have an fps name tag but
+        // other people don't"): publishedFps survives across rooms,
+        // and player properties do not. On a locked ~72 Hz the fps
+        // rarely moves 2+ from the value published in the PREVIOUS
+        // room, so in every room after the first (and GT zone hops
+        // are room changes) nobody re-published and remote tags got
+        // no FPS - while the local tag hid the same failure behind
+        // its LocalFps fallback. Reset on join: the next 1 s tick
+        // always publishes fresh into this room.
+        publishedFps = -1;
         string rn = PhotonNetwork.CurrentRoom != null ? PhotonNetwork.CurrentRoom.Name : "?";
         int n = PhotonNetwork.PlayerList != null ? PhotonNetwork.PlayerList.Length : 0;
         FalconSessionLog.Log("JOINED ROOM " + rn + " (" + n + " players)");
