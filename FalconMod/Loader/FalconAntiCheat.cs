@@ -297,6 +297,13 @@ public static class FalconAntiCheat
         "liboculusxrplugin.so", "libovrlipsync.so",
         "libaudiopluginoculusspatializer.so", "libovrplatformloader.so",
         "libmonodebuggerhandling.so",
+        // Round 69: proven official by the Falcon-signed build's own
+        // LIBS OBSERVED (anticheat_log, 2026-11-16): the Oculus XR
+        // plugin ships libovrplugin + libopenxr_loader in the game's
+        // own lib folder, and the Oculus SDK ships libsdktelemetry.
+        // Rounds 63-68 missed all three and false-denied the official
+        // build on them (builds #12 and #13).
+        "libovrplugin.so", "libopenxr_loader.so", "libsdktelemetry.so",
     };
 
     // Every unique .so path seen by the audit, appended to the
@@ -379,6 +386,20 @@ public static class FalconAntiCheat
             if (LastLibs.Count > 0)
                 body += "LIBS OBSERVED: " + string.Join(", ", LastLibs.ToArray()) + "\r\n";
             File.AppendAllText(path, body);
+        }
+        catch { }
+    }
+
+    // Round 69: the loader's own diagnostics ride the same file -
+    // it is the one artifact Sans reliably sends, while Debug.Log
+    // output (logcat) never reached Spark across four loader builds.
+    public static void AppendDiag(string text)
+    {
+        try
+        {
+            string dir = Directory.GetParent(Application.persistentDataPath).FullName;
+            string path = Path.Combine(dir, "anticheat_log");
+            File.AppendAllText(path, "LOADER DIAG: " + text + "\r\n");
         }
         catch { }
     }

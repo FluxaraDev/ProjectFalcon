@@ -55,6 +55,11 @@ public class FalconLoader : MonoBehaviour
     private GameObject staffRoot;
     private GameObject uiHolder;
     private Transform uiEye;
+    // Round 69: loader diagnostics, appended to anticheat_log via
+    // FalconAntiCheat.AppendDiag - the file Sans actually sends.
+    private readonly System.Collections.Generic.List<string> diag = new System.Collections.Generic.List<string>();
+    private string bloomDiag = "not run";
+    private TextMesh statusTm;
     private bool uiParked;
     private GameObject mapRoot;
     private Quaternion mapYaw = Quaternion.identity;
@@ -65,11 +70,17 @@ public class FalconLoader : MonoBehaviour
     {
         get
         {
-            if (gameFont != null) return gameFont;
-            // Round 57: the builtin Arial lookup can throw in a
-            // built player - never let a font fallback kill the load.
-            try { return Resources.GetBuiltinResource<Font>("Arial.ttf"); }
-            catch { return null; }
+            // Round 70: Arial FIRST. Diffed against the actual
+            // round-51 file from the repo (the one build whose UI
+            // Sans ever saw): it used the builtin Arial, fetched
+            // fresh in BuildUI. Round 52 switched to the serialized
+            // Utopium and no build since has shown a single loader
+            // text - the ripped Utopium FontData may not rasterize
+            // in a player (object non-null, no exception, glyphs
+            // render as nothing). Utopium stays as the fallback;
+            // the diag line records which font a build resolved.
+            try { var a = Resources.GetBuiltinResource<Font>("Arial.ttf"); if (a != null) return a; } catch { }
+            return gameFont;
         }
     }
 
@@ -95,7 +106,7 @@ public class FalconLoader : MonoBehaviour
         // stretch took the UI, the music, the bloom, the anticheat
         // stages and the scene load down with it (silent, stuck).
         PlayMusic();
-        try { BuildUi(); } catch (Exception e) { Debug.Log("FalconLoader: UI build failed: " + e.Message); }
+        try { BuildUi(); } catch (Exception e) { Debug.Log("FalconLoader: UI build failed: " + e.Message); diag.Add("UI EXCEPTION: " + e.Message); }
         TryBloom();
 
         // ---- the ANTICHEAT STATION: staged checks, on screen --------
@@ -120,10 +131,16 @@ public class FalconLoader : MonoBehaviour
             if (f != null && f.Count > 0) { flags.AddRange(f); done.Add("[!!] " + stages[i].Name); }
             else done.Add("[OK] " + stages[i].Name);
             SetProgress((i + 1) / (float)stages.Count * 0.6f, "ANTICHEAT STATION");
+            // Round 69: the independent TextMesh readout also names
+            // the stage it is on - "what it's doing", on a path that
+            // does not depend on the canvas at all.
+            if (statusTm != null) statusTm.text = "PROJECT FALCON\n" + stages[i].Name + "\n" + Mathf.RoundToInt((i + 1) / (float)stages.Count * 60f) + "%";
             yield return new WaitForSeconds(0.5f);
         }
         if (stageText != null) stageText.text = StageLines(done, null);
         FalconAntiCheat.SaveResult(flags);
+        diag.Add("BLOOM: " + bloomDiag);
+        try { FalconAntiCheat.AppendDiag(string.Join(" | ", diag.ToArray())); } catch { }
 
         if (flags.Count > 0)
         {
@@ -135,8 +152,9 @@ public class FalconLoader : MonoBehaviour
             if (flagText != null)
             {
                 flagText.gameObject.SetActive(true);
-                flagText.text = "FLAGGED:\n" + string.Join("\n", flags.ToArray());
+                flagText.text = "FLAGGED:\n" + Caps(string.Join("\n", flags.ToArray()));
             }
+            if (statusTm != null) { statusTm.color = new Color(1f, 0.4f, 0.35f); statusTm.characterSize = 0.09f; statusTm.text = "ACCESS DENIED\n" + Caps(string.Join("\n", flags.ToArray())); }
             if (music != null) music.Stop();
             yield break; // the main scene never loads
         }
@@ -195,12 +213,21 @@ public class FalconLoader : MonoBehaviour
         StartCoroutine(LoadMain());
     }
 
+    // Round 70 (Sans): Utopium is an all-caps display font - the
+    // same one on every text board in the game - and lowercase in
+    // it looks wrong. Every loader DISPLAY string goes through
+    // Caps() (the anticheat_log file keeps the true case).
+    private static string Caps(string s)
+    {
+        return s != null ? s.ToUpperInvariant() : s;
+    }
+
     private string StageLines(List<string> done, string current)
     {
         string s = "";
         foreach (string d in done) s += d + "\n";
         if (current != null) s += ">> " + current + " ...";
-        return s;
+        return Caps(s);
     }
 
     // Round 65 (build #11 verdicts: "STILL TILTED", "no UI in
@@ -287,10 +314,20 @@ public class FalconLoader : MonoBehaviour
         // a hard void line ("the void is consuming the bottom").
         RenderSettings.skybox = null;
         RenderSettings.reflectionIntensity = 0.15f;
+        // Round 69 (Sans: "no edge fog around the shade of the
+        // buildings - use real fog"): this IS Unity's real fog -
+        // but round 68 dialed it to 0.0016 in the clear color,
+        // which at downtown distances (10-80 m) changed pixels by
+        // single-digit percents toward a color identical to the
+        // shadows: invisible. Now a real atmosphere: density
+        // 0.0045 (about 20% at 50 m, 36% at 100 m, 59% at 200 m)
+        // in a dark magenta-purple haze slightly above the clear
+        // color, so building silhouettes melt at their edges the
+        // way his Prisma render does.
         RenderSettings.fog = true;
         RenderSettings.fogMode = FogMode.Exponential;
-        RenderSettings.fogColor = new Color(0.015f, 0.008f, 0.03f, 1f);
-        RenderSettings.fogDensity = 0.0016f;
+        RenderSettings.fogColor = new Color(0.06f, 0.03f, 0.08f, 1f);
+        RenderSettings.fogDensity = 0.0045f;
         // Round 57 (kept): this project's Android quality tiers ship
         // with realtime shadows OFF (QualitySettings shadows: 0) -
         // that, not the lights, is why build #10 had no shadows.
@@ -325,24 +362,11 @@ public class FalconLoader : MonoBehaviour
         spot.shadows = LightShadows.Soft;
         spot.shadowStrength = 0.9f;
 
-        // Round 68: the visible glow core. Post-processing bloom
-        // has never landed on device, and a bare PointLight throws
-        // light but shows no source - Sans: "no gloss on the point
-        // light at all". A camera-facing radial-gradient sprite at
-        // the light's position gives the downtown the hot magenta
-        // core his Prisma render has, package or no package.
-        try
-        {
-            var glowTex = MakeGlowTexture();
-            var glowGo = new GameObject("FalconGlow");
-            if (mapRoot != null) { glowGo.transform.SetParent(mapRoot.transform, false); glowGo.transform.localPosition = LightPos; }
-            else glowGo.transform.position = LightPos;
-            var sr = glowGo.AddComponent<SpriteRenderer>();
-            sr.sprite = Sprite.Create(glowTex, new Rect(0f, 0f, glowTex.width, glowTex.height), new Vector2(0.5f, 0.5f), 128f);
-            sr.color = new Color(0.85f, 0.25f, 1f, 0.55f);
-            glowGo.transform.localScale = new Vector3(110f, 110f, 1f);
-        }
-        catch { }
+        // Round 69: the round-68 glow sprite is GONE at Sans's
+        // order ("there's already a point light in the gltf you
+        // added a big pink object don't do that"). The authored
+        // point light above is the only downtown light source;
+        // no fake glow objects.
 
         // His directional (violet, 0.91) restyles the scene's sun.
         var sun = GameObject.Find("FalconSun");
@@ -386,6 +410,7 @@ public class FalconLoader : MonoBehaviour
         // it appears.
         Transform eye = FindEye();
         uiEye = eye;
+        diag.Add("UI eye=" + (eye != null ? eye.name : "NULL") + " font=" + (Font != null ? Font.name : "NULL"));
 
         var holder = new GameObject("FalconLoaderUi");
         uiHolder = holder;
@@ -410,14 +435,34 @@ public class FalconLoader : MonoBehaviour
         var rt = canvasGo.GetComponent<RectTransform>();
         rt.sizeDelta = new Vector2(640f, 400f);
         canvasGo.transform.localScale = new Vector3(0.005f, 0.005f, 0.005f);
-        canvasGo.AddComponent<CanvasScaler>();
+        // Round 70: NO CanvasScaler - the working round-51 canvas
+        // had none (in WorldSpace it recomputes the canvas scale
+        // from pixel ratios instead of leaving the set value).
 
-        var panel = MakeText(canvasGo.transform, "Panel", "", 24, TextAnchor.MiddleCenter, new Color(0f, 0f, 0f, 0f));
-        var prt = panel.GetComponent<RectTransform>();
+        // Round 70: the panel is a DEDICATED Image object, like
+        // the working round-51 loader - not a Text with an Image
+        // bolted on and the Text Destroy()ed afterwards (two
+        // Graphics on one object share a single CanvasRenderer;
+        // which one survives is not guaranteed).
+        var panelGo = new GameObject("Panel");
+        panelGo.transform.SetParent(canvasGo.transform, false);
+        var prt = panelGo.AddComponent<RectTransform>();
         prt.anchorMin = Vector2.zero; prt.anchorMax = Vector2.one; prt.offsetMin = Vector2.zero; prt.offsetMax = Vector2.zero;
-        var img = panel.gameObject.AddComponent<Image>();
-        img.color = new Color(0.02f, 0f, 0.05f, 0.72f);
-        Destroy(panel); // keep only the Image on this object
+        var img = panelGo.AddComponent<Image>();
+        // Round 69: brighter violet, near-opaque - the round-65
+        // panel color sat within a few percent of the sky clear
+        // color and read as nothing even if it rendered.
+        img.color = new Color(0.09f, 0.04f, 0.16f, 0.95f);
+
+        // A solid magenta title strip - pure Image, no font
+        // involved, so the panel skeleton is unmistakable even if
+        // every text on it fails.
+        var strip = new GameObject("TitleStrip");
+        strip.transform.SetParent(canvasGo.transform, false);
+        var stripRt = strip.AddComponent<RectTransform>();
+        stripRt.anchorMin = new Vector2(0f, 0.94f); stripRt.anchorMax = new Vector2(1f, 1f);
+        stripRt.offsetMin = Vector2.zero; stripRt.offsetMax = Vector2.zero;
+        strip.AddComponent<Image>().color = new Color(0.85f, 0.3f, 1f, 1f);
 
         var title = MakeText(canvasGo.transform, "Title", "PROJECT FALCON", 44, TextAnchor.MiddleCenter, new Color(1f, 0.85f, 1f));
         Place(title, 0.78f, 0.97f);
@@ -454,6 +499,38 @@ public class FalconLoader : MonoBehaviour
         frt.offsetMin = Vector2.zero; frt.offsetMax = Vector2.zero;
         flagText.gameObject.SetActive(false);
 
+        // Round 69: a SECOND, independent status readout on a
+        // completely different render path - a TextMesh (mesh
+        // renderer, no canvas) head-locked below center view.
+        // Four builds reported no canvas UI; if anything in the
+        // canvas path is cursed in this project, this still shows,
+        // and the diag line in anticheat_log says which paths
+        // built. Percent + deny state mirror onto it.
+        try
+        {
+            var tmGo = new GameObject("FalconLoaderTm");
+            tmGo.transform.SetParent(eye != null ? eye : holder.transform, false);
+            tmGo.transform.localPosition = new Vector3(0f, -0.55f, 3.2f);
+            tmGo.transform.localRotation = Quaternion.identity;
+            var tm = tmGo.AddComponent<TextMesh>();
+            tm.font = Font;
+            tm.fontSize = 0;
+            tm.characterSize = 0.16f;
+            tm.anchor = TextAnchor.MiddleCenter;
+            tm.alignment = TextAlignment.Center;
+            tm.color = new Color(1f, 0.9f, 1f);
+            tm.text = "PROJECT FALCON\n0%";
+            if (Font != null)
+            {
+                var mr = tmGo.GetComponent<MeshRenderer>();
+                if (mr != null && Font.material != null) mr.material = Font.material;
+            }
+            statusTm = tm;
+            SetLayerRecursive(tmGo, 0);
+            diag.Add("TM built");
+        }
+        catch (Exception te) { diag.Add("TM EXCEPTION: " + te.Message); }
+
         // Round 59: the fade is a world-space panel riding the
         // center eye - ScreenSpaceOverlay canvases do not render in
         // VR at all, so the old fade was invisible in the headset.
@@ -489,6 +566,7 @@ public class FalconLoader : MonoBehaviour
         // canvas on layer 5 never reaches the headset's eyes.
         SetLayerRecursive(holder, 0);
         SetLayerRecursive(fadeGo, 0);
+        diag.Add("UI built ok parent=" + (holder.transform.parent != null ? holder.transform.parent.name : "none"));
     }
 
     private static void SetLayerRecursive(GameObject go, int layer)
@@ -523,25 +601,8 @@ public class FalconLoader : MonoBehaviour
     {
         p = Mathf.Clamp01(p);
         if (statusText != null) statusText.text = Mathf.RoundToInt(p * 100f) + "%";
+        if (statusTm != null) statusTm.text = "PROJECT FALCON\n" + Mathf.RoundToInt(p * 100f) + "%";
         if (barFill != null) barFill.anchorMax = new Vector2(p, 1f);
-    }
-
-    private static Texture2D MakeGlowTexture()
-    {
-        int n = 128;
-        var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
-        var px = new Color[n * n];
-        float half = n / 2f;
-        for (int y = 0; y < n; y++)
-            for (int x = 0; x < n; x++)
-            {
-                float d = Mathf.Sqrt((x - half) * (x - half) + (y - half) * (y - half)) / half;
-                float a = Mathf.Clamp01(1f - d);
-                px[y * n + x] = new Color(1f, 1f, 1f, a * a);
-            }
-        tex.SetPixels(px);
-        tex.Apply();
-        return tex;
     }
 
     private void TryBloom()
@@ -556,9 +617,9 @@ public class FalconLoader : MonoBehaviour
         try
         {
             var rig = GameObject.Find("OVRCameraRig");
-            if (rig == null) { Debug.Log("FalconLoader bloom: no rig"); return; }
+            if (rig == null) { bloomDiag = "no rig"; return; }
             var cams = rig.GetComponentsInChildren<Camera>(true);
-            if (cams.Length == 0) { Debug.Log("FalconLoader bloom: no cameras"); return; }
+            if (cams.Length == 0) { bloomDiag = "no cameras"; return; }
 
             var layerType = Type.GetType("UnityEngine.Rendering.PostProcessing.PostProcessLayer, Unity.Postprocessing.Runtime");
             var resType = Type.GetType("UnityEngine.Rendering.PostProcessing.PostProcessResources, Unity.Postprocessing.Runtime");
@@ -567,7 +628,7 @@ public class FalconLoader : MonoBehaviour
             var bloomType = Type.GetType("UnityEngine.Rendering.PostProcessing.Bloom, Unity.Postprocessing.Runtime");
             if (layerType == null || volType == null || profType == null || bloomType == null || resType == null)
             {
-                Debug.Log("FalconLoader bloom: post types missing (layer=" + (layerType != null) + " vol=" + (volType != null) + " prof=" + (profType != null) + " bloom=" + (bloomType != null) + " res=" + (resType != null) + ")");
+                bloomDiag = "post types missing (layer=" + (layerType != null) + " vol=" + (volType != null) + " prof=" + (profType != null) + " bloom=" + (bloomType != null) + " res=" + (resType != null) + ")";
                 return;
             }
 
@@ -586,12 +647,18 @@ public class FalconLoader : MonoBehaviour
             volType.GetField("sharedProfile").SetValue(vol, profile);
 
             var resources = Resources.Load("PostProcessResources", resType);
-            Debug.Log("FalconLoader bloom: volume up, resources " + (resources != null ? "found" : "NULL"));
+            string resTxt = resources != null ? "found" : "NULL";
             int armed = 0;
             foreach (var cam in cams)
             {
                 try
                 {
+                    // Round 69: Quest rigs commonly ship allowHDR
+                    // off, and post bloom fed an LDR target has
+                    // almost nothing to bloom - a prime suspect for
+                    // "no bloom" on every build even if the layer
+                    // armed fine. Force HDR on the loader's cameras.
+                    cam.allowHDR = true;
                     var layer = cam.gameObject.AddComponent(layerType);
                     if (resources != null)
                         layerType.GetMethod("Init", new[] { resType }).Invoke(layer, new object[] { resources });
@@ -600,9 +667,9 @@ public class FalconLoader : MonoBehaviour
                 }
                 catch (Exception ce) { Debug.Log("FalconLoader bloom: camera arm failed: " + ce.Message); }
             }
-            Debug.Log("FalconLoader bloom: armed on " + armed + "/" + cams.Length + " cameras");
+            bloomDiag = "armed " + armed + "/" + cams.Length + " resources " + resTxt + " hdr forced";
         }
-        catch (Exception e) { Debug.Log("FalconLoader bloom: failed: " + e.Message); }
+        catch (Exception e) { bloomDiag = "exception: " + e.Message; }
     }
 
     private void SetParam(Type bloomType, object settings, string field, float value)
