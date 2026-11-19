@@ -38,6 +38,13 @@ public class FalconWallSign : MonoBehaviour
 
     private void TryBuild()
     {
+        // Round 81: adopt a sign baked into the scene by the
+        // editor's Apply FalconMod > Load Objects instead of
+        // building a second one. The billboard yaw in Update
+        // drives the baked sign exactly like a spawned one.
+        var existing = GameObject.Find("FalconWallSign");
+        if (existing != null) { signRoot = existing; return; }
+
         TMP_FontAsset font = null;
         foreach (TextMeshPro tmp3d in FindObjectsOfType<TextMeshPro>())
         {

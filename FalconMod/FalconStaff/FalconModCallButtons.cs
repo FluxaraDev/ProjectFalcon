@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using GorillaLocomotion;
 
 // Project Falcon MOD CALL buttons (Sans, 2026-11-14, round 34):
@@ -65,6 +66,63 @@ public class FalconModCallButtons : MonoBehaviour
     private void Start()
     {
         BuildButtons();
+        AdoptBaked();
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    private void OnDestroy()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        AdoptBaked();
+    }
+
+    // Round 81: if the scene itself carries baked buttons (the
+    // editor's Apply FalconMod > Load Objects), the baked set
+    // becomes the live one: a runtime root with the same name is
+    // destroyed and the Btn entry rebinds to the baked root,
+    // cube and labels included. Baked roots are scene-owned -
+    // no DontDestroyOnLoad for them. This is also what "stops
+    // the loading scripts" for baked items: the spawner stands
+    // down per object because the object is already there.
+    private void AdoptBaked()
+    {
+        Scene active = SceneManager.GetActiveScene();
+        foreach (GameObject go in Resources.FindObjectsOfTypeAll<GameObject>())
+        {
+            if (go == null || !go.scene.IsValid() || go.scene != active) continue;
+            if (!go.name.StartsWith("FalconModCallButton_")) continue;
+            string mapName = go.name.Substring("FalconModCallButton_".Length);
+            Btn b = null;
+            foreach (Btn x in btns) if (x.map == mapName) { b = x; break; }
+            if (b != null && b.root == go.transform) continue; // already bound to the baked one
+            Transform cubeT = null;
+            MeshRenderer rend = null;
+            foreach (MeshRenderer mr in go.GetComponentsInChildren<MeshRenderer>(true))
+            {
+                if (mr.GetComponent<TextMesh>() == null) { cubeT = mr.transform; rend = mr; break; }
+            }
+            if (cubeT == null) continue; // malformed baked root - keep the runtime one
+            TextMesh label = null, popup = null;
+            foreach (TextMesh tm in go.GetComponentsInChildren<TextMesh>(true))
+            {
+                if (tm.gameObject.activeSelf) label = tm; else popup = tm;
+            }
+            if (b != null && b.root != null && b.root.gameObject != go) Destroy(b.root.gameObject);
+            if (b == null)
+            {
+                b = new Btn { map = mapName, phase = btns.Count * 1.37f };
+                btns.Add(b);
+            }
+            b.root = go.transform;
+            b.cube = cubeT;
+            b.rend = rend;
+            b.label = label;
+            b.popup = popup;
+        }
     }
 
     // Round 78 (build #18 verdict - Sans: "the mod call buttons

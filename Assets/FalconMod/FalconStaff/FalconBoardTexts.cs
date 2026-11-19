@@ -119,6 +119,11 @@ public class FalconBoardTexts : MonoBehaviour
                 FitText(t);
             }
         }
+        // Round 81: a staff board baked into the scene by the
+        // editor's Apply FalconMod tool is adopted, not cloned
+        // a second time.
+        if (!staffBoardBuilt && GameObject.Find("FalconStaffText") != null)
+            staffBoardBuilt = true;
         if (!staffBoardBuilt && nearestCocText != null)
             staffBoardBuilt = BuildStaffBoard(nearestCocText);
     }
