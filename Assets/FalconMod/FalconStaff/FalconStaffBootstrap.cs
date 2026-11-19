@@ -30,6 +30,7 @@ public static class FalconStaffBootstrap
         go.AddComponent<FalconRave>();
         go.AddComponent<FalconComputerFix>();
         go.AddComponent<FalconOptionsDriver>();
+        go.AddComponent<FalconRtx>();
         go.AddComponent<FalconNameTags>();
         go.AddComponent<FalconWallSign>();
         go.AddComponent<FalconModCallButtons>();

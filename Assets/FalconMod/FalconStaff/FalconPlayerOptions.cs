@@ -6,6 +6,9 @@ using GorillaLocomotion;
 //   option 1: long arms (Player.FalconArmScale 1.4x reach)
 //   option 2: speed boost (see below)
 //   option 3: name tags
+//   option 4: RTX (FalconRtx - realtime-lighting graphics mode;
+//             DEFAULT OFF, Sans 2026-11-18: "by default it's off
+//             in case it breaks"; the page warns it's experimental)
 // Optional Preds were removed for good (Sans, build #10 isolation).
 //
 // SPEED BOOST, REBUILT round 38 (Sans's device verdict on the old
@@ -33,6 +36,7 @@ public static class FalconPlayerOptions
     public static bool LongArms = true;
     public static bool SpeedBoost = true;
     public static bool NameTags = true;
+    public static bool Rtx = false;
 
     public const float ArmScale = 1.4f;
     // Sans's boost: jumpMultiplier 1.1 -> 1.4, as a factor.
@@ -41,6 +45,7 @@ public static class FalconPlayerOptions
     public static void ToggleLongArms() { LongArms = !LongArms; ApplyArms(); }
     public static void ToggleSpeedBoost() { SpeedBoost = !SpeedBoost; }
     public static void ToggleNameTags() { NameTags = !NameTags; }
+    public static void ToggleRtx() { Rtx = !Rtx; }
 
     public static void ApplyAll() { ApplyArms(); }
 
