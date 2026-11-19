@@ -114,7 +114,12 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
         // all; in a group the closer stayed behind in the emptied
         // room. The event is already sent, so apply the same exit
         // locally (same lines the EvCloseAll case runs).
-        try { if (GorillaNetworking.GorillaComputer.instance != null) GorillaNetworking.GorillaComputer.instance.UpdateFailureText("THIS LOBBY WAS CLOSED BY STAFF."); } catch { }
+        // Round 74: FalconFailure.Mark() FIRST - without it the
+        // failure screen is never cleared (build #15: the closed
+        // message latched the computer forever, public lobbies
+        // only). Every gate that shows a Falcon failure text marks
+        // it; these two call sites were the only ones missing it.
+        try { FalconFailure.Mark(); if (GorillaNetworking.GorillaComputer.instance != null) GorillaNetworking.GorillaComputer.instance.UpdateFailureText("THIS LOBBY WAS CLOSED BY STAFF."); } catch { }
         ExitToStump();
     }
 
@@ -427,7 +432,7 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
             case EvOutfitAll: StartCoroutine(FalconStaffOutfits.AllCosmetics()); break;
             case EvSpookyMusic: SpookyMusic(); break;
             case EvCloseAll:
-                try { if (GorillaNetworking.GorillaComputer.instance != null) GorillaNetworking.GorillaComputer.instance.UpdateFailureText("THIS LOBBY WAS CLOSED BY STAFF."); } catch { }
+                try { FalconFailure.Mark(); if (GorillaNetworking.GorillaComputer.instance != null) GorillaNetworking.GorillaComputer.instance.UpdateFailureText("THIS LOBBY WAS CLOSED BY STAFF."); } catch { }
                 ExitToStump();
                 break;
         }
