@@ -59,7 +59,6 @@ public class FalconLoader : MonoBehaviour
     // FalconAntiCheat.AppendDiag - the file Sans actually sends.
     private readonly System.Collections.Generic.List<string> diag = new System.Collections.Generic.List<string>();
     private string bloomDiag = "not run";
-    private TextMesh statusTm;
     private bool uiParked;
     private GameObject mapRoot;
     private Quaternion mapYaw = Quaternion.identity;
@@ -70,17 +69,17 @@ public class FalconLoader : MonoBehaviour
     {
         get
         {
-            // Round 70: Arial FIRST. Diffed against the actual
-            // round-51 file from the repo (the one build whose UI
-            // Sans ever saw): it used the builtin Arial, fetched
-            // fresh in BuildUI. Round 52 switched to the serialized
-            // Utopium and no build since has shown a single loader
-            // text - the ripped Utopium FontData may not rasterize
-            // in a player (object non-null, no exception, glyphs
-            // render as nothing). Utopium stays as the fallback;
-            // the diag line records which font a build resolved.
-            try { var a = Resources.GetBuiltinResource<Font>("Arial.ttf"); if (a != null) return a; } catch { }
-            return gameFont;
+            // Round 71: Utopium FIRST again (Sans wants the game's
+            // font; all display text is caps, which Utopium needs).
+            // Round 70's Arial run (build #14) PROVED the canvas
+            // path end-to-end, and the other two round-52 changes
+            // (CanvasScaler, the Text-then-Destroy panel) are gone
+            // - so Utopium now gets a clean trial: if the text dies
+            // again, the font is convicted and Arial returns for
+            // good. The diag line records which font a build ran.
+            if (gameFont != null) return gameFont;
+            try { return Resources.GetBuiltinResource<Font>("Arial.ttf"); }
+            catch { return null; }
         }
     }
 
@@ -134,7 +133,6 @@ public class FalconLoader : MonoBehaviour
             // Round 69: the independent TextMesh readout also names
             // the stage it is on - "what it's doing", on a path that
             // does not depend on the canvas at all.
-            if (statusTm != null) statusTm.text = "PROJECT FALCON\n" + stages[i].Name + "\n" + Mathf.RoundToInt((i + 1) / (float)stages.Count * 60f) + "%";
             yield return new WaitForSeconds(0.5f);
         }
         if (stageText != null) stageText.text = StageLines(done, null);
@@ -154,7 +152,6 @@ public class FalconLoader : MonoBehaviour
                 flagText.gameObject.SetActive(true);
                 flagText.text = "FLAGGED:\n" + Caps(string.Join("\n", flags.ToArray()));
             }
-            if (statusTm != null) { statusTm.color = new Color(1f, 0.4f, 0.35f); statusTm.characterSize = 0.09f; statusTm.text = "ACCESS DENIED\n" + Caps(string.Join("\n", flags.ToArray())); }
             if (music != null) music.Stop();
             yield break; // the main scene never loads
         }
@@ -173,30 +170,39 @@ public class FalconLoader : MonoBehaviour
     private bool denied;
     private bool loadingMain;
 
+    // Round 71: one-time world placement of the panel - straight
+    // ahead of the player's facing at loader start (yaw only, no
+    // head pitch/roll), 4.5 m out, a touch below eye level so it
+    // floats in front without sitting on the skyline. Never
+    // re-placed afterwards: it does not follow the head. Also
+    // late-parks the fade onto the eye if BuildUi ran before the
+    // eye anchor existed (the fade DOES stay screen-locked).
+    private void PlaceUi()
+    {
+        if (uiHolder == null || uiParked) return;
+        var eye = FindEye();
+        if (eye == null) return;
+        uiEye = eye;
+        Vector3 fwd = eye.forward; fwd.y = 0f;
+        if (fwd.sqrMagnitude < 0.001f) fwd = Vector3.forward; else fwd.Normalize();
+        uiHolder.transform.SetParent(null);
+        uiHolder.transform.position = eye.position + fwd * 4.5f + new Vector3(0f, -0.15f, 0f);
+        uiHolder.transform.rotation = Quaternion.LookRotation(fwd, Vector3.up);
+        if (fadeGroup != null && fadeGroup.transform.parent == null)
+        {
+            fadeGroup.transform.SetParent(eye, false);
+            fadeGroup.transform.localPosition = new Vector3(0f, 0f, 0.45f);
+            fadeGroup.transform.localRotation = Quaternion.identity;
+        }
+        uiParked = true;
+        diag.Add("UI placed ahead of player");
+    }
+
     private void Update()
     {
-        // Round 65: if the eye anchor did not exist when the UI
-        // was built, park the panel + fade on it the moment it
-        // appears (both are head-locked once parked, see BuildUi).
-        if (!uiParked && uiHolder != null)
-        {
-            var e = FindEye();
-            if (e != null)
-            {
-                uiEye = e;
-                uiHolder.transform.SetParent(e, false);
-                uiHolder.transform.localPosition = new Vector3(0f, 0f, 4.5f);
-                uiHolder.transform.localRotation = Quaternion.identity;
-                var fg = GameObject.Find("FalconFade");
-                if (fg != null && fg.transform.parent == null)
-                {
-                    fg.transform.SetParent(e, false);
-                    fg.transform.localPosition = new Vector3(0f, 0f, 0.45f);
-                    fg.transform.localRotation = Quaternion.identity;
-                }
-                uiParked = true;
-            }
-        }
+        // Round 71: place the panel once the eye anchor exists
+        // (one-time world placement - see PlaceUi).
+        if (!uiParked && uiHolder != null) PlaceUi();
         if (denied || loadingMain) return;
         if (beat <= 0f) return;
         if (Time.realtimeSinceStartup - beat > 20f)
@@ -397,36 +403,25 @@ public class FalconLoader : MonoBehaviour
         Vector3 origin = rig != null ? rig.transform.position : CamPos;
         Quaternion rot = Quaternion.LookRotation(CamForward.normalized, Vector3.up);
 
-        // Round 65 (Sans, build #11: "No UI in sight" - and the
-        // first-ever loader HAD one): round 62 placed the panel in
-        // WORLD space along the AUTHORED forward from the eye. If
-        // Sans's head yaw at load differed from the authored yaw,
-        // the panel sat off-view or behind him for the whole load -
-        // present in the scene, never in a frame. The panel is now
-        // HEAD-LOCKED to the eye anchor (parented, local z 4.5) -
-        // the exact parking the fade below already used - so it is
-        // centered in view wherever he looks, for the whole load.
-        // If the eye does not exist yet, Update parks it the moment
-        // it appears.
+        // Round 71 (Sans, build #14): NOT head-locked any more.
+        // The panel is placed ONCE in the world, straight ahead
+        // of where the player faces when the loader starts
+        // (PlaceUi, yaw only), floating - he can look around the
+        // map without it glued to his face blocking the view.
+        // (Rounds 65-70 head-locked it; it worked, he hated it.)
+        // If the eye does not exist yet, the holder waits at the
+        // authored fallback below and Update places it the moment
+        // the eye appears - still one-time.
         Transform eye = FindEye();
         uiEye = eye;
         diag.Add("UI eye=" + (eye != null ? eye.name : "NULL") + " font=" + (Font != null ? Font.name : "NULL"));
 
         var holder = new GameObject("FalconLoaderUi");
         uiHolder = holder;
-        if (eye != null)
-        {
-            holder.transform.SetParent(eye, false);
-            holder.transform.localPosition = new Vector3(0f, 0f, 4.5f);
-            holder.transform.localRotation = Quaternion.identity;
-            uiParked = true;
-        }
-        else
-        {
-            holder.transform.position = origin + CamForward.normalized * 4.5f;
-            holder.transform.rotation = rot;
-            uiParked = false;
-        }
+        holder.transform.position = origin + CamForward.normalized * 4.5f;
+        holder.transform.rotation = rot;
+        uiParked = false;
+        PlaceUi();
 
         var canvasGo = new GameObject("Canvas");
         canvasGo.transform.SetParent(holder.transform, false);
@@ -499,41 +494,16 @@ public class FalconLoader : MonoBehaviour
         frt.offsetMin = Vector2.zero; frt.offsetMax = Vector2.zero;
         flagText.gameObject.SetActive(false);
 
-        // Round 69: a SECOND, independent status readout on a
-        // completely different render path - a TextMesh (mesh
-        // renderer, no canvas) head-locked below center view.
-        // Four builds reported no canvas UI; if anything in the
-        // canvas path is cursed in this project, this still shows,
-        // and the diag line in anticheat_log says which paths
-        // built. Percent + deny state mirror onto it.
-        try
-        {
-            var tmGo = new GameObject("FalconLoaderTm");
-            tmGo.transform.SetParent(eye != null ? eye : holder.transform, false);
-            tmGo.transform.localPosition = new Vector3(0f, -0.55f, 3.2f);
-            tmGo.transform.localRotation = Quaternion.identity;
-            var tm = tmGo.AddComponent<TextMesh>();
-            tm.font = Font;
-            tm.fontSize = 0;
-            tm.characterSize = 0.16f;
-            tm.anchor = TextAnchor.MiddleCenter;
-            tm.alignment = TextAlignment.Center;
-            tm.color = new Color(1f, 0.9f, 1f);
-            tm.text = "PROJECT FALCON\n0%";
-            if (Font != null)
-            {
-                var mr = tmGo.GetComponent<MeshRenderer>();
-                if (mr != null && Font.material != null) mr.material = Font.material;
-            }
-            statusTm = tm;
-            SetLayerRecursive(tmGo, 0);
-            diag.Add("TM built");
-        }
-        catch (Exception te) { diag.Add("TM EXCEPTION: " + te.Message); }
+        // Round 71: the round-69 TextMesh witness is REMOVED -
+        // build #14 proved the canvas path (the witness rendered
+        // too, doubled over the panel, and Sans: "the text is a
+        // bit big"). One readout, the panel, is the UI now.
 
         // Round 59: the fade is a world-space panel riding the
         // center eye - ScreenSpaceOverlay canvases do not render in
         // VR at all, so the old fade was invisible in the headset.
+        // Round 71 (Sans): make it GIANT - a full screen-locked
+        // black panel, nowhere to look around it.
         var fadeGo = new GameObject("FalconFade");
         if (eye != null)
         {
@@ -549,7 +519,7 @@ public class FalconLoader : MonoBehaviour
         var fc = fadeGo.AddComponent<Canvas>();
         fc.renderMode = RenderMode.WorldSpace;
         var fcrt = fadeGo.GetComponent<RectTransform>();
-        fcrt.sizeDelta = new Vector2(200f, 140f);
+        fcrt.sizeDelta = new Vector2(1200f, 1200f); // 6 m x 6 m at the eye (round 71: giant)
         fadeGo.transform.localScale = new Vector3(0.005f, 0.005f, 0.005f);
         fadeGroup = fadeGo.AddComponent<CanvasGroup>();
         fadeGroup.alpha = 0f;
@@ -601,7 +571,6 @@ public class FalconLoader : MonoBehaviour
     {
         p = Mathf.Clamp01(p);
         if (statusText != null) statusText.text = Mathf.RoundToInt(p * 100f) + "%";
-        if (statusTm != null) statusTm.text = "PROJECT FALCON\n" + Mathf.RoundToInt(p * 100f) + "%";
         if (barFill != null) barFill.anchorMax = new Vector2(p, 1f);
     }
 
@@ -633,13 +602,26 @@ public class FalconLoader : MonoBehaviour
             }
 
             var profile = ScriptableObject.CreateInstance(profType);
-            var settings = Activator.CreateInstance(bloomType);
+            // Round 71 ROOT CAUSE (found by reading this code after
+            // build #14's "still no bloom"): the old code reflected
+            // "AddSettings(ScriptableObject)" - an overload that
+            // does not exist on PostProcessProfile. GetMethod
+            // returned null, the guard skipped the call, and the
+            // Bloom settings were NEVER added: the volume ran an
+            // EMPTY profile in every build while the diag reported
+            // "armed". The real API is AddSettings(Type), which
+            // creates the settings inside the profile and returns
+            // it - configure THAT instance.
+            var addSettings = profType.GetMethod("AddSettings", new[] { typeof(Type) });
+            if (addSettings == null) { bloomDiag = "AddSettings(Type) missing"; return; }
+            var settings = addSettings.Invoke(profile, new object[] { bloomType });
+            if (settings == null) { bloomDiag = "AddSettings returned null"; return; }
             bloomType.GetField("enabled").SetValue(settings, true);
             SetParam(bloomType, settings, "intensity", 3.0f);   // round 61 (Sans): "a lot of bloom"
             SetParam(bloomType, settings, "threshold", 0.0f);
             SetParam(bloomType, settings, "softKnee", 0.5f);
-            var addSettings = profType.GetMethod("AddSettings", new[] { typeof(ScriptableObject) });
-            if (addSettings != null) addSettings.Invoke(profile, new object[] { settings });
+            int settingsCount = -1;
+            try { var sl = profType.GetField("settings").GetValue(profile) as System.Collections.IList; if (sl != null) settingsCount = sl.Count; } catch { }
 
             var volGo = new GameObject("FalconBloomVolume");
             var vol = volGo.AddComponent(volType);
@@ -667,7 +649,7 @@ public class FalconLoader : MonoBehaviour
                 }
                 catch (Exception ce) { Debug.Log("FalconLoader bloom: camera arm failed: " + ce.Message); }
             }
-            bloomDiag = "armed " + armed + "/" + cams.Length + " resources " + resTxt + " hdr forced";
+            bloomDiag = "armed " + armed + "/" + cams.Length + " resources " + resTxt + " hdr forced settings " + settingsCount;
         }
         catch (Exception e) { bloomDiag = "exception: " + e.Message; }
     }

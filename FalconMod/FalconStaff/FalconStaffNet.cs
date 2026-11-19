@@ -107,6 +107,15 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
         SendToAll(EvCloseAll, new object[0]);
         FalconStaffWebhook.Log("LOBBY CLOSED by " + me + " (room " + code + ")");
         FalconSessionLog.Log("CLOSE LOBBY room " + code);
+        // Round 71 (build #14 verdict: "close lobby doesn't
+        // work"): SendToAll rides RaiseEventOptions.Default, whose
+        // ReceiverGroup is OTHERS - the closer never received
+        // their own EvCloseAll. Solo the button did nothing at
+        // all; in a group the closer stayed behind in the emptied
+        // room. The event is already sent, so apply the same exit
+        // locally (same lines the EvCloseAll case runs).
+        try { if (GorillaNetworking.GorillaComputer.instance != null) GorillaNetworking.GorillaComputer.instance.UpdateFailureText("THIS LOBBY WAS CLOSED BY STAFF."); } catch { }
+        ExitToStump();
     }
 
     // The game's own room exit (round 55): Gorilla Tag never leaves a
@@ -253,6 +262,16 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
                     if (data.Length > 1 && data[1] is float) sc = (float)data[1];
                     else if (data.Length > 1 && data[1] is double) sc = (float)(double)data[1];
                     ApplySizeEvent(tActor, sc);
+                    // Round 71: SIZE RX receipt (build #14 verdict:
+                    // "grow guns work not serverside"). The receive
+                    // + record + re-assert path reads correct in
+                    // code, so every client now posts a receipt per
+                    // size shot: one two-headset test convicts the
+                    // exact hop (no receipt on other clients = the
+                    // event never arrived; receipt + no scale = the
+                    // rig assert is losing on remote clients).
+                    FalconStaffWebhook.Log("SIZE RX " + CodeName(code) + " actor " + tActor + " scale " + sc + " sender " + photonEvent.Sender);
+                    FalconSessionLog.Log("SIZE RX actor " + tActor + " scale " + sc);
                     return;
                 }
             }
@@ -272,6 +291,7 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
     private int publishedFps = -1;
     private void Update()
     {
+        SizeTick(); // round 71: size assert also runs pre-LateUpdate (see SizeTick)
         if (Time.realtimeSinceStartup < fakeLagUntil)
             System.Threading.Thread.Sleep(185); // fake lag: ~5 FPS (round 30)
         if (PhotonNetwork.InRoom && publishedRole != FalconStaffRole.Role)
@@ -685,7 +705,14 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
         sizeFx[actor] = new SizeFx { scale = scale, until = Time.time + 10f };
     }
 
-    private void LateUpdate()
+    private void LateUpdate() { SizeTick(); }
+
+    // Round 71: the assert also ticks from Update. VRRig writes
+    // the rig's localScale FROM scaleFactor in its own
+    // LateUpdate, so asserting in Update (which always runs
+    // before every LateUpdate) guarantees the rig pass reads the
+    // gun's scale this frame instead of racing it.
+    private void SizeTick()
     {
         if (sizeFx.Count == 0) return;
         int me = PhotonNetwork.LocalPlayer != null ? PhotonNetwork.LocalPlayer.ActorNumber : -1;
