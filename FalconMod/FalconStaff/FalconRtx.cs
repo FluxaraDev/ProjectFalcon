@@ -161,9 +161,14 @@ public class FalconRtx : MonoBehaviour
             {
                 if (l == null) continue;
                 savedLightShadows.Add(new KeyValuePair<Light, LightShadows>(l, l.shadows));
-                savedLightBake.Add(new KeyValuePair<Light, LightmapBakeType>(l, l.lightmapBakeType));
+                savedLightBake.Add(new KeyValuePair<Light, LightmapBakeType>(l, l.bakingOutput.lightmapBakeType));
                 l.shadows = LightShadows.Soft;
-                l.lightmapBakeType = LightmapBakeType.Realtime;
+                // Round 77: Light.lightmapBakeType is editor-only -
+                // build #17 died on it (CS1061). The runtime route
+                // is Light.bakingOutput (a struct: copy, edit, set).
+                var bakeOut = l.bakingOutput;
+                bakeOut.lightmapBakeType = LightmapBakeType.Realtime;
+                l.bakingOutput = bakeOut;
             }
             diag += "lights " + savedLightShadows.Count + " ";
             var rigs = FindObjectsOfType<VRRig>();
@@ -469,7 +474,12 @@ public class FalconRtx : MonoBehaviour
             if (kv.Key != null) kv.Key.shadows = kv.Value;
         savedLightShadows.Clear();
         foreach (var kv in savedLightBake)
-            if (kv.Key != null) kv.Key.lightmapBakeType = kv.Value;
+        {
+            if (kv.Key == null) continue;
+            var restoreOut = kv.Key.bakingOutput;
+            restoreOut.lightmapBakeType = kv.Value;
+            kv.Key.bakingOutput = restoreOut;
+        }
         savedLightBake.Clear();
         QualitySettings.shadows = savedShadowQuality;
         QualitySettings.shadowResolution = savedShadowResolution;
