@@ -372,12 +372,19 @@ public class FalconRtx : MonoBehaviour
             if (mgr == null) return;
 
             string key = "day";
-            if (mgr.weatherCycle != null && mgr.currentWeatherIndex >= 0 && mgr.currentWeatherIndex < mgr.weatherCycle.Length)
+            // Weather: the global cycle only ever rolls Raining or
+            // None (its generator writes nothing else; WeatherType
+            // .All is just a wildcard other components match
+            // against). Mountains precipitation IS snow though -
+            // Sans: "Mountains snows randomly" - the same Raining
+            // state falls as snow up there, so rain + standing in
+            // the mountains = the snow fog.
+            try
             {
-                string w = mgr.weatherCycle[mgr.currentWeatherIndex].ToString().ToLowerInvariant();
-                if (w.Contains("snow")) key = "snow";
-                else if (w.Contains("rain") || w.Contains("all")) key = "rain";
+                if (mgr.CurrentWeather() == BetterDayNightManager.WeatherType.Raining)
+                    key = InMountains() ? "snow" : "rain";
             }
+            catch { }
             if (key == "day")
             {
                 string tod = (mgr.currentTimeOfDay ?? "").ToLowerInvariant();
@@ -411,6 +418,23 @@ public class FalconRtx : MonoBehaviour
                 SetParam(bloomTypeRef, bloomSettings, "intensity", key == "night" ? 2.8f : 2.2f);
         }
         catch { }
+    }
+
+    // Mountains quadrant test, anchored on the mountains mod-call
+    // button spot (-22.90, 17.68, -101.52): mountains is the map's
+    // east outlier (every other area sits at x <= -45), elevated,
+    // and below the clouds deck. Approximate by design - it only
+    // picks a fog tint during a storm.
+    private bool InMountains()
+    {
+        try
+        {
+            var p = GorillaLocomotion.Player.Instance;
+            if (p == null || p.headCollider == null) return false;
+            Vector3 pos = p.headCollider.transform.position;
+            return pos.x > -40f && pos.z < -80f && pos.z > -140f && pos.y > 5f && pos.y < 55f;
+        }
+        catch { return false; }
     }
 
     private void SetFog(Color color, float density)
