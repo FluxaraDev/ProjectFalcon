@@ -67,6 +67,7 @@ public class FalconRtx : MonoBehaviour
     private readonly List<GameObject> fireLights = new List<GameObject>();
     private readonly List<KeyValuePair<Material, Vector2>> savedIce = new List<KeyValuePair<Material, Vector2>>();
     private GameObject rtxSun;
+    private Light savedSunSource;
     private object bloomSettings;
     private Type bloomTypeRef;
 
@@ -240,6 +241,15 @@ public class FalconRtx : MonoBehaviour
                 sun.shadowStrength = 0.9f;
                 sunGo.transform.rotation = Quaternion.Euler(50f, -35f, 0f);
                 rtxSun = sunGo;
+                // Round 79: the procedural skybox draws its sun
+                // DISC from RenderSettings.sun (there is no sun
+                // object - the disc is shader-drawn from the
+                // designated directional). Register ours so the
+                // sky shows a sun in the same direction that casts
+                // the shadows (build #18 verdict: "no sun in the
+                // sky").
+                savedSunSource = RenderSettings.sun;
+                RenderSettings.sun = sun;
                 diag += "sun 1 ";
             }
             catch { diag += "sun FAIL "; }
@@ -576,6 +586,8 @@ public class FalconRtx : MonoBehaviour
         fireLights.Clear();
         if (rtxSun != null) Destroy(rtxSun);
         rtxSun = null;
+        RenderSettings.sun = savedSunSource;
+        savedSunSource = null;
         foreach (var kv in savedIce)
         {
             if (kv.Key == null) continue;
