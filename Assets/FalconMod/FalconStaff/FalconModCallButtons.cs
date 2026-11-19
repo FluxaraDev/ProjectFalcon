@@ -64,9 +64,24 @@ public class FalconModCallButtons : MonoBehaviour
 
     private void Start()
     {
+        BuildButtons();
+    }
+
+    // Round 78 (build #18 verdict - Sans: "the mod call buttons
+    // vanished like 10 updates ago"): they did - the loader's
+    // arrival. Start runs in the LOADING scene (bootstrap wakes
+    // there), and LoadSceneAsync in Single mode destroys every
+    // non-persistent object when the game scene loads, plates
+    // included. The component survives on the DontDestroyOnLoad
+    // staff root, so nothing ever rebuilt them. Now the roots are
+    // persistent AND Update rebuilds the set if it finds it gone.
+    private void BuildButtons()
+    {
+        btns.Clear();
         for (int i = 0; i < Spots.Length; i++)
         {
             var root = new GameObject("FalconModCallButton_" + Names[i]);
+            DontDestroyOnLoad(root);
             root.transform.position = Spots[i];
             var cubeGo = GameObject.CreatePrimitive(PrimitiveType.Cube);
             cubeGo.transform.SetParent(root.transform, false);
@@ -125,6 +140,9 @@ public class FalconModCallButtons : MonoBehaviour
 
     private void Update()
     {
+        // Round 78: if a scene transition destroyed the plates,
+        // rebuild them before anything touches the list.
+        if (btns.Count == 0 || btns[0] == null || btns[0].root == null) BuildButtons();
         EnsureLabels();
         Player p = Player.Instance;
         Camera cam = Camera.main;

@@ -65,6 +65,8 @@ public class FalconRtx : MonoBehaviour
     private GameObject postVolumeGo;
     private readonly List<Component> addedLayers = new List<Component>();
     private readonly List<GameObject> fireLights = new List<GameObject>();
+    private readonly List<KeyValuePair<Material, Vector2>> savedIce = new List<KeyValuePair<Material, Vector2>>();
+    private GameObject rtxSun;
     private object bloomSettings;
     private Type bloomTypeRef;
 
@@ -108,6 +110,55 @@ public class FalconRtx : MonoBehaviour
                 SwapSet(mgr.dayNightSupportedMaterials, mgr.standard);
                 SwapSet(mgr.dayNightSupportedMaterialsCutout, mgr.standardCutout);
                 diag += "mats " + savedShaders.Count + " ";
+                // Round 78 (build #18 verdict): the manager's list
+                // covers only SOME materials - Forest walls swapped,
+                // the ground, stump, props and targets stayed baked.
+                // Extend the SAME swap scene-wide: any material whose
+                // shader is one of the family's lit shaders (the
+                // shaders the listed materials were using) gets the
+                // same Standard target, snapshotted the same way.
+                var litShaders = new HashSet<Shader>();
+                var cutShaders = new HashSet<Shader>();
+                foreach (var m in mgr.dayNightSupportedMaterials) if (m != null && m.shader != null) litShaders.Add(m.shader);
+                foreach (var m in mgr.dayNightSupportedMaterialsCutout) if (m != null && m.shader != null) cutShaders.Add(m.shader);
+                int extra = 0;
+                foreach (var r in FindObjectsOfType<Renderer>())
+                {
+                    if (r == null) continue;
+                    var mats = r.sharedMaterials;
+                    if (mats == null) continue;
+                    foreach (var m in mats)
+                    {
+                        if (m == null || m.shader == null) continue;
+                        if (cutShaders.Contains(m.shader)) { SwapSet(new[] { m }, mgr.standardCutout); extra++; }
+                        else if (litShaders.Contains(m.shader)) { SwapSet(new[] { m }, mgr.standard); extra++; }
+                    }
+                }
+                diag += "ext " + extra + " ";
+                // Mountains ice (Sans): reflective. Name-matched
+                // materials go high-smoothness once Standard,
+                // snapshotted in savedIce and restored on revert.
+                int ice = 0;
+                foreach (var r in FindObjectsOfType<Renderer>())
+                {
+                    if (r == null) continue;
+                    var mats = r.sharedMaterials;
+                    if (mats == null) continue;
+                    foreach (var m in mats)
+                    {
+                        if (m == null) continue;
+                        if (m.name.IndexOf("ice", StringComparison.OrdinalIgnoreCase) < 0) continue;
+                        if (!m.HasProperty("_Glossiness") || !m.HasProperty("_Metallic")) continue;
+                        bool seen = false;
+                        foreach (var kv in savedIce) if (kv.Key == m) { seen = true; break; }
+                        if (seen) continue;
+                        savedIce.Add(new KeyValuePair<Material, Vector2>(m, new Vector2(m.GetFloat("_Metallic"), m.GetFloat("_Glossiness"))));
+                        m.SetFloat("_Metallic", 0.05f);
+                        m.SetFloat("_Glossiness", 0.92f);
+                        ice++;
+                    }
+                }
+                diag += "ice " + ice + " ";
             }
             else diag += "mats NO-MGR ";
 
@@ -171,6 +222,27 @@ public class FalconRtx : MonoBehaviour
                 l.bakingOutput = bakeOut;
             }
             diag += "lights " + savedLightShadows.Count + " ";
+            // Round 78 (build #18 verdict): realtime lights change
+            // the gorilla's lighting but he casts NO shadow. The
+            // day/night system owns no Light at all (verified in
+            // BetterDayNightManager - texture globals only) and the
+            // scene's own lights are points, so nothing directional
+            // exists to cast with. RTX brings its own sun: a
+            // shadow-casting directional, destroyed on revert.
+            try
+            {
+                var sunGo = new GameObject("FalconRtxSun");
+                var sun = sunGo.AddComponent<Light>();
+                sun.type = LightType.Directional;
+                sun.color = new Color(1f, 0.96f, 0.9f);
+                sun.intensity = 1.15f;
+                sun.shadows = LightShadows.Soft;
+                sun.shadowStrength = 0.9f;
+                sunGo.transform.rotation = Quaternion.Euler(50f, -35f, 0f);
+                rtxSun = sunGo;
+                diag += "sun 1 ";
+            }
+            catch { diag += "sun FAIL "; }
             var rigs = FindObjectsOfType<VRRig>();
             foreach (var rig in rigs)
             {
@@ -418,6 +490,39 @@ public class FalconRtx : MonoBehaviour
                     RenderSettings.fog = false;
                     break;
             }
+            // Round 78 (Sans): the sky follows the game's day
+            // system too - same phase key as the fog above.
+            if (proceduralSky != null)
+            {
+                try
+                {
+                    switch (key)
+                    {
+                        case "night":
+                            proceduralSky.SetColor("_SkyTint", new Color(0.03f, 0.03f, 0.07f));
+                            proceduralSky.SetColor("_GroundColor", new Color(0.01f, 0.01f, 0.02f));
+                            proceduralSky.SetFloat("_Exposure", 0.7f);
+                            break;
+                        case "orange":
+                            proceduralSky.SetColor("_SkyTint", new Color(0.55f, 0.32f, 0.18f));
+                            proceduralSky.SetColor("_GroundColor", new Color(0.20f, 0.10f, 0.08f));
+                            proceduralSky.SetFloat("_Exposure", 0.95f);
+                            break;
+                        case "rain":
+                        case "snow":
+                            proceduralSky.SetColor("_SkyTint", new Color(0.36f, 0.42f, 0.47f));
+                            proceduralSky.SetColor("_GroundColor", new Color(0.15f, 0.17f, 0.18f));
+                            proceduralSky.SetFloat("_Exposure", 0.9f);
+                            break;
+                        default:
+                            proceduralSky.SetColor("_SkyTint", new Color(0.5f, 0.5f, 0.5f));
+                            proceduralSky.SetColor("_GroundColor", new Color(0.37f, 0.35f, 0.34f));
+                            proceduralSky.SetFloat("_Exposure", 1.0f);
+                            break;
+                    }
+                }
+                catch { }
+            }
             // Night: everything glows slightly - bloom breathes up.
             if (bloomSettings != null && bloomTypeRef != null)
                 SetParam(bloomTypeRef, bloomSettings, "intensity", key == "night" ? 2.8f : 2.2f);
@@ -469,6 +574,15 @@ public class FalconRtx : MonoBehaviour
         foreach (var go in fireLights)
             if (go != null) Destroy(go);
         fireLights.Clear();
+        if (rtxSun != null) Destroy(rtxSun);
+        rtxSun = null;
+        foreach (var kv in savedIce)
+        {
+            if (kv.Key == null) continue;
+            kv.Key.SetFloat("_Metallic", kv.Value.x);
+            kv.Key.SetFloat("_Glossiness", kv.Value.y);
+        }
+        savedIce.Clear();
 
         foreach (var kv in savedLightShadows)
             if (kv.Key != null) kv.Key.shadows = kv.Value;

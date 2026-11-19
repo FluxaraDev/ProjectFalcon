@@ -472,6 +472,19 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
         StartCoroutine(QuitSoon(2f));
     }
 
+    // Round 78 (Sans's call): the quit gun fired at YOURSELF is
+    // real - it runs the exact victim path, so the gun can be
+    // proven end-to-end on your own headset. (Kick and ban
+    // self-shots stay dry-run in the menu: kick is already proven
+    // on other players, and a real self-ban would strike your
+    // own account.)
+    public void SelfQuit()
+    {
+        FalconStaffWebhook.Log("SELF QUIT (real, quit gun self-test)");
+        FalconSessionLog.Log("SELF QUIT (real)");
+        OnQuit();
+    }
+
     private static bool TryActor(object o, out int actor)
     {
         actor = -1;

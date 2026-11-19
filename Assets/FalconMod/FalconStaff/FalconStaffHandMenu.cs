@@ -784,10 +784,11 @@ public class FalconStaffHandMenu : MonoBehaviour
         }
         if (gun == "quit")
         {
-            // Session-ending like kick: a real self-quit would close
-            // your own game mid-test, so the self test is a dry run.
-            FalconStaffWebhook.Log("SELFTEST quit (dry run, not applied)");
-            lastAction = "selftest quit (dry)";
+            // Round 78 (Sans's call, reversing the round-12 dry
+            // rule for quit only): a self-shot REALLY closes your
+            // game, so the quit gun can be proven on yourself.
+            lastAction = "self quit (REAL)";
+            if (FalconStaffNet.Instance != null) FalconStaffNet.Instance.SelfQuit();
             return;
         }
         if (gun == "ban")

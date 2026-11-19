@@ -459,12 +459,12 @@ public class FalconLoader : MonoBehaviour
         stripRt.offsetMin = Vector2.zero; stripRt.offsetMax = Vector2.zero;
         strip.AddComponent<Image>().color = new Color(0.85f, 0.3f, 1f, 1f);
 
-        var title = MakeText(canvasGo.transform, "Title", "PROJECT FALCON", 52, TextAnchor.MiddleCenter, new Color(1f, 0.85f, 1f));
+        var title = MakeText(canvasGo.transform, "Title", "PROJECT FALCON", 104, TextAnchor.MiddleCenter, new Color(1f, 0.85f, 1f));
         Place(title, 0.78f, 0.97f);
-        var sub = MakeText(canvasGo.transform, "Sub", "ANTICHEAT STATION", 32, TextAnchor.MiddleCenter, new Color(0.85f, 0.6f, 1f));
+        var sub = MakeText(canvasGo.transform, "Sub", "ANTICHEAT STATION", 64, TextAnchor.MiddleCenter, new Color(0.85f, 0.6f, 1f));
         Place(sub, 0.70f, 0.79f);
 
-        statusText = MakeText(canvasGo.transform, "Status", "0%", 48, TextAnchor.MiddleCenter, Color.white);
+        statusText = MakeText(canvasGo.transform, "Status", "0%", 96, TextAnchor.MiddleCenter, Color.white);
         Place(statusText, 0.56f, 0.71f);
 
         var barBg = new GameObject("BarBg");
@@ -480,15 +480,15 @@ public class FalconLoader : MonoBehaviour
         barFill.offsetMin = Vector2.zero; barFill.offsetMax = Vector2.zero;
         fillGo.AddComponent<Image>().color = new Color(0.85f, 0.3f, 1f);
 
-        stageText = MakeText(canvasGo.transform, "Stages", "", 30, TextAnchor.UpperLeft, new Color(0.8f, 0.95f, 0.8f));
+        stageText = MakeText(canvasGo.transform, "Stages", "", 48, TextAnchor.UpperLeft, new Color(0.8f, 0.95f, 0.8f));
         var srt = stageText.GetComponent<RectTransform>();
         srt.anchorMin = new Vector2(0.1f, 0.16f); srt.anchorMax = new Vector2(0.9f, 0.50f);
         srt.offsetMin = Vector2.zero; srt.offsetMax = Vector2.zero;
 
-        tipText = MakeText(canvasGo.transform, "Tip", "LOBBY NOT WORKING? CHANGE YOUR NAME TO PLAY", 24, TextAnchor.MiddleCenter, new Color(1f, 0.95f, 0.6f));
+        tipText = MakeText(canvasGo.transform, "Tip", "LOBBY NOT WORKING? CHANGE YOUR NAME TO PLAY", 48, TextAnchor.MiddleCenter, new Color(1f, 0.95f, 0.6f));
         Place(tipText, 0.03f, 0.15f);
 
-        flagText = MakeText(canvasGo.transform, "Flags", "", 26, TextAnchor.UpperCenter, new Color(1f, 0.45f, 0.4f));
+        flagText = MakeText(canvasGo.transform, "Flags", "", 52, TextAnchor.UpperCenter, new Color(1f, 0.45f, 0.4f));
         var frt = flagText.GetComponent<RectTransform>();
         frt.anchorMin = new Vector2(0.05f, 0.10f); frt.anchorMax = new Vector2(0.95f, 0.50f);
         frt.offsetMin = Vector2.zero; frt.offsetMax = Vector2.zero;
