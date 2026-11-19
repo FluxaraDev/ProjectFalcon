@@ -136,3 +136,6 @@ Sans chose bloom over the instancing speed: the project flips from Single Pass I
 
 ## Round 79 addendum
 - RTX SUN DISC: the procedural skybox has no sun object - its sun disc is shader-drawn from RenderSettings.sun. FalconRtx now registers its FalconRtxSun directional as RenderSettings.sun while RTX is on (snapshot + restore on revert), so the sky shows a sun in the same direction that casts the shadows.
+
+## Round 80 addendum
+- RTX SUN INTERACTION: the FalconRtxSun now rides the day/night phase clock (currentTimeIndex + currentLerp): dawn low in the east, noon high, sunset low in the west, below the horizon at night; color/intensity follow the phase key (night dim blue 0.2, dawn/dusk warm orange 0.9, rain/snow overcast 0.7, day 1.15). At night the sky material's _SunDisk is set to 0 (no sun disc in a night sky) and restored otherwise. Fog note: fog is a per-shader feature - the stock day/night shaders do not implement it, so weather fog only becomes visible scene-wide once materials are on Standard (the round-78 extension); in build #18 most materials were still custom, which is why weather showed no fog across maps.

@@ -67,7 +67,9 @@ public class FalconRtx : MonoBehaviour
     private readonly List<GameObject> fireLights = new List<GameObject>();
     private readonly List<KeyValuePair<Material, Vector2>> savedIce = new List<KeyValuePair<Material, Vector2>>();
     private GameObject rtxSun;
+    private Light rtxSunLight;
     private Light savedSunSource;
+    private float savedSunDisk = 2f;
     private object bloomSettings;
     private Type bloomTypeRef;
 
@@ -172,6 +174,7 @@ public class FalconRtx : MonoBehaviour
             if (skyShader != null)
             {
                 proceduralSky = new Material(skyShader);
+                if (proceduralSky.HasProperty("_SunDisk")) savedSunDisk = proceduralSky.GetFloat("_SunDisk");
                 RenderSettings.skybox = proceduralSky;
                 RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Skybox;
                 try { DynamicGI.UpdateEnvironment(); } catch { }
@@ -241,6 +244,7 @@ public class FalconRtx : MonoBehaviour
                 sun.shadowStrength = 0.9f;
                 sunGo.transform.rotation = Quaternion.Euler(50f, -35f, 0f);
                 rtxSun = sunGo;
+                rtxSunLight = sun;
                 // Round 79: the procedural skybox draws its sun
                 // DISC from RenderSettings.sun (there is no sun
                 // object - the disc is shader-drawn from the
@@ -479,6 +483,29 @@ public class FalconRtx : MonoBehaviour
                 if (tod.Contains("night") || idx == 0 || idx == 8 || idx == 9) key = "night";
                 else if (tod.Contains("dawn") || tod.Contains("dusk") || tod.Contains("sunset") || tod.Contains("sunrise") || idx == 1 || idx == 6 || idx == 7) key = "orange";
             }
+            // Round 80 (Sans): the sun INTERACTS with the day
+            // system - it rides an arc on the phase clock (dawn
+            // low in the east, noon high, sunset low in the west,
+            // below the horizon at night), and its color and
+            // intensity follow the phase. The sky disc and the
+            // shadows track it automatically: one light is both.
+            if (rtxSun != null && rtxSunLight != null)
+            {
+                try
+                {
+                    float t = mgr.currentTimeIndex + Mathf.Clamp01(mgr.currentLerp);
+                    float dayT = Mathf.Clamp01((t - 1f) / 8f);
+                    float elev = Mathf.Sin(dayT * Mathf.PI) * 55f;
+                    if (key == "night") elev = -25f;
+                    float yaw = Mathf.Lerp(-80f, 40f, dayT);
+                    rtxSun.transform.rotation = Quaternion.Euler(90f - elev, yaw, 0f);
+                    if (key == "night") { rtxSunLight.color = new Color(0.6f, 0.7f, 1f); rtxSunLight.intensity = 0.2f; }
+                    else if (key == "orange") { rtxSunLight.color = new Color(1f, 0.55f, 0.3f); rtxSunLight.intensity = 0.9f; }
+                    else if (key == "rain" || key == "snow") { rtxSunLight.color = new Color(0.9f, 0.95f, 1f); rtxSunLight.intensity = 0.7f; }
+                    else { rtxSunLight.color = new Color(1f, 0.96f, 0.9f); rtxSunLight.intensity = 1.15f; }
+                }
+                catch { }
+            }
             if (key == fogKey) return;
             fogKey = key;
 
@@ -512,22 +539,26 @@ public class FalconRtx : MonoBehaviour
                             proceduralSky.SetColor("_SkyTint", new Color(0.03f, 0.03f, 0.07f));
                             proceduralSky.SetColor("_GroundColor", new Color(0.01f, 0.01f, 0.02f));
                             proceduralSky.SetFloat("_Exposure", 0.7f);
+                            proceduralSky.SetFloat("_SunDisk", 0f); // night: no sun in the sky
                             break;
                         case "orange":
                             proceduralSky.SetColor("_SkyTint", new Color(0.55f, 0.32f, 0.18f));
                             proceduralSky.SetColor("_GroundColor", new Color(0.20f, 0.10f, 0.08f));
                             proceduralSky.SetFloat("_Exposure", 0.95f);
+                            proceduralSky.SetFloat("_SunDisk", savedSunDisk);
                             break;
                         case "rain":
                         case "snow":
                             proceduralSky.SetColor("_SkyTint", new Color(0.36f, 0.42f, 0.47f));
                             proceduralSky.SetColor("_GroundColor", new Color(0.15f, 0.17f, 0.18f));
                             proceduralSky.SetFloat("_Exposure", 0.9f);
+                            proceduralSky.SetFloat("_SunDisk", savedSunDisk);
                             break;
                         default:
                             proceduralSky.SetColor("_SkyTint", new Color(0.5f, 0.5f, 0.5f));
                             proceduralSky.SetColor("_GroundColor", new Color(0.37f, 0.35f, 0.34f));
                             proceduralSky.SetFloat("_Exposure", 1.0f);
+                            proceduralSky.SetFloat("_SunDisk", savedSunDisk);
                             break;
                     }
                 }
@@ -586,6 +617,7 @@ public class FalconRtx : MonoBehaviour
         fireLights.Clear();
         if (rtxSun != null) Destroy(rtxSun);
         rtxSun = null;
+        rtxSunLight = null;
         RenderSettings.sun = savedSunSource;
         savedSunSource = null;
         foreach (var kv in savedIce)
