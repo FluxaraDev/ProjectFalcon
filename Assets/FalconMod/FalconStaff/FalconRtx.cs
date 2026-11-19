@@ -173,9 +173,9 @@ public class FalconRtx : MonoBehaviour
                 foreach (var r in rig.GetComponentsInChildren<Renderer>(true))
                 {
                     if (r == null) continue;
-                    savedRigShadows.Add(new RendererShadowState { renderer = r, cast = r.shadowCastingMode, receive = r.receiveShadow });
+                    savedRigShadows.Add(new RendererShadowState { renderer = r, cast = r.shadowCastingMode, receive = r.receiveShadows });
                     r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
-                    r.receiveShadow = true;
+                    r.receiveShadows = true;
                 }
             }
 
@@ -479,7 +479,7 @@ public class FalconRtx : MonoBehaviour
         {
             if (s.renderer == null) continue;
             s.renderer.shadowCastingMode = s.cast;
-            s.renderer.receiveShadow = s.receive;
+            s.renderer.receiveShadows = s.receive;
         }
         savedRigShadows.Clear();
 
