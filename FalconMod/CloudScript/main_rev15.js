@@ -2,7 +2,7 @@
 // Base: the working one-function revision (ReturnCurrentVersionNew) with the ban system merged in.
 // Every top-level value is var-declared - no bare globals at load time.
 
-var WEBHOOK = "https://discord.com/api/webhooks/1570997132461088778/qS34-bDIhRf1FrAHkhUZ-dajP5vZLy_YAj0y9KpLlscrVv1ThZghYS4veBOCdlfyN2lh";
+var WEBHOOK = "https://discord.com/api/webhooks/REDACTED-ROTATE-ME";
 var gamedown = false;
 
 function postLog(text) {
