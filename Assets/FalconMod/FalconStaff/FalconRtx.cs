@@ -162,6 +162,53 @@ public class FalconRtx : MonoBehaviour
                     }
                 }
                 diag += "ice " + ice + " ";
+                // Round 82 (Sans, builds #18/#19: city glass
+                // "isn't shiny enough"): glass-named materials
+                // get the same reflective treatment as the ice.
+                int glass = 0;
+                foreach (var r in FindObjectsOfType<Renderer>())
+                {
+                    if (r == null) continue;
+                    var mats = r.sharedMaterials;
+                    if (mats == null) continue;
+                    foreach (var m in mats)
+                    {
+                        if (m == null) continue;
+                        if (m.name.IndexOf("glass", StringComparison.OrdinalIgnoreCase) < 0) continue;
+                        if (!m.HasProperty("_Glossiness") || !m.HasProperty("_Metallic")) continue;
+                        bool seen = false;
+                        foreach (var kv in savedIce) if (kv.Key == m) { seen = true; break; }
+                        if (seen) continue;
+                        savedIce.Add(new KeyValuePair<Material, Vector2>(m, new Vector2(m.GetFloat("_Metallic"), m.GetFloat("_Glossiness"))));
+                        m.SetFloat("_Metallic", 0.1f);
+                        m.SetFloat("_Glossiness", 0.95f);
+                        glass++;
+                    }
+                }
+                diag += "glass " + glass + " ";
+                // Round 82 (build #19: stump/ground STILL baked
+                // after the lit-family extension): the remaining
+                // family is the manager's UNLIT pair. Anything on
+                // gorillaUnlit / gorillaUnlitCutout swaps to the
+                // same Standard targets, so stump, ground and the
+                // unlit props take real light too.
+                int unlit = 0;
+                if (mgr.gorillaUnlit != null || mgr.gorillaUnlitCutout != null)
+                {
+                    foreach (var r in FindObjectsOfType<Renderer>())
+                    {
+                        if (r == null) continue;
+                        var mats = r.sharedMaterials;
+                        if (mats == null) continue;
+                        foreach (var m in mats)
+                        {
+                            if (m == null || m.shader == null) continue;
+                            if (mgr.gorillaUnlitCutout != null && m.shader == mgr.gorillaUnlitCutout) { SwapSet(new[] { m }, mgr.standardCutout); unlit++; }
+                            else if (mgr.gorillaUnlit != null && m.shader == mgr.gorillaUnlit) { SwapSet(new[] { m }, mgr.standard); unlit++; }
+                        }
+                    }
+                }
+                diag += "unlit " + unlit + " ";
             }
             else diag += "mats NO-MGR ";
 
@@ -210,7 +257,7 @@ public class FalconRtx : MonoBehaviour
             savedShadowDistance = QualitySettings.shadowDistance;
             QualitySettings.shadows = ShadowQuality.All;
             QualitySettings.shadowResolution = ShadowResolution.VeryHigh;
-            QualitySettings.shadowDistance = 150f;
+            QualitySettings.shadowDistance = 55f; // round 82: 150 m spread the sun's shadow map so thin a gorilla was a few texels ("two dots") - 55 m triples the detail
             var lights = FindObjectsOfType<Light>();
             foreach (var l in lights)
             {
@@ -242,6 +289,7 @@ public class FalconRtx : MonoBehaviour
                 sun.intensity = 1.15f;
                 sun.shadows = LightShadows.Soft;
                 sun.shadowStrength = 0.9f;
+                sun.shadowNormalBias = 0.03f;
                 sunGo.transform.rotation = Quaternion.Euler(50f, -35f, 0f);
                 rtxSun = sunGo;
                 rtxSunLight = sun;
@@ -283,8 +331,8 @@ public class FalconRtx : MonoBehaviour
                 var pl = go.AddComponent<Light>();
                 pl.type = LightType.Point;
                 pl.color = new Color(1f, 0.52f, 0.2f);
-                pl.intensity = 2.4f;
-                pl.range = 15f;
+                pl.intensity = 4.5f; // round 82: 2.4 read as faint in #19 once the sun existed
+                pl.range = 18f;
                 pl.shadows = LightShadows.Soft;
                 pl.shadowStrength = 0.85f;
                 fireLights.Add(go);
@@ -545,20 +593,23 @@ public class FalconRtx : MonoBehaviour
                             proceduralSky.SetColor("_SkyTint", new Color(0.55f, 0.32f, 0.18f));
                             proceduralSky.SetColor("_GroundColor", new Color(0.20f, 0.10f, 0.08f));
                             proceduralSky.SetFloat("_Exposure", 0.95f);
-                            proceduralSky.SetFloat("_SunDisk", savedSunDisk);
+                            proceduralSky.SetFloat("_SunDisk", 2f); // round 82: explicit - the shader default snapshot read 0 in practice, so no phase ever drew the disc
+                            proceduralSky.SetFloat("_SunSize", 0.08f);
                             break;
                         case "rain":
                         case "snow":
                             proceduralSky.SetColor("_SkyTint", new Color(0.36f, 0.42f, 0.47f));
                             proceduralSky.SetColor("_GroundColor", new Color(0.15f, 0.17f, 0.18f));
                             proceduralSky.SetFloat("_Exposure", 0.9f);
-                            proceduralSky.SetFloat("_SunDisk", savedSunDisk);
+                            proceduralSky.SetFloat("_SunDisk", 2f); // round 82: explicit - the shader default snapshot read 0 in practice, so no phase ever drew the disc
+                            proceduralSky.SetFloat("_SunSize", 0.08f);
                             break;
                         default:
                             proceduralSky.SetColor("_SkyTint", new Color(0.5f, 0.5f, 0.5f));
                             proceduralSky.SetColor("_GroundColor", new Color(0.37f, 0.35f, 0.34f));
                             proceduralSky.SetFloat("_Exposure", 1.0f);
-                            proceduralSky.SetFloat("_SunDisk", savedSunDisk);
+                            proceduralSky.SetFloat("_SunDisk", 2f); // round 82: explicit - the shader default snapshot read 0 in practice, so no phase ever drew the disc
+                            proceduralSky.SetFloat("_SunSize", 0.08f);
                             break;
                     }
                 }

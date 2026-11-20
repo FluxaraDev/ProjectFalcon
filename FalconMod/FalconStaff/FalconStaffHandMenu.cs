@@ -72,7 +72,7 @@ public class FalconStaffHandMenu : MonoBehaviour
     private const float SettingsRebase = 82f;    // rows were laid out from the panel top; shift down under the tab row
     private const float SettingsViewTop = 96f;   // visible band, panel coords
     private const float SettingsViewBottom = -148f;
-    private const float SettingsMaxScroll = 138f;
+    private const float SettingsMaxScroll = 230f; // round 82: grew with the lobby env rows
     private Text titleRoleText;
     private Text footerText;
     private Text diagStatusText;
@@ -576,8 +576,21 @@ public class FalconStaffHandMenu : MonoBehaviour
             ContentButton(100f, -130f, 52f, 24f, "+.2", () => { FalconStaffSettings.GrowScale = Mathf.Clamp(FalconStaffSettings.GrowScale + 0.2f, 1.2f, 4f); FalconSessionLog.Log("SET grow scale = " + FalconStaffSettings.GrowScale.ToString("0.0")); RebuildContent(); }, () => 0);
             ContentText(0f, -130f, 120f, 24f, 13, FalconStaffSettings.GrowScale.ToString("0.0") + "x");
 
-            ContentButton(0f, -166f, 268f, 26f, "SAVE LOG", () => { bool ok = FalconSessionLog.Save(); lastAction = ok ? "log saved (files/session_log.txt)" : "LOG SAVE FAILED"; RebuildContent(); }, () => 0);
-            ContentText(0f, -194f, 268f, 18f, 10, "Session is logged silently in memory - SAVE LOG writes it once.");
+            // Round 82 (Sans): lobby weather + time changers.
+            // Room-scoped and broadcast - everyone in this lobby
+            // gets the change (see FalconEnv); leaving clears it.
+            ContentText(0f, -152f, 268f, 18f, 11, "Lobby weather (everyone here)");
+            ContentButton(-100f, -176f, 52f, 24f, "<", () => { FalconEnv.CycleWeather(-1); RebuildContent(); }, () => 0);
+            ContentButton(100f, -176f, 52f, 24f, ">", () => { FalconEnv.CycleWeather(1); RebuildContent(); }, () => 0);
+            ContentText(0f, -176f, 120f, 24f, 13, FalconEnv.WeatherName(FalconEnv.WeatherOverride));
+
+            ContentText(0f, -198f, 268f, 18f, 11, "Lobby time (everyone here)");
+            ContentButton(-100f, -222f, 52f, 24f, "<", () => { FalconEnv.CycleTime(-1); RebuildContent(); }, () => 0);
+            ContentButton(100f, -222f, 52f, 24f, ">", () => { FalconEnv.CycleTime(1); RebuildContent(); }, () => 0);
+            ContentText(0f, -222f, 150f, 24f, 13, FalconEnv.TimeName(FalconEnv.TimeOverride));
+
+            ContentButton(0f, -258f, 268f, 26f, "SAVE LOG", () => { bool ok = FalconSessionLog.Save(); lastAction = ok ? "log saved (files/session_log.txt)" : "LOG SAVE FAILED"; RebuildContent(); }, () => 0);
+            ContentText(0f, -286f, 268f, 18f, 10, "Session is logged silently in memory - SAVE LOG writes it once.");
             buildParent = null;
             buildingSettings = false;
             // Scrollbar: track + thumb on the panel's right edge.

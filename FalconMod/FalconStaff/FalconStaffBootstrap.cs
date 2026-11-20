@@ -15,6 +15,8 @@ public static class FalconStaffBootstrap
         if (spawned) return;
         spawned = true;
 
+        FalconStaffSettings.Load(); // round 83: restore persisted Settings-tab values
+
         var go = new GameObject("FalconStaff");
         Object.DontDestroyOnLoad(go);
         go.AddComponent<FalconStaffNet>();
@@ -31,6 +33,7 @@ public static class FalconStaffBootstrap
         go.AddComponent<FalconComputerFix>();
         go.AddComponent<FalconOptionsDriver>();
         go.AddComponent<FalconRtx>();
+        go.AddComponent<FalconEnv>();
         go.AddComponent<FalconNameTags>();
         go.AddComponent<FalconWallSign>();
         go.AddComponent<FalconModCallButtons>();

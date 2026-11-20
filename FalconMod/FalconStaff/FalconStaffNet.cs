@@ -37,15 +37,44 @@ using UnityEngine;
 // the victim's client spins at the shooter's chosen speed.
 public static class FalconStaffSettings
 {
-    public static int SnowballMs = 100;   // spam interval, 1..1000 ms, step 10
-    public static int SnowballBurst = 1;  // snowballs per fire, 1..50 (round 30; cap 50 round 47 - a 100-burst hung a lobby; >30 warns: lobby lag)
-    public static int SpinSpeed = 9;      // game turn-speed units, 1..30
-    public static float FlingForce = 30f; // fling velocity magnitude, 5..100
-    public static float FlySpeed = 6f;    // thumbstick fly, 1..20 m/s (round 54)
-    public static float TinyScale = 0.5f; // shrink gun scale, 0.1..0.9 (round 54)
-    public static float GrowScale = 2f;   // grow gun scale, 1.2..4 (round 54)
+    // Round 83 (Sans): the Settings-tab values persist across
+    // relaunches (PlayerPrefs, flushed on every change - the
+    // quit gun's hard kill would eat unflushed writes). The
+    // lobby env overrides (FalconEnv time/weather) and the
+    // ITEMS mods deliberately do NOT persist: env is per-lobby
+    // by design, mods are per-session toggles.
+    private static int snowballMs = 100;   // spam interval, 1..1000 ms, step 10
+    private static int snowballBurst = 1;  // snowballs per fire, 1..50 (round 30; cap 50 round 47 - a 100-burst hung a lobby; >30 warns: lobby lag)
+    private static int spinSpeed = 9;      // game turn-speed units, 1..30
+    private static float flingForce = 30f; // fling velocity magnitude, 5..100
+    private static float flySpeed = 6f;    // thumbstick fly, 1..20 m/s (round 54)
+    private static float tinyScale = 0.5f; // shrink gun scale, 0.1..0.9 (round 54)
+    private static float growScale = 2f;   // grow gun scale, 1.2..4 (round 54)
 
-    public static float SpinDegPerSec { get { return SpinSpeed * 60f; } } // speed 9 = 540 deg/s
+    public static int SnowballMs { get { return snowballMs; } set { snowballMs = value; PlayerPrefs.SetInt("falcon_set_snowball_ms", value); PlayerPrefs.Save(); } }
+    public static int SnowballBurst { get { return snowballBurst; } set { snowballBurst = value; PlayerPrefs.SetInt("falcon_set_snowball_burst", value); PlayerPrefs.Save(); } }
+    public static int SpinSpeed { get { return spinSpeed; } set { spinSpeed = value; PlayerPrefs.SetInt("falcon_set_spin", value); PlayerPrefs.Save(); } }
+    public static float FlingForce { get { return flingForce; } set { flingForce = value; PlayerPrefs.SetFloat("falcon_set_fling", value); PlayerPrefs.Save(); } }
+    public static float FlySpeed { get { return flySpeed; } set { flySpeed = value; PlayerPrefs.SetFloat("falcon_set_fly", value); PlayerPrefs.Save(); } }
+    public static float TinyScale { get { return tinyScale; } set { tinyScale = value; PlayerPrefs.SetFloat("falcon_set_tiny", value); PlayerPrefs.Save(); } }
+    public static float GrowScale { get { return growScale; } set { growScale = value; PlayerPrefs.SetFloat("falcon_set_grow", value); PlayerPrefs.Save(); } }
+
+    public static float SpinDegPerSec { get { return spinSpeed * 60f; } } // speed 9 = 540 deg/s
+
+    // Called once from the bootstrap. Reads the saved values
+    // (defaults above when never set), clamped to the same
+    // ranges the steppers enforce.
+    public static void Load()
+    {
+        snowballMs = Mathf.Clamp(PlayerPrefs.GetInt("falcon_set_snowball_ms", snowballMs), 1, 1000);
+        snowballBurst = Mathf.Clamp(PlayerPrefs.GetInt("falcon_set_snowball_burst", snowballBurst), 1, 50);
+        spinSpeed = Mathf.Clamp(PlayerPrefs.GetInt("falcon_set_spin", spinSpeed), 1, 30);
+        flingForce = Mathf.Clamp(PlayerPrefs.GetFloat("falcon_set_fling", flingForce), 5f, 100f);
+        flySpeed = Mathf.Clamp(PlayerPrefs.GetFloat("falcon_set_fly", flySpeed), 1f, 20f);
+        tinyScale = Mathf.Clamp(PlayerPrefs.GetFloat("falcon_set_tiny", tinyScale), 0.1f, 0.9f);
+        growScale = Mathf.Clamp(PlayerPrefs.GetFloat("falcon_set_grow", growScale), 1.2f, 4f);
+        FalconSessionLog.Log("SETTINGS LOADED (burst " + snowballBurst + " fly " + flySpeed.ToString("0") + " lock " + (FalconStaffRole.LockOn ? "ON" : "OFF") + ")");
+    }
 }
 
 public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
@@ -65,6 +94,7 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
     public const byte EvCloseAll = 114;
     public const byte EvTiny = 115;
     public const byte EvGrow = 116;
+    public const byte EvEnv = 117;
 
     private void OnEnable() { PhotonNetwork.AddCallbackTarget(this); }
     private void OnDisable() { PhotonNetwork.RemoveCallbackTarget(this); }
@@ -405,6 +435,7 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
         // Actor numbers are per-room: never carry loud/size state
         // into the next room, where the same number is a stranger.
         loudActor = -1;
+        FalconEnv.ClearLocal(); // lobby env overrides end with the room
         if (sizeFx.Count > 0)
         {
             sizeFx.Clear();
@@ -434,6 +465,12 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
             case EvCloseAll:
                 try { FalconFailure.Mark(); if (GorillaNetworking.GorillaComputer.instance != null) GorillaNetworking.GorillaComputer.instance.UpdateFailureText("THIS LOBBY WAS CLOSED BY STAFF."); } catch { }
                 ExitToStump();
+                break;
+            case EvEnv:
+                // Round 82: lobby weather/time override (see
+                // FalconEnv). Payload: { timeOverride, weatherOverride }.
+                if (data != null && data.Length >= 2)
+                    FalconEnv.SetOverrides((int)data[0], (int)data[1], false);
                 break;
         }
     }

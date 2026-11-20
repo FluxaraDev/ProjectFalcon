@@ -57,7 +57,7 @@ namespace GorillaNetworking
 
 		private string isup = "true";
 
-		private string version = "live1122";
+		private string version = "live1123";
 
 		public void Awake()
 		{

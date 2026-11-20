@@ -49,6 +49,11 @@ public class FalconLoader : MonoBehaviour
     private Text stageText;
     private Text tipText;
     private Text flagText;
+    private Text titleText;
+    private Text subText;
+    // Round 82: TextMesh readout (see BuildUi) + its sync caches.
+    private TextMesh tmTitle, tmSub, tmStatus, tmStages, tmTip, tmFlags;
+    private string tmCacheStatus = "", tmCacheStages = "", tmCacheTip = "", tmCacheFlags = "";
     private RectTransform barFill;
     private CanvasGroup fadeGroup;
     private AudioSource music;
@@ -200,6 +205,7 @@ public class FalconLoader : MonoBehaviour
 
     private void Update()
     {
+        SyncTm();
         // Round 71: place the panel once the eye anchor exists
         // (one-time world placement - see PlaceUi).
         if (!uiParked && uiHolder != null) PlaceUi();
@@ -459,10 +465,10 @@ public class FalconLoader : MonoBehaviour
         stripRt.offsetMin = Vector2.zero; stripRt.offsetMax = Vector2.zero;
         strip.AddComponent<Image>().color = new Color(0.85f, 0.3f, 1f, 1f);
 
-        var title = MakeText(canvasGo.transform, "Title", "PROJECT FALCON", 104, TextAnchor.MiddleCenter, new Color(1f, 0.85f, 1f));
-        Place(title, 0.78f, 0.97f);
-        var sub = MakeText(canvasGo.transform, "Sub", "ANTICHEAT STATION", 64, TextAnchor.MiddleCenter, new Color(0.85f, 0.6f, 1f));
-        Place(sub, 0.70f, 0.79f);
+        titleText = MakeText(canvasGo.transform, "Title", "PROJECT FALCON", 104, TextAnchor.MiddleCenter, new Color(1f, 0.85f, 1f));
+        Place(titleText, 0.78f, 0.97f);
+        subText = MakeText(canvasGo.transform, "Sub", "ANTICHEAT STATION", 64, TextAnchor.MiddleCenter, new Color(0.85f, 0.6f, 1f));
+        Place(subText, 0.70f, 0.79f);
 
         statusText = MakeText(canvasGo.transform, "Status", "0%", 96, TextAnchor.MiddleCenter, Color.white);
         Place(statusText, 0.56f, 0.71f);
@@ -493,6 +499,47 @@ public class FalconLoader : MonoBehaviour
         frt.anchorMin = new Vector2(0.05f, 0.10f); frt.anchorMax = new Vector2(0.95f, 0.50f);
         frt.offsetMin = Vector2.zero; frt.offsetMax = Vector2.zero;
         flagText.gameObject.SetActive(false);
+
+        // Round 82 (Sans, build #19 verdict: the loader text is
+        // STILL small after three fontSize doublings - 44 to 52
+        // to 104 changed nothing he could see): the UI font's
+        // glyphs render small at ANY nominal size, so the readout
+        // moves to TextMesh - the mod-call labels' mechanism -
+        // where characterSize is WORLD size in meters and the
+        // font's metrics cannot cap it. The meshes are children
+        // of the unscaled holder, laid out in meters over the
+        // panel; Update's SyncTm mirrors the UI texts' content
+        // into them every frame, and the UI texts are hidden on
+        // success. No font -> the UI texts stay as the fallback.
+        // (This replaces the round-69 witness idea at full size,
+        // as the only readout - not a duplicate.)
+        try
+        {
+            Font tmFont = null;
+            try { tmFont = gameFont != null ? gameFont : Resources.GetBuiltinResource<Font>("Arial.ttf"); } catch { }
+            if (tmFont != null)
+            {
+                tmTitle = MakeTm(holder.transform, new Vector3(0f, 0.72f, 0.01f), 0.19f, TextAnchor.MiddleCenter, TextAlignment.Center, new Color(1f, 0.85f, 1f), tmFont);
+                tmTitle.text = "PROJECT FALCON";
+                tmSub = MakeTm(holder.transform, new Vector3(0f, 0.50f, 0.01f), 0.10f, TextAnchor.MiddleCenter, TextAlignment.Center, new Color(0.85f, 0.6f, 1f), tmFont);
+                tmSub.text = "ANTICHEAT STATION";
+                tmStatus = MakeTm(holder.transform, new Vector3(0f, 0.24f, 0.01f), 0.17f, TextAnchor.MiddleCenter, TextAlignment.Center, Color.white, tmFont);
+                tmStatus.text = "0%";
+                tmStages = MakeTm(holder.transform, new Vector3(-1.30f, -0.02f, 0.01f), 0.075f, TextAnchor.UpperLeft, TextAlignment.Left, new Color(0.8f, 0.95f, 0.8f), tmFont);
+                tmTip = MakeTm(holder.transform, new Vector3(0f, -0.86f, 0.01f), 0.065f, TextAnchor.MiddleCenter, TextAlignment.Center, new Color(1f, 0.95f, 0.6f), tmFont);
+                tmTip.text = "LOBBY NOT WORKING? CHANGE YOUR NAME TO PLAY";
+                tmFlags = MakeTm(holder.transform, new Vector3(-1.30f, -0.02f, 0.01f), 0.085f, TextAnchor.UpperLeft, TextAlignment.Left, new Color(1f, 0.45f, 0.4f), tmFont);
+                tmFlags.gameObject.SetActive(false);
+                if (titleText != null) titleText.gameObject.SetActive(false);
+                if (subText != null) subText.gameObject.SetActive(false);
+                if (statusText != null) statusText.gameObject.SetActive(false);
+                if (stageText != null) stageText.gameObject.SetActive(false);
+                if (tipText != null) tipText.gameObject.SetActive(false);
+                if (flagText != null) flagText.gameObject.SetActive(false);
+                diag.Add("TextMesh readout live (font " + tmFont.name + ")");
+            }
+        }
+        catch (System.Exception ex) { diag.Add("TextMesh readout failed: " + ex.GetType().Name); }
 
         // Round 71: the round-69 TextMesh witness is REMOVED -
         // build #14 proved the canvas path (the witness rendered
@@ -543,6 +590,65 @@ public class FalconLoader : MonoBehaviour
     {
         foreach (var t in go.GetComponentsInChildren<Transform>(true))
             t.gameObject.layer = layer;
+    }
+
+    // Round 82: TextMesh readout helpers (see BuildUi). The sync
+    // mirrors the hidden UI texts into the meshes - every write
+    // site in the load flow already targets the UI texts, so one
+    // mirror covers percent, stage lines, deny flags and the
+    // ENJOY line with no missed path.
+    private TextMesh MakeTm(Transform parent, Vector3 localPos, float charSize, TextAnchor anchor, TextAlignment align, Color color, Font font)
+    {
+        var go = new GameObject("tm");
+        go.transform.SetParent(parent, false);
+        go.transform.localPosition = localPos;
+        var tm = go.AddComponent<TextMesh>();
+        tm.font = font;
+        tm.fontSize = 64;
+        tm.characterSize = charSize;
+        tm.anchor = anchor;
+        tm.alignment = align;
+        tm.color = color;
+        var mr = go.GetComponent<MeshRenderer>();
+        if (mr != null) mr.sharedMaterial = font.material;
+        return tm;
+    }
+
+    private static void SetTmText(TextMesh tm, string s, ref string cache)
+    {
+        if (tm == null) return;
+        if (s == null) s = "";
+        if (s == cache) return;
+        cache = s;
+        tm.text = s;
+    }
+
+    private void SyncTm()
+    {
+        if (tmStatus == null) return;
+        if (statusText != null)
+        {
+            SetTmText(tmStatus, statusText.text, ref tmCacheStatus);
+            tmStatus.color = statusText.color;
+            if (statusText.gameObject.activeSelf) statusText.gameObject.SetActive(false);
+        }
+        if (stageText != null)
+        {
+            SetTmText(tmStages, stageText.text, ref tmCacheStages);
+            if (stageText.gameObject.activeSelf) stageText.gameObject.SetActive(false);
+        }
+        if (tipText != null)
+        {
+            SetTmText(tmTip, tipText.text, ref tmCacheTip);
+            if (tipText.gameObject.activeSelf) tipText.gameObject.SetActive(false);
+        }
+        if (flagText != null && tmFlags != null)
+        {
+            bool on = flagText.gameObject.activeSelf || tmFlags.gameObject.activeSelf;
+            SetTmText(tmFlags, flagText.text, ref tmCacheFlags);
+            if (tmFlags.gameObject.activeSelf != on) tmFlags.gameObject.SetActive(on);
+            if (on && flagText.gameObject.activeSelf) flagText.gameObject.SetActive(false);
+        }
     }
 
     private Text MakeText(Transform parent, string name, string text, int size, TextAnchor anchor, Color color)
