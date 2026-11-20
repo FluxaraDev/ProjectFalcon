@@ -37,9 +37,28 @@ using UnityEngine;
 // RTX is off beyond one bool check per frame.
 public class FalconRtx : MonoBehaviour
 {
+    // Round 85: FalconEnv reads IsOn / writes PhaseOverride so the
+    // lobby time override and RTX stop fighting over the day
+    // system (build #20: constant snap-back between the two).
+    public static FalconRtx Instance;
+    public static bool IsOn { get { return Instance != null && Instance.applied; } }
+    public static int PhaseOverride = -1; // -1 = follow the game clock
+
     private bool applied;
     private float nextFogCheck;
     private string fogKey = "";
+
+    // Round 85 rescans: rigs/fires that appear AFTER Apply (a
+    // lobby join spawns the network rigs - build #20: shadows
+    // only ever landed on the offline rig) get the same pass.
+    private readonly HashSet<Renderer> knownRigRenderers = new HashSet<Renderer>();
+    private readonly HashSet<Campfire> knownFires = new HashSet<Campfire>();
+    private readonly System.Collections.Generic.List<Light> fireLightLs = new System.Collections.Generic.List<Light>();
+    private float nextRescan;
+    private float lastSceneCycle;
+    private GameObject sunDisc;
+    private bool sunDiscVisible;
+    private GameObject probeGo;
 
     // ---- snapshots (filled by Apply, drained by Revert) ----
     private readonly List<KeyValuePair<Material, Shader>> savedShaders = new List<KeyValuePair<Material, Shader>>();
@@ -80,6 +99,11 @@ public class FalconRtx : MonoBehaviour
         public bool receive;
     }
 
+    private void Awake()
+    {
+        Instance = this;
+    }
+
     private void Update()
     {
         bool want = FalconPlayerOptions.Rtx;
@@ -89,6 +113,25 @@ public class FalconRtx : MonoBehaviour
         {
             nextFogCheck = Time.time + 0.5f;
             UpdateFogAndGlow();
+        }
+        if (applied)
+        {
+            // Campfire flicker (round 85, Sans: "make it flicker
+            // like an actual fire") - per-fire noise so they
+            // don't pulse in sync.
+            for (int i = 0; i < fireLightLs.Count; i++)
+            {
+                var fl = fireLightLs[i];
+                if (fl == null) continue;
+                fl.intensity = 4.5f * (0.85f + 0.3f * Mathf.PerlinNoise(Time.time * 3.1f + i * 17.3f, 0.37f));
+            }
+            PositionSunDisc();
+            if (Time.time >= nextRescan)
+            {
+                nextRescan = Time.time + 2.5f;
+                ScanRigs();
+                ScanFires();
+            }
         }
     }
 
@@ -305,39 +348,37 @@ public class FalconRtx : MonoBehaviour
                 diag += "sun 1 ";
             }
             catch { diag += "sun FAIL "; }
-            var rigs = FindObjectsOfType<VRRig>();
-            foreach (var rig in rigs)
-            {
-                if (rig == null) continue;
-                foreach (var r in rig.GetComponentsInChildren<Renderer>(true))
-                {
-                    if (r == null) continue;
-                    savedRigShadows.Add(new RendererShadowState { renderer = r, cast = r.shadowCastingMode, receive = r.receiveShadows });
-                    r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
-                    r.receiveShadows = true;
-                }
-            }
+            // Rigs + campfires go through the round-85 scan
+            // methods so late-appearing ones (lobby rigs, other
+            // maps' fires) get the identical pass on rescan.
+            ScanRigs();
 
             // 5) Campfire: a real orange shadow-casting point light
             // at every campfire's fire.
-            var fires = FindObjectsOfType<Campfire>();
-            foreach (var cf in fires)
-            {
-                if (cf == null) continue;
-                var anchor = cf.topFire != null ? cf.topFire : cf.transform;
-                var go = new GameObject("FalconRtxFireLight");
-                go.transform.SetParent(anchor, false);
-                go.transform.localPosition = new Vector3(0f, 0.3f, 0f);
-                var pl = go.AddComponent<Light>();
-                pl.type = LightType.Point;
-                pl.color = new Color(1f, 0.52f, 0.2f);
-                pl.intensity = 4.5f; // round 82: 2.4 read as faint in #19 once the sun existed
-                pl.range = 18f;
-                pl.shadows = LightShadows.Soft;
-                pl.shadowStrength = 0.85f;
-                fireLights.Add(go);
-            }
+            ScanFires();
             diag += "fires " + fireLights.Count + " ";
+
+            // Round 85: a realtime reflection probe riding the
+            // player, so the ice/glass smoothness has something
+            // local to reflect (build #20: "ice and glass remains
+            // the same"). Rendered once per apply / map cycle.
+            try
+            {
+                probeGo = new GameObject("FalconRtxProbe");
+                var probe = probeGo.AddComponent<ReflectionProbe>();
+                probe.mode = UnityEngine.Rendering.ReflectionProbeMode.Realtime;
+                probe.refreshMode = UnityEngine.Rendering.ReflectionProbeRefreshMode.ViaScripting;
+                probe.resolution = 128;
+                probe.nearClipPlane = 0.3f;
+                probe.farClipPlane = 150f;
+                probe.intensity = 1f;
+                var head = GorillaLocomotion.Player.Instance != null ? GorillaLocomotion.Player.Instance.headCollider : null;
+                if (head != null) { probeGo.transform.SetParent(head.transform, false); probeGo.transform.localPosition = Vector3.zero; }
+                probe.RenderProbe();
+                diag += "probe 1 ";
+            }
+            catch { diag += "probe FAIL "; }
+            CreateSunDisc();
 
             // 6) Fog snapshot (the fog driver writes live values).
             savedFog = RenderSettings.fog;
@@ -352,6 +393,7 @@ public class FalconRtx : MonoBehaviour
             // saturation / grain) via reflection, loader-style.
             diag += ApplyPost(cams);
 
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
             applied = true;
             UpdateFogAndGlow();
             FalconSessionLog.Log("RTX ON (" + diag.Trim() + ")");
@@ -527,9 +569,13 @@ public class FalconRtx : MonoBehaviour
             if (key == "day")
             {
                 string tod = (mgr.currentTimeOfDay ?? "").ToLowerInvariant();
-                int idx = mgr.currentTimeIndex;
-                if (tod.Contains("night") || idx == 0 || idx == 8 || idx == 9) key = "night";
-                else if (tod.Contains("dawn") || tod.Contains("dusk") || tod.Contains("sunset") || tod.Contains("sunrise") || idx == 1 || idx == 6 || idx == 7) key = "orange";
+                // Round 85: FalconEnv's lobby override feeds this
+                // index directly while RTX is on (single driver -
+                // no more lightmap/clock snap-back fighting).
+                int idx = PhaseOverride >= 0 ? PhaseOverride : mgr.currentTimeIndex;
+                bool byIdxOnly = PhaseOverride >= 0;
+                if ((!byIdxOnly && tod.Contains("night")) || idx == 0 || idx == 8 || idx == 9) key = "night";
+                else if ((!byIdxOnly && (tod.Contains("dawn") || tod.Contains("dusk") || tod.Contains("sunset") || tod.Contains("sunrise"))) || idx == 1 || idx == 6 || idx == 7) key = "orange";
             }
             // Round 80 (Sans): the sun INTERACTS with the day
             // system - it rides an arc on the phase clock (dawn
@@ -541,7 +587,7 @@ public class FalconRtx : MonoBehaviour
             {
                 try
                 {
-                    float t = mgr.currentTimeIndex + Mathf.Clamp01(mgr.currentLerp);
+                    float t = PhaseOverride >= 0 ? PhaseOverride : mgr.currentTimeIndex + Mathf.Clamp01(mgr.currentLerp);
                     float dayT = Mathf.Clamp01((t - 1f) / 8f);
                     float elev = Mathf.Sin(dayT * Mathf.PI) * 55f;
                     if (key == "night") elev = -25f;
@@ -554,13 +600,18 @@ public class FalconRtx : MonoBehaviour
                 }
                 catch { }
             }
+            sunDiscVisible = (key == "day" || key == "orange");
+            if (sunDisc != null) sunDisc.transform.localScale = Vector3.one * (key == "orange" ? 58f : 42f);
             if (key == fogKey) return;
             fogKey = key;
 
             switch (key)
             {
                 case "rain":
-                    SetFog(new Color(0.36f, 0.46f, 0.47f), 0.012f);
+                    // Round 85 (build #20): the old tint read
+                    // WHITE/BLUE in city and drowned the bloom.
+                    // Darker, grayer, thinner.
+                    SetFog(new Color(0.30f, 0.36f, 0.40f), 0.0095f);
                     break;
                 case "snow":
                     SetFog(new Color(0.88f, 0.91f, 0.95f), 0.014f);
@@ -647,6 +698,98 @@ public class FalconRtx : MonoBehaviour
         RenderSettings.fogDensity = density;
     }
 
+    // ---- round 85 scans / sun disc / scene cycle ----
+
+    private void ScanRigs()
+    {
+        foreach (var rig in FindObjectsOfType<VRRig>())
+        {
+            if (rig == null) continue;
+            foreach (var r in rig.GetComponentsInChildren<Renderer>(true))
+            {
+                if (r == null || knownRigRenderers.Contains(r)) continue;
+                knownRigRenderers.Add(r);
+                savedRigShadows.Add(new RendererShadowState { renderer = r, cast = r.shadowCastingMode, receive = r.receiveShadows });
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+                r.receiveShadows = true;
+            }
+        }
+    }
+
+    private void ScanFires()
+    {
+        foreach (var cf in FindObjectsOfType<Campfire>())
+        {
+            if (cf == null || knownFires.Contains(cf)) continue;
+            knownFires.Add(cf);
+            var anchor = cf.topFire != null ? cf.topFire : cf.transform;
+            var go = new GameObject("FalconRtxFireLight");
+            go.transform.SetParent(anchor, false);
+            go.transform.localPosition = new Vector3(0f, 0.3f, 0f);
+            var pl = go.AddComponent<Light>();
+            pl.type = LightType.Point;
+            pl.color = new Color(1f, 0.52f, 0.2f);
+            pl.intensity = 4.5f;
+            pl.range = 26f; // round 85: a BIGGER pool of firelight (was 18 in #20, 12 before)
+            pl.shadows = LightShadows.Soft;
+            pl.shadowStrength = 0.85f;
+            fireLights.Add(go);
+            fireLightLs.Add(pl);
+        }
+    }
+
+    // Round 85 (Sans: still "no sun disc at all" in build #20):
+    // two rounds of _SunDisk/_SunSize on the procedural sky drew
+    // nothing on device, so the disc is now a real object - a
+    // sphere on the sun light's axis, 700 m out from the head,
+    // riding the same arc as the light that casts the shadows.
+    // The game's own sky draws its sun and moon as world objects
+    // the same way.
+    private void CreateSunDisc()
+    {
+        try
+        {
+            if (sunDisc != null) return;
+            sunDisc = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            sunDisc.name = "FalconRtxSunDisc";
+            var col = sunDisc.GetComponent<Collider>();
+            if (col != null) Destroy(col);
+            var mr = sunDisc.GetComponent<MeshRenderer>();
+            if (mr != null)
+            {
+                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                mr.receiveShadows = false;
+                var m = new Material(mr.sharedMaterial);
+                m.color = new Color(1f, 0.97f, 0.88f);
+                mr.material = m;
+            }
+            sunDisc.transform.localScale = Vector3.one * 42f;
+            sunDisc.SetActive(false);
+        }
+        catch { }
+    }
+
+    private void PositionSunDisc()
+    {
+        if (sunDisc == null) return;
+        var p = GorillaLocomotion.Player.Instance;
+        var head = p != null ? p.headCollider : null;
+        if (head == null || rtxSunLight == null || !sunDiscVisible) { sunDisc.SetActive(false); return; }
+        sunDisc.SetActive(true);
+        sunDisc.transform.position = head.transform.position - rtxSunLight.transform.forward * 700f;
+    }
+
+    private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+    {
+        // A newly loaded map's materials and lights were never in
+        // the census (build #20: the swap reached Forest only).
+        // Rebuild the whole RTX state against the loaded world.
+        if (!applied) return;
+        if (Time.time - lastSceneCycle < 1f) return;
+        lastSceneCycle = Time.time;
+        try { Revert(); Apply(); } catch { }
+    }
+
     // ================= REVERT =================
 
     private void Revert()
@@ -663,6 +806,15 @@ public class FalconRtx : MonoBehaviour
             if (kv.Key != null) kv.Key.allowHDR = kv.Value;
         savedCamHdr.Clear();
 
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+        if (sunDisc != null) Destroy(sunDisc);
+        sunDisc = null;
+        sunDiscVisible = false;
+        if (probeGo != null) Destroy(probeGo);
+        probeGo = null;
+        knownRigRenderers.Clear();
+        knownFires.Clear();
+        fireLightLs.Clear();
         foreach (var go in fireLights)
             if (go != null) Destroy(go);
         fireLights.Clear();

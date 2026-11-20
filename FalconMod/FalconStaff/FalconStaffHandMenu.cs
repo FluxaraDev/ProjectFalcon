@@ -66,7 +66,17 @@ public class FalconStaffHandMenu : MonoBehaviour
     private RectTransform settingsRoot;
     private RectTransform settingsThumb;
     private float settingsScroll;
-    private int lastBuiltTab = -1;
+    private string lastBuiltTabId = "";
+    // Round 85 (Sans): the menu is for EVERYONE now - it renames
+    // itself by role ("PLAYER MENU" / "STAFF MENU") and the tab
+    // bar is built per role: players get Guns / Move / Mods,
+    // staff add their tabs, troll/sound/settings stay headadmin.
+    private Text titleText;
+    private readonly List<Btn> tabBtns = new List<Btn>();
+    private readonly List<string> curTabs = new List<string>();
+    private float curMaxScroll = SettingsMaxScroll;
+    private float nextCheckerRefresh;
+    private float nextReportAllowed;
     private readonly System.Collections.Generic.List<Btn> settingsBtns = new System.Collections.Generic.List<Btn>();
     private readonly System.Collections.Generic.List<Text> settingsTexts = new System.Collections.Generic.List<Text>();
     private const float SettingsRebase = 82f;    // rows were laid out from the panel top; shift down under the tab row
@@ -144,23 +154,14 @@ public class FalconStaffHandMenu : MonoBehaviour
         {
             MenuButtonPresses++;
             FalconStaffRole.EnsureRole();
-            if (!open && !FalconStaffRole.IsStaffOrHigher && FalconStaffRole.FetchState == "ok")
-            {
-                // No staff role on this account: the menu does not open
-                // at all (Sans, build #12: a fresh account is "not
-                // supposed to have staff menu" - the old design opened
-                // a diagnostic page for everyone, which put the menu in
-                // every player's hands). The status page remains
-                // reachable only while a fetch is pending or errored,
-                // so a real staffer with a broken login can see why.
-                SetPanelVisible(false);
-            }
-            else
-            {
-                open = !open;
-                if (open) { EnsurePanel(); RebuildContent(); }
-                SetPanelVisible(open);
-            }
+            // Round 85 (Sans): everyone gets the menu now - it is
+            // the PLAYER menu for players (player tabs only) and
+            // the STAFF menu for staff. This reverses the build
+            // #12 no-open rule on purpose: the player tabs are
+            // the point of the feature.
+            open = !open;
+            if (open) { EnsurePanel(); RebuildContent(); }
+            SetPanelVisible(open);
         }
 
         bool staff = FalconStaffRole.IsStaffOrHigher;
@@ -169,7 +170,8 @@ public class FalconStaffHandMenu : MonoBehaviour
         if (lastRole != FalconStaffRole.Role)
         {
             lastRole = FalconStaffRole.Role;
-            if (titleRoleText != null) titleRoleText.text = "FALCON STAFF - " + lastRole.ToUpperInvariant();
+            RefreshTitle();
+            RefreshTabs();
             if (open) RebuildContent();
         }
 
@@ -182,14 +184,16 @@ public class FalconStaffHandMenu : MonoBehaviour
 
         if (open && panelRoot == null) { EnsurePanel(); if (panelRoot != null) RebuildContent(); }
 
-        // Round 64: Settings tab scrolls with the LEFT thumbstick
-        // (the menu hand) - push down to reveal the lower rows.
-        if (open && tab == 4 && settingsRoot != null)
+        // Round 64: scrollable tabs scroll with the LEFT
+        // thumbstick (the menu hand) - push down to reveal the
+        // lower rows. Round 85: any tab that built a scroll root
+        // (Settings, Mods) scrolls, with its own max.
+        if (open && settingsRoot != null)
         {
             Vector2 axis;
             if (left.TryGetFeatureValue(CommonUsages.primary2DAxis, out axis) && Mathf.Abs(axis.y) > 0.25f)
             {
-                float ns = Mathf.Clamp(settingsScroll - axis.y * 320f * Time.deltaTime, 0f, SettingsMaxScroll);
+                float ns = Mathf.Clamp(settingsScroll - axis.y * 320f * Time.deltaTime, 0f, curMaxScroll);
                 if (ns != settingsScroll) { settingsScroll = ns; ApplySettingsScroll(); }
             }
         }
@@ -205,8 +209,10 @@ public class FalconStaffHandMenu : MonoBehaviour
         {
             if (trig) SnowballSpam();
         }
-        else if (staff && trigEdge)
+        else if (trigEdge && (staff || armedGun == "report" || armedGun == "mute"))
         {
+            // Round 85: the player guns fire for everyone; staff
+            // guns keep their staff gate inside Fire().
             GunFire();
         }
 
@@ -217,6 +223,64 @@ public class FalconStaffHandMenu : MonoBehaviour
         {
             footerTimer -= Time.deltaTime;
             if (footerTimer <= 0f) { footerTimer = 0.5f; RefreshFooter(); if (!staff) RefreshDiagStatus(); }
+            // Round 85: the mod checker is live - rebuild its
+            // rows once a second while it is the open tab (FPS
+            // and mod states move; rows are text-only, so a
+            // rebuild cannot eat a click).
+            if (panelRoot != null && curTabs.Count > 0 && curTabs[Mathf.Clamp(tab, 0, curTabs.Count - 1)] == "mods" && Time.time >= nextCheckerRefresh)
+            {
+                nextCheckerRefresh = Time.time + 1f;
+                RebuildContent();
+            }
+        }
+    }
+
+    // Round 85: the menu renames itself by the holder's role.
+    private void RefreshTitle()
+    {
+        if (panelRoot == null) return;
+        bool staff = FalconStaffRole.IsStaffOrHigher;
+        if (titleText != null) titleText.text = staff ? "FALCON STAFF MENU" : "FALCON PLAYER MENU";
+        if (titleRoleText != null) titleRoleText.text = staff ? "FALCON STAFF - " + FalconStaffRole.Role.ToUpperInvariant() : "FALCON PLAYER";
+    }
+
+    // Round 85: build the tab bar for the holder's role.
+    // Players: Guns / Move / Mods. Staff add Staff. Headadmin
+    // adds Troll / Sound / Settings (admins keep the ban and
+    // kick guns on the Staff tab but never the troll tab).
+    private void RefreshTabs()
+    {
+        if (panelRoot == null) return;
+        foreach (Btn b in tabBtns)
+        {
+            clickables.Remove(b);
+            if (b.img != null) Destroy(b.img.gameObject);
+            if (b.txt != null) Destroy(b.txt.gameObject);
+        }
+        tabBtns.Clear();
+        curTabs.Clear();
+        bool staff = FalconStaffRole.IsStaffOrHigher;
+        bool head = FalconStaffRole.IsHeadAdmin;
+        if (staff) curTabs.Add("staff");
+        if (head) { curTabs.Add("troll"); curTabs.Add("sound"); }
+        curTabs.Add("guns");
+        curTabs.Add("move");
+        if (head) curTabs.Add("settings");
+        curTabs.Add("mods");
+        if (tab >= curTabs.Count) tab = 0;
+        float w = Mathf.Min(45f, 264f / curTabs.Count - 4f);
+        float x0 = -(curTabs.Count - 1) * (w + 4f) / 2f;
+        for (int i = 0; i < curTabs.Count; i++)
+        {
+            int idx = i;
+            string id = curTabs[i];
+            string label = id == "staff" ? "Staff" : id == "troll" ? "Troll" : id == "sound" ? "Sound" : id == "guns" ? "Guns" : id == "move" ? "Move" : id == "settings" ? "Settings" : "Mods";
+            Btn b = MakeButton(panelRoot.GetComponent<RectTransform>(), x0 + i * (w + 4f), 116f, w, 28f, label,
+                () => { tab = idx; RebuildContent(); },
+                () => tab == idx ? 1 : 0);
+            if (curTabs.Count > 5 && b.txt != null) b.txt.fontSize = 10;
+            tabBtns.Add(b);
+            clickables.Add(b);
         }
     }
 
@@ -246,22 +310,12 @@ public class FalconStaffHandMenu : MonoBehaviour
         scaler.dynamicPixelsPerUnit = 8f;
 
         MakeImage(rt, 0f, 0f, PanelW, PanelH, BgColor);
-        Text title = MakeText(rt, 0f, 168f, 280f, 26f, 17, TextAnchor.MiddleCenter);
-        title.text = "FALCON STAFF";
+        titleText = MakeText(rt, 0f, 168f, 280f, 26f, 17, TextAnchor.MiddleCenter);
         titleRoleText = MakeText(rt, 0f, 146f, 280f, 18f, 12, TextAnchor.MiddleCenter);
         titleRoleText.color = DimColor;
-        titleRoleText.text = "FALCON STAFF - " + FalconStaffRole.Role.ToUpperInvariant();
         lastRole = FalconStaffRole.Role;
-
-        string[] tabNames = { "Staff", "Troll", "Sound", "Move", "Settings" };
-        for (int i = 0; i < tabNames.Length; i++)
-        {
-            int idx = i;
-            Btn b = MakeButton(rt, -120f + 48f * i, 116f, 45f, 28f, tabNames[i],
-                () => { tab = idx; RebuildContent(); },
-                () => tab == idx ? 1 : 0);
-            clickables.Add(b);
-        }
+        RefreshTitle();
+        RefreshTabs();
 
         var contentGo = new GameObject("Content");
         contentRoot = contentGo.AddComponent<RectTransform>();
@@ -399,7 +453,7 @@ public class FalconStaffHandMenu : MonoBehaviour
         }
         if (settingsThumb != null)
         {
-            float frac = SettingsMaxScroll > 0f ? settingsScroll / SettingsMaxScroll : 0f;
+            float frac = curMaxScroll > 0f ? settingsScroll / curMaxScroll : 0f;
             settingsThumb.anchoredPosition = new Vector2(141f, 19.5f - frac * 91f);
         }
     }
@@ -408,20 +462,12 @@ public class FalconStaffHandMenu : MonoBehaviour
     {
         if (panelRoot == null || contentRoot == null) return;
         ClearContent();
-        if (tab != lastBuiltTab) { if (tab == 4) settingsScroll = 0f; lastBuiltTab = tab; }
+        // Round 85: tabs are role-built ids now (see RefreshTabs);
+        // everyone reaches this - players get their own tabs.
+        string tid = curTabs.Count > 0 ? curTabs[Mathf.Clamp(tab, 0, curTabs.Count - 1)] : "guns";
+        if (tid != lastBuiltTabId) { if (tid == "settings" || tid == "mods") settingsScroll = 0f; lastBuiltTabId = tid; }
 
-        if (!FalconStaffRole.IsStaffOrHigher)
-        {
-            ContentText(0f, 80f, 268f, 24f, 13, "NO STAFF ROLE");
-            diagStatusText = ContentText(0f, 34f, 268f, 68f, 11, DiagStatusString());
-            ContentButton(0f, -30f, 268f, 28f, "Retry role fetch", () => { FalconStaffRole.FetchRole(); }, () => 0);
-            ContentText(0f, -80f, 268f, 40f, 11, "Role comes from PlayFab at login.\nIf FETCH is ok but role is NONE,\nthis account has no falcon_role.");
-            RefreshFooter();
-            PaintButtons();
-            return;
-        }
-
-        if (tab == 0)
+        if (tid == "staff")
         {
             ContentButton(0f, 84f, 268f, 24f, "Kick gun (staff+)", () => { armedGun = "kick"; RebuildContent(); }, () => armedGun == "kick" ? 2 : 0);
             if (FalconStaffRole.CanInstantBan)
@@ -459,7 +505,7 @@ public class FalconStaffHandMenu : MonoBehaviour
                         : "Your reports log to the webhook only."));
             ContentText(0f, -86f, 268f, 20f, 11, "Close lobby boots EVERYONE here to the stump.");
         }
-        else if (tab == 1 && FalconStaffRole.IsHeadAdmin)
+        else if (tid == "troll" && FalconStaffRole.IsHeadAdmin)
         {
             ContentButton(-68f, 80f, 132f, 24f, "Start rave", () =>
             {
@@ -488,7 +534,7 @@ public class FalconStaffHandMenu : MonoBehaviour
             }
             ContentText(0f, -128f, 268f, 18f, 11, "Headadmin: guns are live. Tiny/grow last 10 s.");
         }
-        else if (tab == 2 && FalconStaffRole.IsHeadAdmin)
+        else if (tid == "sound" && FalconStaffRole.IsHeadAdmin)
         {
             ContentButton(-68f, 80f, 132f, 24f, "Refresh", () => { if (soundboard != null) soundboard.Refresh(); RebuildContent(); }, () => 0);
             ContentButton(68f, 80f, 132f, 24f, "Stop", () => { if (soundboard != null) soundboard.Stop(); }, () => 0);
@@ -508,20 +554,57 @@ public class FalconStaffHandMenu : MonoBehaviour
                     ContentText(0f, 30f, 268f, 20f, 11, "No files in the Soundboard folder.");
             }
         }
-        else if (tab == 3)
+        else if (tid == "move")
         {
-            ContentText(0f, 84f, 268f, 20f, 12, "Long arms + speed live on the computer ITEMS page.");
-            ContentButton(0f, 54f, 268f, 26f, "Fly: " + (FalconFly.Enabled ? "ON" : "OFF"),
-                () => { FalconFly.Enabled = !FalconFly.Enabled; FalconSessionLog.Log(FalconFly.Enabled ? "FLY ON" : "FLY OFF"); lastAction = FalconFly.Enabled ? "fly on" : "fly off"; RebuildContent(); },
-                () => FalconFly.Enabled ? 1 : 0);
-            ContentText(0f, 24f, 268f, 32f, 11, "Thumbstick fly: left stick moves where\nyour head points, right stick Y = up/down.");
-            ContentButton(0f, -12f, 268f, 26f, "Coord cube: " + (coordCube != null && coordCube.CubeEnabled ? "ON" : "OFF"),
-                () => { if (coordCube != null) coordCube.SetEnabled(!coordCube.CubeEnabled); RebuildContent(); },
-                () => coordCube != null && coordCube.CubeEnabled ? 1 : 0);
-            ContentText(0f, -44f, 268f, 32f, 11, "Cube rides the right hand.\nA = drop / pick up. Coords float above it.");
-            ContentText(0f, -76f, 268f, 20f, 11, "Fly is staff-only and only moves you.");
+            // Round 85 (Sans): the player Movement tab - adjustable
+            // long arms + speed boost, RTX and PhaseSync toggles,
+            // open to EVERY role (the computer ITEMS page toggles
+            // the same options). Staff extras ride below.
+            ContentButton(-75f, 84f, 118f, 24f, "Arms: " + (FalconPlayerOptions.LongArms ? "ON" : "OFF"),
+                () => { FalconPlayerOptions.ToggleLongArms(); FalconSessionLog.Log("MENU arms " + FalconPlayerOptions.LongArms); RebuildContent(); },
+                () => FalconPlayerOptions.LongArms ? 1 : 0);
+            ContentButton(28f, 84f, 36f, 24f, "-", () => { FalconPlayerOptions.SetArmScale(FalconPlayerOptions.ArmScaleValue - 0.05f); RebuildContent(); }, () => 0);
+            ContentText(66f, 84f, 44f, 24f, 12, "x" + FalconPlayerOptions.ArmScaleValue.ToString("0.00"));
+            ContentButton(104f, 84f, 36f, 24f, "+", () => { FalconPlayerOptions.SetArmScale(FalconPlayerOptions.ArmScaleValue + 0.05f); RebuildContent(); }, () => 0);
+
+            ContentButton(-75f, 57f, 118f, 24f, "Speed: " + (FalconPlayerOptions.SpeedBoost ? "ON" : "OFF"),
+                () => { FalconPlayerOptions.ToggleSpeedBoost(); FalconSessionLog.Log("MENU speed " + FalconPlayerOptions.SpeedBoost); RebuildContent(); },
+                () => FalconPlayerOptions.SpeedBoost ? 1 : 0);
+            ContentButton(28f, 57f, 36f, 24f, "-", () => { FalconPlayerOptions.SetBoostTarget(FalconPlayerOptions.BoostTarget - 0.05f); RebuildContent(); }, () => 0);
+            ContentText(66f, 57f, 44f, 24f, 12, "x" + FalconPlayerOptions.BoostTarget.ToString("0.00"));
+            ContentButton(104f, 57f, 36f, 24f, "+", () => { FalconPlayerOptions.SetBoostTarget(FalconPlayerOptions.BoostTarget + 0.05f); RebuildContent(); }, () => 0);
+
+            ContentButton(0f, 30f, 268f, 24f, "RTX: " + (FalconPlayerOptions.Rtx ? "ON" : "OFF") + " (experimental)",
+                () => { FalconPlayerOptions.ToggleRtx(); FalconSessionLog.Log("MENU rtx " + FalconPlayerOptions.Rtx); RebuildContent(); },
+                () => FalconPlayerOptions.Rtx ? 1 : 0);
+            ContentButton(0f, 3f, 268f, 24f, FalconPlayerOptions.PhaseSync0 ? "PhaseSync: 0 (ON)" : "PhaseSync: 4 (OFF)",
+                () =>
+                {
+                    FalconPlayerOptions.TogglePhaseSync();
+                    FalconSessionLog.Log("MENU phasesync " + FalconPlayerOptions.PhaseSync0);
+                    lastAction = FalconPhaseSync.LastResult;
+                    if (lastAction.Length > 44) lastAction = lastAction.Substring(0, 44);
+                    RebuildContent();
+                },
+                () => FalconPlayerOptions.PhaseSync0 ? 1 : 0);
+
+            if (FalconStaffRole.IsStaffOrHigher)
+            {
+                ContentText(0f, -26f, 268f, 18f, 11, "- STAFF EXTRAS -");
+                ContentButton(0f, -53f, 268f, 24f, "Fly: " + (FalconFly.Enabled ? "ON" : "OFF"),
+                    () => { FalconFly.Enabled = !FalconFly.Enabled; FalconSessionLog.Log(FalconFly.Enabled ? "FLY ON" : "FLY OFF"); lastAction = FalconFly.Enabled ? "fly on" : "fly off"; RebuildContent(); },
+                    () => FalconFly.Enabled ? 1 : 0);
+                ContentButton(0f, -80f, 268f, 24f, "Coord cube: " + (coordCube != null && coordCube.CubeEnabled ? "ON" : "OFF"),
+                    () => { if (coordCube != null) coordCube.SetEnabled(!coordCube.CubeEnabled); RebuildContent(); },
+                    () => coordCube != null && coordCube.CubeEnabled ? 1 : 0);
+                ContentText(0f, -108f, 268f, 28f, 10, "Fly: left stick = head direction, right stick Y = up/down.\nCube rides the right hand; A = drop / pick up.");
+            }
+            else
+            {
+                ContentText(0f, -40f, 268f, 44f, 11, "Arms: x0.99 (shorter than stock) to x1.40.\nSpeed: x1.05 (just under stock) to x1.82.\nPhaseSync ON = 0, OFF = 4.");
+            }
         }
-        else if (tab == 4 && FalconStaffRole.IsHeadAdmin)
+        else if (tid == "settings" && FalconStaffRole.IsHeadAdmin)
         {
             // Settings tab (Jacob's suggestion): gun tuning with
             // steppers. Round 54 (Sans): fly speed + shrink/grow scale
@@ -531,6 +614,7 @@ public class FalconStaffHandMenu : MonoBehaviour
             // Round 64: rows build into the scroll sub-root (see the
             // fields block) - ApplySettingsScroll at the end of the
             // branch positions and clips them.
+            curMaxScroll = SettingsMaxScroll;
             var sgo = new GameObject("SettingsScroll");
             settingsRoot = sgo.AddComponent<RectTransform>();
             settingsRoot.SetParent(contentRoot, false);
@@ -597,6 +681,73 @@ public class FalconStaffHandMenu : MonoBehaviour
             MakeImage(contentRoot, 141f, -26f, 6f, 244f, new Color(1f, 1f, 1f, 0.15f));
             var thumbImg = MakeImage(contentRoot, 141f, 19.5f, 6f, 153f, new Color(1f, 1f, 1f, 0.55f));
             settingsThumb = thumbImg.rectTransform;
+            ApplySettingsScroll();
+        }
+        else if (tid == "guns")
+        {
+            // Round 85 (Sans): the player guns. Report = files a
+            // report for staff review, NEVER a ban. Mute = the
+            // scoreboard mute on your client only.
+            ContentText(0f, 84f, 268f, 20f, 12, "Player guns - point and pull the trigger.");
+            ContentButton(0f, 57f, 268f, 26f, "Report gun (no ban)", () => { armedGun = "report"; RebuildContent(); }, () => armedGun == "report" ? 2 : 0);
+            ContentButton(0f, 28f, 268f, 26f, "Mute gun (mutes for YOU)", () => { armedGun = "mute"; RebuildContent(); }, () => armedGun == "mute" ? 2 : 0);
+            ContentButton(0f, -1f, 268f, 26f, "Disarm", () => { armedGun = ""; RebuildContent(); }, () => 0);
+            ContentText(0f, -52f, 268f, 60f, 11, "Report gun: sends a report + voice clip\nto staff. It never bans anyone.\nMute gun: flips their mute button on the\nscoreboard (red) - only you stop hearing them.");
+        }
+        else if (tid == "mods")
+        {
+            // Round 85 (Sans): the mod checker. Every client
+            // publishes its own mod state + realtime FPS as the
+            // "falcon_mods" player property (FalconOptionsDriver);
+            // staff publish "discreet" - their mods never show.
+            // Rows are text-only inside the scroll root; Update
+            // rebuilds this tab once a second while it is open.
+            var mgo = new GameObject("SettingsScroll");
+            settingsRoot = mgo.AddComponent<RectTransform>();
+            settingsRoot.SetParent(contentRoot, false);
+            settingsRoot.anchorMin = new Vector2(0.5f, 0.5f);
+            settingsRoot.anchorMax = new Vector2(0.5f, 0.5f);
+            settingsRoot.pivot = new Vector2(0.5f, 0.5f);
+            settingsRoot.anchoredPosition = Vector2.zero;
+            settingsRoot.sizeDelta = new Vector2(PanelW, PanelH);
+            buildParent = settingsRoot;
+            buildingSettings = true;
+            ContentText(0f, 170f, 268f, 18f, 12, "MOD CHECKER - who has what on");
+            float y = 138f;
+            var players = PhotonNetwork.PlayerList;
+            if (players == null || players.Length == 0)
+            {
+                ContentText(0f, y, 268f, 20f, 12, "YOU (not in a room)");
+                y -= 22f;
+                ContentText(0f, y, 268f, 18f, 11, FalconPlayerOptions.ModStateString(FalconOptionsDriver.CurrentFps));
+                y -= 30f;
+            }
+            else
+            {
+                foreach (var p in players)
+                {
+                    if (p == null) continue;
+                    string nm = string.IsNullOrEmpty(p.NickName) ? "???" : p.NickName;
+                    if (p.IsLocal) nm += " (you)";
+                    string mods = "no data yet";
+                    object v;
+                    if (p.CustomProperties != null && p.CustomProperties.TryGetValue("falcon_mods", out v))
+                    {
+                        string sv = v as string;
+                        if (!string.IsNullOrEmpty(sv)) mods = sv;
+                    }
+                    ContentText(0f, y, 268f, 20f, 13, nm);
+                    y -= 22f;
+                    ContentText(0f, y, 268f, 18f, 11, mods);
+                    y -= 32f;
+                }
+            }
+            curMaxScroll = Mathf.Max(0f, 190f - y);
+            buildParent = null;
+            buildingSettings = false;
+            MakeImage(contentRoot, 141f, -26f, 6f, 244f, new Color(1f, 1f, 1f, 0.15f));
+            var mThumbImg = MakeImage(contentRoot, 141f, 19.5f, 6f, 153f, new Color(1f, 1f, 1f, 0.55f));
+            settingsThumb = mThumbImg.rectTransform;
             ApplySettingsScroll();
         }
         else
@@ -810,6 +961,11 @@ public class FalconStaffHandMenu : MonoBehaviour
             lastAction = "selftest ban (dry)";
             return;
         }
+        if (gun == "report" || gun == "mute")
+        {
+            lastAction = gun == "report" ? "can't report yourself" : "can't mute yourself";
+            return;
+        }
         if (!FalconStaffRole.IsHeadAdmin) { lastAction = "denied (role)"; return; }
         if (FalconStaffNet.Instance == null) return;
         int me = PhotonNetwork.LocalPlayer != null ? PhotonNetwork.LocalPlayer.ActorNumber : -1;
@@ -887,6 +1043,46 @@ public class FalconStaffHandMenu : MonoBehaviour
         {
             lastAction = "TIER2 - can't kick tier2";
             FalconStaffWebhook.Log("KICK REFUSED (tier2 peer) on " + them + " by " + me);
+            return;
+        }
+
+        if (gun == "report")
+        {
+            // Round 85 (Sans): the PLAYER report gun. Same landing
+            // as a non-staff scoreboard report - a "Player Report"
+            // embed + the voice clip, for staff review - and it
+            // NEVER bans, whoever holds it (staff have the ban gun
+            // for that). 2 s local cooldown against spam.
+            if (Time.time < nextReportAllowed) { lastAction = "report cooldown"; return; }
+            nextReportAllowed = Time.time + 2f;
+            string roomCode2 = PhotonNetwork.CurrentRoom != null ? PhotonNetwork.CurrentRoom.Name : "none";
+            string speakers2 = FalconVoiceLog.RecentSpeakers();
+            FalconStaffWebhook.PostEmbed("Player Report", 15105570, "Reporter: " + me + " (" + PhotonNetwork.LocalPlayer.UserId + ")\nReported: " + them + " (" + target.UserId + ")\nRoom code: " + roomCode2 + "\nReason: Report (gun)\nVoice (last 25s): " + speakers2, null);
+            FalconStaffWebhook.UploadReportClip(FalconVoiceTap.BuildClipWav(), "REPORT (gun) on " + them + " (" + target.UserId + ") in room " + roomCode2 + " by " + me + " - last 25s of lobby voice");
+            FalconStaffWebhook.Log("REPORT GUN on " + them + " by " + me);
+            lastAction = "reported " + them;
+            return;
+        }
+
+        if (gun == "mute")
+        {
+            // Round 85 (Sans): the mute gun - literally the
+            // scoreboard's mute, fired from the hand: same
+            // PlayerPrefs key (their UserId), same rig.muted flag,
+            // same Photon mute event, and the board's mute button
+            // for them flips red right now. Your client only.
+            int next = PlayerPrefs.GetInt(target.UserId, 0) != 0 ? 0 : 1;
+            PlayerPrefs.SetInt(target.UserId, next);
+            PlayerPrefs.Save();
+            if (targetRig != null) targetRig.muted = next != 0;
+            foreach (var line in FindObjectsOfType<GorillaPlayerScoreboardLine>())
+            {
+                if (line == null || line.linePlayer != target) continue;
+                if (line.muteButton != null) { line.muteButton.isOn = next != 0; line.muteButton.UpdateColor(); }
+            }
+            GorillaPlayerScoreboardLine.MutePlayer(target.UserId, target.NickName, next);
+            FalconStaffWebhook.Log("MUTE GUN " + (next != 0 ? "muted " : "unmuted ") + them + " by " + me + " (client-side)");
+            lastAction = (next != 0 ? "muted " : "unmuted ") + them;
             return;
         }
 

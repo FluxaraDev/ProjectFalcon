@@ -3,13 +3,25 @@ using GorillaLocomotion;
 
 // Project Falcon player options (Sans, 2026-11-12): the computer's
 // ITEMS page, available to EVERY player - not staff-gated.
-//   option 1: long arms (Player.FalconArmScale 1.4x reach)
+//   option 1: long arms (Player.FalconArmScale reach)
 //   option 2: speed boost (see below)
 //   option 3: name tags
 //   option 4: RTX (FalconRtx - realtime-lighting graphics mode;
 //             DEFAULT OFF, Sans 2026-11-18: "by default it's off
 //             in case it breaks"; the page warns it's experimental)
-// Optional Preds were removed for good (Sans, build #10 isolation).
+//   option 5: PhaseSync 0 (round 85, Sans: ITEMS 5 in the player
+//             menu - ON sets PhaseSync 0, OFF back to 4; the
+//             native route lives in FalconPhaseSync)
+// Optional Preds were removed for good (Sans, build #10 isolation)
+// - that was the old script-preds code; option 5 is a compositor
+// setting, a different mechanism (Sans, 2026-11-19).
+//
+// Round 85 (Sans): long arms and speed boost became SLIDERS in
+// the player menu's Movement tab.
+//   Long arms: 0.99x (1% SHORTER than regular arms) .. 1.40x
+//              (the long arms we ship today = the max).
+//   Speed:     target jump multiplier 1.05 (just under default
+//              1.1) .. 1.82 (1.3x past today's 1.4 max).
 //
 // SPEED BOOST, REBUILT round 38 (Sans's device verdict on the old
 // version: "makes you slower even as normal monkey and lava monkey
@@ -26,32 +38,62 @@ using GorillaLocomotion;
 // The boost is now RELATIVE and single-purpose: the driver runs
 // AFTER VRRig (execution order), reads the game's own live pair
 // from LocalPlayerSpeed(), and scales ONLY the multiplier by
-// 1.4/1.1 - Sans's original boost (stock 1.1 -> 1.4) expressed as a
-// factor, so stock modes get exactly 1.4 and every other state
-// keeps its proportions. maxJumpSpeed is NEVER written: the cap is
-// the game's own, per mode and state. (The round 33 lesson stands:
-// an uncapped 999 let every hit stack velocity without limit.)
+// BoostTarget/1.1 - Sans's original boost (stock 1.1 -> 1.4)
+// expressed as a factor, so stock modes get exactly the target
+// and every other state keeps its proportions. maxJumpSpeed is
+// NEVER written: the cap is the game's own, per mode and state.
+// (The round 33 lesson stands: an uncapped 999 let every hit
+// stack velocity without limit.)
 public static class FalconPlayerOptions
 {
     public static bool LongArms = true;
     public static bool SpeedBoost = true;
     public static bool NameTags = true;
     public static bool Rtx = false;
+    public static bool PhaseSync0 = false;
 
-    public const float ArmScale = 1.4f;
-    // Sans's boost: jumpMultiplier 1.1 -> 1.4, as a factor.
-    public const float BoostFactor = 1.4f / 1.1f;
+    // Player-adjustable values (round 85 sliders).
+    public static float ArmScaleValue = 1.4f;  // 0.99 .. 1.40
+    public static float BoostTarget = 1.4f;    // 1.05 .. 1.82 (target jump multiplier at stock)
+    public static float BoostFactor { get { return BoostTarget / 1.1f; } }
 
     public static void ToggleLongArms() { LongArms = !LongArms; ApplyArms(); }
     public static void ToggleSpeedBoost() { SpeedBoost = !SpeedBoost; }
     public static void ToggleNameTags() { NameTags = !NameTags; }
     public static void ToggleRtx() { Rtx = !Rtx; }
+    public static void TogglePhaseSync() { PhaseSync0 = !PhaseSync0; FalconPhaseSync.Apply(PhaseSync0); }
+
+    public static void SetArmScale(float v)
+    {
+        ArmScaleValue = Mathf.Clamp(v, 0.99f, 1.40f);
+        ApplyArms();
+    }
+
+    public static void SetBoostTarget(float v)
+    {
+        BoostTarget = Mathf.Clamp(v, 1.05f, 1.82f);
+    }
 
     public static void ApplyAll() { ApplyArms(); }
 
     public static void ApplyArms()
     {
-        Player.FalconArmScale = LongArms ? ArmScale : 1f;
+        Player.FalconArmScale = LongArms ? ArmScaleValue : 1f;
+    }
+
+    // The mod-checker string this client publishes about itself
+    // (round 85): active mods + realtime FPS. Staff publish the
+    // mask word instead - their mods stay discreet (Sans).
+    public static string ModStateString(float fps)
+    {
+        if (FalconStaffRole.IsStaffOrHigher) return "discreet";
+        var parts = new System.Collections.Generic.List<string>();
+        if (LongArms) parts.Add("ARMS x" + ArmScaleValue.ToString("0.00"));
+        if (SpeedBoost) parts.Add("SPEED x" + BoostTarget.ToString("0.00"));
+        if (PhaseSync0) parts.Add("PHASESYNC 0");
+        if (Rtx) parts.Add("RTX");
+        string mods = parts.Count > 0 ? string.Join("  ", parts.ToArray()) : "no mods";
+        return mods + "  ·  " + Mathf.RoundToInt(fps) + " FPS";
     }
 }
 
@@ -60,9 +102,43 @@ public static class FalconPlayerOptions
 [DefaultExecutionOrder(1000)]
 public class FalconOptionsDriver : MonoBehaviour
 {
+    // Round 85: the mod checker's offline row reads the local FPS.
+    public static float CurrentFps = 72f;
+
+    private float fpsEma = 72f;
+    private float nextPublish;
+    private string lastPublished = "";
+
     private void Start()
     {
         FalconPlayerOptions.ApplyAll();
+    }
+
+    private void Update()
+    {
+        float dt = Time.unscaledDeltaTime;
+        if (dt > 0f) { fpsEma = Mathf.Lerp(fpsEma, 1f / dt, 0.05f); CurrentFps = fpsEma; }
+        if (Time.time < nextPublish) return;
+        nextPublish = Time.time + 1f;
+        PublishModState();
+    }
+
+    // Round 85: publish my mod state as a Photon player property
+    // so every client's mod-checker tab can read it. 1 s cadence
+    // (FPS moves), and only when the string actually changed.
+    private void PublishModState()
+    {
+        try
+        {
+            if (Photon.Pun.PhotonNetwork.LocalPlayer == null) return;
+            string s = FalconPlayerOptions.ModStateString(fpsEma);
+            if (s == lastPublished) return;
+            lastPublished = s;
+            var ht = new ExitGames.Client.Photon.Hashtable();
+            ht["falcon_mods"] = s;
+            Photon.Pun.PhotonNetwork.LocalPlayer.SetCustomProperties(ht);
+        }
+        catch { }
     }
 
     private void LateUpdate()

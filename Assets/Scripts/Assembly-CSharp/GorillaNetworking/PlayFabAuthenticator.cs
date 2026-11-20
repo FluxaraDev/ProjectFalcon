@@ -59,6 +59,13 @@ namespace GorillaNetworking
 
 		private string version = "live1123";
 
+		// Round 84 (Project Falcon): GorillaComputer's version gate
+		// compares the CloudScript-returned Version against this.
+		public string VersionString
+		{
+			get { return version; }
+		}
+
 		public void Awake()
 		{
 			PhotonNetwork.PhotonServerSettings.AppSettings.AppIdRealtime = "9c5612c9-328a-48a2-92e0-ed33cdbfeb88";

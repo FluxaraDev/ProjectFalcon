@@ -285,9 +285,12 @@ public class FalconRave : MonoBehaviour, IOnEventCallback, IMatchmakingCallbacks
         savedFogStart = RenderSettings.fogStartDistance;
         savedFogEnd = RenderSettings.fogEndDistance;
         savedAmbient = RenderSettings.ambientLight;
-        RenderSettings.fog = true;
-        RenderSettings.fogMode = FogMode.Exponential;
-        RenderSettings.fogDensity = RaveFogDensity;
+        // Round 85 (Sans, build #20 verdict): "fog rave sucked -
+        // old rave was better." The old rave predates working fog;
+        // now that fog renders, the rave's own forced fog washes
+        // the disco out. The rave now turns fog OFF while it runs
+        // (the snapshot above is restored on stop as before).
+        RenderSettings.fog = false;
 
         discoLights.Clear();
         discoLightColors.Clear();

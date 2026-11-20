@@ -1171,6 +1171,24 @@ namespace GorillaNetworking
                     GeneralFailureMessage(versionMismatch);
                     return;
                 }
+                // Round 84 (Project Falcon): actually enforce the
+                // version the revision returns. The stock callback
+                // never compared it (and the authenticator's own
+                // checkforupdate() is an empty stub in this export),
+                // so old builds sailed through every version cut.
+                // A mismatch - including the revision's "BANNED" -
+                // now bounces to the update screen. Builds before
+                // this round cannot be gated: nothing they send
+                // differs from a current build.
+                if (jsonObject.TryGetValue("Version", out value))
+                {
+                    string serverVersion = value as string;
+                    if (serverVersion != null && PlayFabAuthenticator.instance != null && serverVersion != PlayFabAuthenticator.instance.VersionString)
+                    {
+                        GeneralFailureMessage(versionMismatch);
+                        return;
+                    }
+                }
                 if (jsonObject.TryGetValue("BannedUsers", out value))
                 {
                     usersBanned = int.Parse((string)value);

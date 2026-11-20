@@ -88,6 +88,7 @@ public class FalconEnv : MonoBehaviour
     // Leaving the room ends the override (it was lobby-scoped).
     public static void ClearLocal()
     {
+        try { FalconRtx.PhaseOverride = -1; } catch { }
         if (!AnyActive) return;
         TimeOverride = -1;
         WeatherOverride = -1;
@@ -101,6 +102,20 @@ public class FalconEnv : MonoBehaviour
         if (mgr == null) return;
         try
         {
+            // Round 85 (Sans, build #20 verdict): with RTX on, the
+            // two drivers fought - this class repainted the game's
+            // lightmaps via SetOverrideIndex while RTX repainted
+            // its sun/fog/sky off the same clock, snapping back
+            // and forth constantly. Single driver rule: while RTX
+            // is on, the override feeds RTX's phase directly and
+            // the lightmap system is left alone. The weather slot
+            // force still applies (it never repaints).
+            if (FalconRtx.IsOn)
+            {
+                FalconRtx.PhaseOverride = TimeOverride;
+                if (WeatherOverride >= 0) ForceWeatherSlot(mgr, WeatherOverride == 1);
+                return;
+            }
             if (TimeOverride >= 0)
             {
                 // SetOverrideIndex also writes the weather slot

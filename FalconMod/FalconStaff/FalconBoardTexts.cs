@@ -63,6 +63,48 @@ public class FalconBoardTexts : MonoBehaviour
     private void Start()
     {
         StartCoroutine(ApplyBoards());
+        // Round 85: maps load after the startup passes - re-run
+        // them (and the screen re-skin below) per loaded scene.
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+    {
+        StartCoroutine(ApplyBoards());
+    }
+
+    // Round 85 (Sans, build #20 verdict): the computer screens
+    // are purple in canyons and caves only. Those boards share
+    // one model; the other maps' boards are a DIFFERENT model
+    // whose screen material is not the screen.mat asset (no
+    // second .mat exists in the project - the material rides
+    // inside the model/scene), so the file edit never reached
+    // them. Runtime pass: every renderer material named like
+    // the good screen ("screen", not "screenRed") gets the
+    // Falcon purple emission directly, wherever it came from.
+    private static readonly Color ScreenPurple = new Color(0.42f, 0.04f, 0.72f, 1f);
+
+    private static void ReskinScreens()
+    {
+        try
+        {
+            foreach (Renderer r in Resources.FindObjectsOfTypeAll<Renderer>())
+            {
+                if (r == null || !r.gameObject.scene.IsValid()) continue;
+                var mats = r.sharedMaterials;
+                if (mats == null) continue;
+                foreach (var m in mats)
+                {
+                    if (m == null) continue;
+                    string n = m.name;
+                    bool isScreen = n == "screen" || n.StartsWith("screen ") || n.StartsWith("screen(");
+                    if (!isScreen) continue;
+                    if (n.IndexOf("red", System.StringComparison.OrdinalIgnoreCase) >= 0) continue;
+                    if (m.HasProperty("_EmissionColor")) m.SetColor("_EmissionColor", ScreenPurple);
+                }
+            }
+        }
+        catch { }
     }
 
     // Several passes over the first seconds: other board components get
@@ -92,6 +134,7 @@ public class FalconBoardTexts : MonoBehaviour
 
     private void ApplyOnce()
     {
+        ReskinScreens();
         foreach (Text t in Resources.FindObjectsOfTypeAll<Text>())
         {
             if (t == null || !t.gameObject.scene.IsValid()) continue;
