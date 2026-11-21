@@ -42,7 +42,33 @@ public class FalconRtx : MonoBehaviour
     // system (build #20: constant snap-back between the two).
     public static FalconRtx Instance;
     public static bool IsOn { get { return Instance != null && Instance.applied; } }
-    public static int PhaseOverride = -1; // -1 = follow the game clock
+    public static int PhaseOverride = -1;
+
+    // Round 86: per-phase sky keyframes on the game's own
+    // 10-phase clock (0 night, 1 dawn, 2 morning, 3-5 day,
+    // 6 dusk, 7 sunset, 8 evening, 9 night), lerped live.
+    private static readonly Color[] SkyTints = {
+        new Color(0.03f, 0.03f, 0.07f), new Color(0.55f, 0.32f, 0.18f),
+        new Color(0.33f, 0.45f, 0.62f), new Color(0.34f, 0.49f, 0.72f),
+        new Color(0.35f, 0.50f, 0.74f), new Color(0.36f, 0.47f, 0.66f),
+        new Color(0.52f, 0.33f, 0.20f), new Color(0.56f, 0.30f, 0.16f),
+        new Color(0.16f, 0.14f, 0.26f), new Color(0.03f, 0.03f, 0.07f) };
+    private static readonly Color[] SkyGrounds = {
+        new Color(0.01f, 0.01f, 0.02f), new Color(0.20f, 0.10f, 0.08f),
+        new Color(0.25f, 0.24f, 0.22f), new Color(0.30f, 0.28f, 0.26f),
+        new Color(0.31f, 0.29f, 0.27f), new Color(0.28f, 0.25f, 0.22f),
+        new Color(0.20f, 0.11f, 0.08f), new Color(0.19f, 0.09f, 0.07f),
+        new Color(0.05f, 0.04f, 0.09f), new Color(0.01f, 0.01f, 0.02f) };
+    private static readonly float[] SkyExpos = { 0.7f, 0.95f, 1.0f, 1.1f, 1.1f, 1.05f, 0.98f, 0.95f, 0.85f, 0.7f };
+    // Round 87: the sun's color/intensity ride the same lerp
+    // (they used to snap between four buckets).
+    private static readonly Color[] SunColors = {
+        new Color(0.60f, 0.70f, 1.00f), new Color(1.00f, 0.55f, 0.30f),
+        new Color(1.00f, 0.90f, 0.75f), new Color(1.00f, 0.96f, 0.90f),
+        new Color(1.00f, 0.97f, 0.92f), new Color(1.00f, 0.92f, 0.80f),
+        new Color(1.00f, 0.50f, 0.28f), new Color(1.00f, 0.45f, 0.25f),
+        new Color(0.50f, 0.55f, 0.90f), new Color(0.60f, 0.70f, 1.00f) };
+    private static readonly float[] SunIntens = { 0.2f, 0.9f, 1.05f, 1.15f, 1.15f, 1.1f, 0.9f, 0.85f, 0.35f, 0.2f }; // -1 = follow the game clock
 
     private bool applied;
     private float nextFogCheck;
@@ -55,6 +81,7 @@ public class FalconRtx : MonoBehaviour
     private readonly HashSet<Campfire> knownFires = new HashSet<Campfire>();
     private readonly System.Collections.Generic.List<Light> fireLightLs = new System.Collections.Generic.List<Light>();
     private float nextRescan;
+    private float nextEnvRefresh;
     private float lastSceneCycle;
     private GameObject sunDisc;
     private bool sunDiscVisible;
@@ -132,6 +159,19 @@ public class FalconRtx : MonoBehaviour
                 ScanRigs();
                 ScanFires();
             }
+            // Round 87 (Sans: "the actual lighting being good,
+            // not just bland" + "sky tints actually working"):
+            // the skybox ambient + environment reflections were
+            // captured ONCE at apply time, so the lerped sky
+            // changed overhead while the world's lighting stayed
+            // frozen at toggle-time values. Refresh the
+            // environment from the live sky every few seconds
+            // and the tints actually relight the scene.
+            if (Time.time >= nextEnvRefresh)
+            {
+                nextEnvRefresh = Time.time + 5f;
+                try { DynamicGI.UpdateEnvironment(); } catch { }
+            }
         }
     }
 
@@ -156,6 +196,13 @@ public class FalconRtx : MonoBehaviour
                 SwapSet(mgr.dayNightSupportedMaterials, mgr.standard);
                 SwapSet(mgr.dayNightSupportedMaterialsCutout, mgr.standardCutout);
                 diag += "mats " + savedShaders.Count + " ";
+                // Round 86 (build #21 verdict: "no mountains fix
+                // at all"): every census loop below now uses
+                // Resources.FindObjectsOfTypeAll - the old
+                // FindObjectsOfType returns ACTIVE renderers
+                // only, and whole map zones sit inactive until
+                // entered, so mountains/city materials were
+                // never even seen when toggling from the stump.
                 // Round 78 (build #18 verdict): the manager's list
                 // covers only SOME materials - Forest walls swapped,
                 // the ground, stump, props and targets stayed baked.
@@ -168,9 +215,9 @@ public class FalconRtx : MonoBehaviour
                 foreach (var m in mgr.dayNightSupportedMaterials) if (m != null && m.shader != null) litShaders.Add(m.shader);
                 foreach (var m in mgr.dayNightSupportedMaterialsCutout) if (m != null && m.shader != null) cutShaders.Add(m.shader);
                 int extra = 0;
-                foreach (var r in FindObjectsOfType<Renderer>())
+                foreach (var r in Resources.FindObjectsOfTypeAll<Renderer>())
                 {
-                    if (r == null) continue;
+                    if (r == null || !r.gameObject.scene.IsValid()) continue;
                     var mats = r.sharedMaterials;
                     if (mats == null) continue;
                     foreach (var m in mats)
@@ -185,9 +232,9 @@ public class FalconRtx : MonoBehaviour
                 // materials go high-smoothness once Standard,
                 // snapshotted in savedIce and restored on revert.
                 int ice = 0;
-                foreach (var r in FindObjectsOfType<Renderer>())
+                foreach (var r in Resources.FindObjectsOfTypeAll<Renderer>())
                 {
-                    if (r == null) continue;
+                    if (r == null || !r.gameObject.scene.IsValid()) continue;
                     var mats = r.sharedMaterials;
                     if (mats == null) continue;
                     foreach (var m in mats)
@@ -209,9 +256,9 @@ public class FalconRtx : MonoBehaviour
                 // "isn't shiny enough"): glass-named materials
                 // get the same reflective treatment as the ice.
                 int glass = 0;
-                foreach (var r in FindObjectsOfType<Renderer>())
+                foreach (var r in Resources.FindObjectsOfTypeAll<Renderer>())
                 {
-                    if (r == null) continue;
+                    if (r == null || !r.gameObject.scene.IsValid()) continue;
                     var mats = r.sharedMaterials;
                     if (mats == null) continue;
                     foreach (var m in mats)
@@ -238,9 +285,9 @@ public class FalconRtx : MonoBehaviour
                 int unlit = 0;
                 if (mgr.gorillaUnlit != null || mgr.gorillaUnlitCutout != null)
                 {
-                    foreach (var r in FindObjectsOfType<Renderer>())
+                    foreach (var r in Resources.FindObjectsOfTypeAll<Renderer>())
                     {
-                        if (r == null) continue;
+                        if (r == null || !r.gameObject.scene.IsValid()) continue;
                         var mats = r.sharedMaterials;
                         if (mats == null) continue;
                         foreach (var m in mats)
@@ -265,14 +312,17 @@ public class FalconRtx : MonoBehaviour
             {
                 proceduralSky = new Material(skyShader);
                 if (proceduralSky.HasProperty("_SunDisk")) savedSunDisk = proceduralSky.GetFloat("_SunDisk");
+                // Round 86: thinner atmosphere = less horizon
+                // haze washing the sky out pale.
+                if (proceduralSky.HasProperty("_AtmosphereThickness")) proceduralSky.SetFloat("_AtmosphereThickness", 0.6f);
                 RenderSettings.skybox = proceduralSky;
                 RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Skybox;
                 try { DynamicGI.UpdateEnvironment(); } catch { }
             }
-            var renderers = FindObjectsOfType<Renderer>();
+            var renderers = Resources.FindObjectsOfTypeAll<Renderer>();
             foreach (var r in renderers)
             {
-                if (r == null) continue;
+                if (r == null || !r.gameObject.scene.IsValid()) continue;
                 var m = r.sharedMaterial;
                 if (m == null || m.shader == null) continue;
                 if (m.shader.name.IndexOf("DayNightLerpSky", StringComparison.OrdinalIgnoreCase) >= 0)
@@ -367,7 +417,14 @@ public class FalconRtx : MonoBehaviour
                 probeGo = new GameObject("FalconRtxProbe");
                 var probe = probeGo.AddComponent<ReflectionProbe>();
                 probe.mode = UnityEngine.Rendering.ReflectionProbeMode.Realtime;
-                probe.refreshMode = UnityEngine.Rendering.ReflectionProbeRefreshMode.ViaScripting;
+                // Round 86 (build #21: "same glass flicker when
+                // you get close"): ViaScripting rendered the cube
+                // ONCE from wherever the head was at apply time -
+                // walk toward glass and the stale reflection
+                // swims. EveryFrame with per-face time slicing
+                // keeps it live for a fraction of the cost.
+                probe.refreshMode = UnityEngine.Rendering.ReflectionProbeRefreshMode.EveryFrame;
+                probe.timeSlicingMode = UnityEngine.Rendering.ReflectionProbeTimeSlicingMode.IndividualFaces;
                 probe.resolution = 128;
                 probe.nearClipPlane = 0.3f;
                 probe.farClipPlane = 150f;
@@ -593,15 +650,57 @@ public class FalconRtx : MonoBehaviour
                     if (key == "night") elev = -25f;
                     float yaw = Mathf.Lerp(-80f, 40f, dayT);
                     rtxSun.transform.rotation = Quaternion.Euler(90f - elev, yaw, 0f);
-                    if (key == "night") { rtxSunLight.color = new Color(0.6f, 0.7f, 1f); rtxSunLight.intensity = 0.2f; }
-                    else if (key == "orange") { rtxSunLight.color = new Color(1f, 0.55f, 0.3f); rtxSunLight.intensity = 0.9f; }
-                    else if (key == "rain" || key == "snow") { rtxSunLight.color = new Color(0.9f, 0.95f, 1f); rtxSunLight.intensity = 0.7f; }
-                    else { rtxSunLight.color = new Color(1f, 0.96f, 0.9f); rtxSunLight.intensity = 1.15f; }
+                    if (key == "rain" || key == "snow") { rtxSunLight.color = new Color(0.9f, 0.95f, 1f); rtxSunLight.intensity = 0.7f; }
+                    else
+                    {
+                        // Round 87: lerped like the sky (was four
+                        // snapping buckets).
+                        int i0 = ((int)Mathf.Floor(t) % 10 + 10) % 10;
+                        int i1 = (i0 + 1) % 10;
+                        float f = t - Mathf.Floor(t);
+                        rtxSunLight.color = Color.Lerp(SunColors[i0], SunColors[i1], f);
+                        rtxSunLight.intensity = Mathf.Lerp(SunIntens[i0], SunIntens[i1], f);
+                    }
                 }
                 catch { }
             }
             sunDiscVisible = (key == "day" || key == "orange");
             if (sunDisc != null) sunDisc.transform.localScale = Vector3.one * (key == "orange" ? 58f : 42f);
+            // Round 86 (build #21 verdict: "the sky stays this
+            // ugly pale the whole time"): the sky was FIVE flat
+            // buckets repainted only on bucket change - one
+            // gray tint for the entire day. Now it rides the
+            // game's own 10-phase clock with a lerp between
+            // per-phase keyframes, repainted every tick, and
+            // the day keyframes are BLUE like the game's sky
+            // instead of neutral gray. Weather still overrides.
+            if (proceduralSky != null && mgr != null)
+            {
+                try
+                {
+                    Color tint, ground; float expo;
+                    if (key == "rain") { tint = new Color(0.20f, 0.24f, 0.30f); ground = new Color(0.10f, 0.11f, 0.13f); expo = 0.8f; }
+                    else if (key == "snow") { tint = new Color(0.55f, 0.58f, 0.62f); ground = new Color(0.40f, 0.42f, 0.45f); expo = 0.95f; }
+                    else
+                    {
+                        int sIdx = PhaseOverride >= 0 ? PhaseOverride : mgr.currentTimeIndex;
+                        float sLerp = PhaseOverride >= 0 ? 0f : Mathf.Clamp01(mgr.currentLerp);
+                        float tt = sIdx + sLerp;
+                        int i0 = ((int)Mathf.Floor(tt) % 10 + 10) % 10;
+                        int i1 = (i0 + 1) % 10;
+                        float f = tt - Mathf.Floor(tt);
+                        tint = Color.Lerp(SkyTints[i0], SkyTints[i1], f);
+                        ground = Color.Lerp(SkyGrounds[i0], SkyGrounds[i1], f);
+                        expo = Mathf.Lerp(SkyExpos[i0], SkyExpos[i1], f);
+                    }
+                    proceduralSky.SetColor("_SkyTint", tint);
+                    proceduralSky.SetColor("_GroundColor", ground);
+                    proceduralSky.SetFloat("_Exposure", expo);
+                    proceduralSky.SetFloat("_SunDisk", key == "night" ? 0f : 2f);
+                    proceduralSky.SetFloat("_SunSize", 0.08f);
+                }
+                catch { }
+            }
             if (key == fogKey) return;
             fogKey = key;
 
@@ -626,46 +725,9 @@ public class FalconRtx : MonoBehaviour
                     RenderSettings.fog = false;
                     break;
             }
-            // Round 78 (Sans): the sky follows the game's day
-            // system too - same phase key as the fog above.
-            if (proceduralSky != null)
-            {
-                try
-                {
-                    switch (key)
-                    {
-                        case "night":
-                            proceduralSky.SetColor("_SkyTint", new Color(0.03f, 0.03f, 0.07f));
-                            proceduralSky.SetColor("_GroundColor", new Color(0.01f, 0.01f, 0.02f));
-                            proceduralSky.SetFloat("_Exposure", 0.7f);
-                            proceduralSky.SetFloat("_SunDisk", 0f); // night: no sun in the sky
-                            break;
-                        case "orange":
-                            proceduralSky.SetColor("_SkyTint", new Color(0.55f, 0.32f, 0.18f));
-                            proceduralSky.SetColor("_GroundColor", new Color(0.20f, 0.10f, 0.08f));
-                            proceduralSky.SetFloat("_Exposure", 0.95f);
-                            proceduralSky.SetFloat("_SunDisk", 2f); // round 82: explicit - the shader default snapshot read 0 in practice, so no phase ever drew the disc
-                            proceduralSky.SetFloat("_SunSize", 0.08f);
-                            break;
-                        case "rain":
-                        case "snow":
-                            proceduralSky.SetColor("_SkyTint", new Color(0.36f, 0.42f, 0.47f));
-                            proceduralSky.SetColor("_GroundColor", new Color(0.15f, 0.17f, 0.18f));
-                            proceduralSky.SetFloat("_Exposure", 0.9f);
-                            proceduralSky.SetFloat("_SunDisk", 2f); // round 82: explicit - the shader default snapshot read 0 in practice, so no phase ever drew the disc
-                            proceduralSky.SetFloat("_SunSize", 0.08f);
-                            break;
-                        default:
-                            proceduralSky.SetColor("_SkyTint", new Color(0.5f, 0.5f, 0.5f));
-                            proceduralSky.SetColor("_GroundColor", new Color(0.37f, 0.35f, 0.34f));
-                            proceduralSky.SetFloat("_Exposure", 1.0f);
-                            proceduralSky.SetFloat("_SunDisk", 2f); // round 82: explicit - the shader default snapshot read 0 in practice, so no phase ever drew the disc
-                            proceduralSky.SetFloat("_SunSize", 0.08f);
-                            break;
-                    }
-                }
-                catch { }
-            }
+            // Round 86: the sky itself is repainted ABOVE the
+            // fogKey return now (lerped per phase, every tick);
+            // the old five-bucket switch that lived here is gone.
             // Night: everything glows slightly - bloom breathes up.
             if (bloomSettings != null && bloomTypeRef != null)
                 SetParam(bloomTypeRef, bloomSettings, "intensity", key == "night" ? 2.8f : 2.2f);

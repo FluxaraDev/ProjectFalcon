@@ -62,7 +62,12 @@ namespace GorillaNetworking
 
 		private int minorVersion = 1;
 
-		private int minorVersion2 = 43;
+		// Round 87 (Project Falcon): 43 -> 44. GameVersionString
+		// ("live1.1.1.44") is BOTH the Photon AppVersion (old
+		// builds matchmake only with old builds) and the
+		// CurrentVersion the computer sends the version check -
+		// the CloudScript build gate keys on it.
+		private int minorVersion2 = 44;
 
 		private string _gameVersionString = "";
 

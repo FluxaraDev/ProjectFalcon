@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -73,16 +74,30 @@ public class FalconBoardTexts : MonoBehaviour
         StartCoroutine(ApplyBoards());
     }
 
-    // Round 85 (Sans, build #20 verdict): the computer screens
-    // are purple in canyons and caves only. Those boards share
-    // one model; the other maps' boards are a DIFFERENT model
-    // whose screen material is not the screen.mat asset (no
-    // second .mat exists in the project - the material rides
-    // inside the model/scene), so the file edit never reached
-    // them. Runtime pass: every renderer material named like
-    // the good screen ("screen", not "screenRed") gets the
-    // Falcon purple emission directly, wherever it came from.
+    // Round 86 (VERIFIED from the scene file after two failed
+    // guesses): every wall monitor in the game - wallmonitor
+    // forest/city/cave/canyon/mountain/cosmetics/tutorial,
+    // motdscreen, the object named "screen", the forest
+    // computer monitors - renders through ONE shared material,
+    // forestatlas.mat (the screens are UV regions of the atlas
+    // texture). Only the canyon/cave monitors additionally
+    // carry the screen.mat asset, which is why the round-82
+    // file edit purpled those two and nothing else, and why
+    // the round-85 name match (materials NAMED "screen") hit
+    // nothing else. Tinting the shared atlas would purple
+    // half the forest, so: target renderers by GAMEOBJECT
+    // name (the monitor family), instance ONLY the atlas /
+    // screen material slots per renderer, and set the purple
+    // emission on the instance.
     private static readonly Color ScreenPurple = new Color(0.42f, 0.04f, 0.72f, 1f);
+    private static readonly HashSet<int> reskinnedRenderers = new HashSet<int>();
+
+    private static bool IsMonitorObject(string n)
+    {
+        if (string.IsNullOrEmpty(n)) return false;
+        n = n.ToLowerInvariant();
+        return n.Contains("monitor") || n == "motdscreen" || n == "screen";
+    }
 
     private static void ReskinScreens()
     {
@@ -91,16 +106,36 @@ public class FalconBoardTexts : MonoBehaviour
             foreach (Renderer r in Resources.FindObjectsOfTypeAll<Renderer>())
             {
                 if (r == null || !r.gameObject.scene.IsValid()) continue;
+                if (!IsMonitorObject(r.gameObject.name)) continue;
+                int id = r.GetInstanceID();
+                if (reskinnedRenderers.Contains(id)) continue;
                 var mats = r.sharedMaterials;
-                if (mats == null) continue;
-                foreach (var m in mats)
+                if (mats == null || mats.Length == 0) continue;
+                var inst = new Material[mats.Length];
+                bool changed = false;
+                for (int i = 0; i < mats.Length; i++)
                 {
+                    var m = mats[i];
+                    inst[i] = m;
                     if (m == null) continue;
                     string n = m.name;
-                    bool isScreen = n == "screen" || n.StartsWith("screen ") || n.StartsWith("screen(");
-                    if (!isScreen) continue;
-                    if (n.IndexOf("red", System.StringComparison.OrdinalIgnoreCase) >= 0) continue;
-                    if (m.HasProperty("_EmissionColor")) m.SetColor("_EmissionColor", ScreenPurple);
+                    bool isAtlas = n == "forestatlas";
+                    bool isScreen = (n == "screen" || n.StartsWith("screen ") || n.StartsWith("screen("))
+                        && n.IndexOf("red", System.StringComparison.OrdinalIgnoreCase) < 0;
+                    if (!isAtlas && !isScreen) continue;
+                    var copy = new Material(m);
+                    if (copy.HasProperty("_EmissionColor"))
+                    {
+                        copy.SetColor("_EmissionColor", ScreenPurple);
+                        copy.EnableKeyword("_EMISSION");
+                    }
+                    inst[i] = copy;
+                    changed = true;
+                }
+                if (changed)
+                {
+                    r.materials = inst;
+                    reskinnedRenderers.Add(id);
                 }
             }
         }
@@ -148,6 +183,19 @@ public class FalconBoardTexts : MonoBehaviour
             {
                 t.text = CodeOfConduct;
                 FitText(t);
+                // Round 86: the CoC board's green frame image
+                // goes Falcon purple as well - it is the board
+                // every player sees at spawn. The staff board
+                // clones this image, so it inherits the tint.
+                try
+                {
+                    var cv = t.GetComponentInParent<Canvas>();
+                    if (cv != null)
+                        foreach (Image img in cv.GetComponentsInChildren<Image>(true))
+                            if (img.gameObject.name == "CodeOfConduct")
+                                img.color = new Color(0.45f, 0.12f, 0.85f, 1f);
+                }
+                catch { }
                 float dc = Vector3.Distance(t.transform.position, StaffCenter());
                 if (nearestCocText == null || dc < nearestCocDist)
                 {

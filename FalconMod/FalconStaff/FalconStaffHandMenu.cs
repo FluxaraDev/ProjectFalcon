@@ -77,6 +77,19 @@ public class FalconStaffHandMenu : MonoBehaviour
     private float curMaxScroll = SettingsMaxScroll;
     private float nextCheckerRefresh;
     private float nextReportAllowed;
+    // Round 86 (Sans): a VISUAL tab (RTX / nametags / PhaseSync
+    // are not movement), a horizontally scrolling tab bar (full-
+    // size tabs instead of seven crammed slivers interfering
+    // with each other), and the checker rebuilds only when its
+    // data actually changed.
+    private readonly List<float> tabBaseCx = new List<float>();
+    private float tabOffset;
+    private Text tabArrowL, tabArrowR;
+    private string lastModsSig = "";
+    // Round 87 (Sans): the checker is a list -> detail UI now.
+    // -1 = the name list; -7 = your own detail (offline);
+    // otherwise the Photon actor number being viewed.
+    private int modsDetailActor = -1;
     private readonly System.Collections.Generic.List<Btn> settingsBtns = new System.Collections.Generic.List<Btn>();
     private readonly System.Collections.Generic.List<Text> settingsTexts = new System.Collections.Generic.List<Text>();
     private const float SettingsRebase = 82f;    // rows were laid out from the panel top; shift down under the tab row
@@ -201,6 +214,18 @@ public class FalconStaffHandMenu : MonoBehaviour
         hovered = open ? ComputeHover() : null;
         PaintButtons();
 
+        // Round 86: horizontal tab scroll - hover any tab and
+        // push the LEFT thumbstick sideways.
+        if (open && hovered != null && tabBtns.Contains(hovered))
+        {
+            Vector2 ax;
+            if (left.TryGetFeatureValue(CommonUsages.primary2DAxis, out ax) && Mathf.Abs(ax.x) > 0.25f)
+            {
+                float no = tabOffset - ax.x * 300f * Time.deltaTime;
+                if (Mathf.Abs(no - tabOffset) > 0.01f) { tabOffset = no; ApplyTabScroll(); }
+            }
+        }
+
         if (open && hovered != null)
         {
             if (trigEdge && hovered.onClick != null) { FalconSessionLog.Log("TAP " + hovered.label); hovered.onClick(); }
@@ -223,14 +248,15 @@ public class FalconStaffHandMenu : MonoBehaviour
         {
             footerTimer -= Time.deltaTime;
             if (footerTimer <= 0f) { footerTimer = 0.5f; RefreshFooter(); if (!staff) RefreshDiagStatus(); }
-            // Round 85: the mod checker is live - rebuild its
-            // rows once a second while it is the open tab (FPS
-            // and mod states move; rows are text-only, so a
-            // rebuild cannot eat a click).
+            // Round 85: the mod checker is live while it is the
+            // open tab. Round 86: the 1 s tick rebuilds ONLY
+            // when the data it would draw actually changed -
+            // the blind rebuild churned the panel every second.
             if (panelRoot != null && curTabs.Count > 0 && curTabs[Mathf.Clamp(tab, 0, curTabs.Count - 1)] == "mods" && Time.time >= nextCheckerRefresh)
             {
                 nextCheckerRefresh = Time.time + 1f;
-                RebuildContent();
+                string sig = ModsSignature();
+                if (sig != lastModsSig || lastBuiltTabId != "mods") { lastModsSig = sig; RebuildContent(); }
             }
         }
     }
@@ -245,9 +271,9 @@ public class FalconStaffHandMenu : MonoBehaviour
     }
 
     // Round 85: build the tab bar for the holder's role.
-    // Players: Guns / Move / Mods. Staff add Staff. Headadmin
-    // adds Troll / Sound / Settings (admins keep the ban and
-    // kick guns on the Staff tab but never the troll tab).
+    // Round 86 (Sans): everyone gets Guns / Move / Visual /
+    // Mods; staff add Staff; headadmin adds Troll / Sound /
+    // Settings. The bar scrolls horizontally at full size.
     private void RefreshTabs()
     {
         if (panelRoot == null) return;
@@ -258,30 +284,92 @@ public class FalconStaffHandMenu : MonoBehaviour
             if (b.txt != null) Destroy(b.txt.gameObject);
         }
         tabBtns.Clear();
+        tabBaseCx.Clear();
         curTabs.Clear();
         bool staff = FalconStaffRole.IsStaffOrHigher;
         bool head = FalconStaffRole.IsHeadAdmin;
-        if (staff) curTabs.Add("staff");
-        if (head) { curTabs.Add("troll"); curTabs.Add("sound"); }
         curTabs.Add("guns");
         curTabs.Add("move");
-        if (head) curTabs.Add("settings");
+        curTabs.Add("visual");
         curTabs.Add("mods");
+        if (staff) curTabs.Add("staff");
+        if (head) { curTabs.Add("troll"); curTabs.Add("sound"); curTabs.Add("settings"); }
         if (tab >= curTabs.Count) tab = 0;
-        float w = Mathf.Min(45f, 264f / curTabs.Count - 4f);
-        float x0 = -(curTabs.Count - 1) * (w + 4f) / 2f;
+        // Round 86: tabs are FULL SIZE (56 wide) and the bar
+        // scrolls horizontally (left stick X while hovering a
+        // tab; arrows mark the ends). Off-window tabs are
+        // scrollHidden: undrawn and unclickable.
+        const float w = 56f;
         for (int i = 0; i < curTabs.Count; i++)
         {
             int idx = i;
             string id = curTabs[i];
-            string label = id == "staff" ? "Staff" : id == "troll" ? "Troll" : id == "sound" ? "Sound" : id == "guns" ? "Guns" : id == "move" ? "Move" : id == "settings" ? "Settings" : "Mods";
-            Btn b = MakeButton(panelRoot.GetComponent<RectTransform>(), x0 + i * (w + 4f), 116f, w, 28f, label,
+            string label = id == "staff" ? "Staff" : id == "troll" ? "Troll" : id == "sound" ? "Sound" : id == "guns" ? "Guns" : id == "move" ? "Move" : id == "visual" ? "Visual" : id == "settings" ? "Settings" : "Mods";
+            float baseCx = -96f + i * 62f;
+            Btn b = MakeButton(panelRoot.GetComponent<RectTransform>(), baseCx, 116f, w, 28f, label,
                 () => { tab = idx; RebuildContent(); },
                 () => tab == idx ? 1 : 0);
-            if (curTabs.Count > 5 && b.txt != null) b.txt.fontSize = 10;
             tabBtns.Add(b);
+            tabBaseCx.Add(baseCx);
             clickables.Add(b);
         }
+        tabOffset = 0f;
+        ApplyTabScroll();
+    }
+
+    private float TabMinOffset()
+    {
+        if (tabBaseCx.Count == 0) return 0f;
+        float right = tabBaseCx[tabBaseCx.Count - 1] + 28f;
+        return Mathf.Min(0f, 132f - right);
+    }
+
+    private void ApplyTabScroll()
+    {
+        tabOffset = Mathf.Clamp(tabOffset, TabMinOffset(), 0f);
+        for (int i = 0; i < tabBtns.Count && i < tabBaseCx.Count; i++)
+        {
+            Btn b = tabBtns[i];
+            b.cx = tabBaseCx[i] + tabOffset;
+            b.scrollHidden = b.cx - b.w / 2f < -134f || b.cx + b.w / 2f > 134f;
+            if (b.img != null)
+            {
+                b.img.gameObject.SetActive(!b.scrollHidden);
+                b.img.rectTransform.anchoredPosition = new Vector2(b.cx, b.cy);
+            }
+            if (b.txt != null)
+            {
+                b.txt.gameObject.SetActive(!b.scrollHidden);
+                b.txt.rectTransform.anchoredPosition = new Vector2(b.cx, b.cy);
+            }
+        }
+        bool overflow = TabMinOffset() < 0f;
+        if (tabArrowL != null) tabArrowL.gameObject.SetActive(overflow && tabOffset < -1f);
+        if (tabArrowR != null) tabArrowR.gameObject.SetActive(overflow && tabOffset > TabMinOffset() + 1f);
+    }
+
+    // Round 86: signature of what the mod checker would draw -
+    // the 1 s tick rebuilds only when this changes.
+    private static string ModsSignature()
+    {
+        var sb = new System.Text.StringBuilder();
+        try
+        {
+            if (PhotonNetwork.InRoom && PhotonNetwork.PlayerList != null)
+            {
+                foreach (var p in PhotonNetwork.PlayerList)
+                {
+                    if (p == null) continue;
+                    sb.Append(p.ActorNumber).Append(':');
+                    object mo;
+                    if (p.CustomProperties != null && p.CustomProperties.TryGetValue("falcon_mods", out mo) && mo != null) sb.Append(mo.ToString());
+                    sb.Append(';');
+                }
+            }
+            else sb.Append("off:").Append(FalconOptionsDriver.CurrentFps);
+        }
+        catch { }
+        return sb.ToString();
     }
 
     // ---------------- panel construction ----------------
@@ -316,6 +404,13 @@ public class FalconStaffHandMenu : MonoBehaviour
         lastRole = FalconStaffRole.Role;
         RefreshTitle();
         RefreshTabs();
+        // Round 86: tab-bar scroll arrows (visibility is driven
+        // by ApplyTabScroll).
+        tabArrowL = MakeText(rt, -133f, 116f, 12f, 28f, 15, TextAnchor.MiddleCenter);
+        tabArrowL.text = "<";
+        tabArrowR = MakeText(rt, 133f, 116f, 12f, 28f, 15, TextAnchor.MiddleCenter);
+        tabArrowR.text = ">";
+        ApplyTabScroll();
 
         var contentGo = new GameObject("Content");
         contentRoot = contentGo.AddComponent<RectTransform>();
@@ -466,6 +561,7 @@ public class FalconStaffHandMenu : MonoBehaviour
         // everyone reaches this - players get their own tabs.
         string tid = curTabs.Count > 0 ? curTabs[Mathf.Clamp(tab, 0, curTabs.Count - 1)] : "guns";
         if (tid != lastBuiltTabId) { if (tid == "settings" || tid == "mods") settingsScroll = 0f; lastBuiltTabId = tid; }
+        if (tid != "mods") modsDetailActor = -1; // round 87: leaving the checker returns it to the name list
 
         if (tid == "staff")
         {
@@ -557,9 +653,10 @@ public class FalconStaffHandMenu : MonoBehaviour
         else if (tid == "move")
         {
             // Round 85 (Sans): the player Movement tab - adjustable
-            // long arms + speed boost, RTX and PhaseSync toggles,
-            // open to EVERY role (the computer ITEMS page toggles
-            // the same options). Staff extras ride below.
+            // long arms + speed boost, open to EVERY role (the
+            // computer ITEMS page toggles the same options).
+            // Round 86: RTX / nametags / PhaseSync moved to the
+            // Visual tab where they belong. Staff extras below.
             ContentButton(-75f, 84f, 118f, 24f, "Arms: " + (FalconPlayerOptions.LongArms ? "ON" : "OFF"),
                 () => { FalconPlayerOptions.ToggleLongArms(); FalconSessionLog.Log("MENU arms " + FalconPlayerOptions.LongArms); RebuildContent(); },
                 () => FalconPlayerOptions.LongArms ? 1 : 0);
@@ -574,20 +671,6 @@ public class FalconStaffHandMenu : MonoBehaviour
             ContentText(66f, 57f, 44f, 24f, 12, "x" + FalconPlayerOptions.BoostTarget.ToString("0.00"));
             ContentButton(104f, 57f, 36f, 24f, "+", () => { FalconPlayerOptions.SetBoostTarget(FalconPlayerOptions.BoostTarget + 0.05f); RebuildContent(); }, () => 0);
 
-            ContentButton(0f, 30f, 268f, 24f, "RTX: " + (FalconPlayerOptions.Rtx ? "ON" : "OFF") + " (experimental)",
-                () => { FalconPlayerOptions.ToggleRtx(); FalconSessionLog.Log("MENU rtx " + FalconPlayerOptions.Rtx); RebuildContent(); },
-                () => FalconPlayerOptions.Rtx ? 1 : 0);
-            ContentButton(0f, 3f, 268f, 24f, FalconPlayerOptions.PhaseSync0 ? "PhaseSync: 0 (ON)" : "PhaseSync: 4 (OFF)",
-                () =>
-                {
-                    FalconPlayerOptions.TogglePhaseSync();
-                    FalconSessionLog.Log("MENU phasesync " + FalconPlayerOptions.PhaseSync0);
-                    lastAction = FalconPhaseSync.LastResult;
-                    if (lastAction.Length > 44) lastAction = lastAction.Substring(0, 44);
-                    RebuildContent();
-                },
-                () => FalconPlayerOptions.PhaseSync0 ? 1 : 0);
-
             if (FalconStaffRole.IsStaffOrHigher)
             {
                 ContentText(0f, -26f, 268f, 18f, 11, "- STAFF EXTRAS -");
@@ -601,8 +684,24 @@ public class FalconStaffHandMenu : MonoBehaviour
             }
             else
             {
-                ContentText(0f, -40f, 268f, 44f, 11, "Arms: x0.99 (shorter than stock) to x1.40.\nSpeed: x1.05 (just under stock) to x1.82.\nPhaseSync ON = 0, OFF = 4.");
+                ContentText(0f, -40f, 268f, 44f, 11, "Arms: x0.99 (shorter than stock) to x1.40.\nSpeed: x1.05 (just under stock) to x1.82.");
             }
+        }
+        else if (tid == "visual")
+        {
+            // Round 86 (Sans): RTX, nametags and PhaseSync are
+            // VISUAL options - they never belonged on Move.
+            ContentButton(0f, 84f, 268f, 24f, "RTX: " + (FalconPlayerOptions.Rtx ? "ON" : "OFF") + " (experimental)",
+                () => { FalconPlayerOptions.ToggleRtx(); FalconSessionLog.Log("MENU rtx " + FalconPlayerOptions.Rtx); RebuildContent(); },
+                () => FalconPlayerOptions.Rtx ? 1 : 0);
+            ContentButton(0f, 57f, 268f, 24f, "Nametags: " + (FalconPlayerOptions.NameTags ? "ON" : "OFF"),
+                () => { FalconPlayerOptions.ToggleNameTags(); FalconSessionLog.Log("MENU nametags " + FalconPlayerOptions.NameTags); RebuildContent(); },
+                () => FalconPlayerOptions.NameTags ? 1 : 0);
+            // Round 87 (Sans): PhaseSync is SHELVED - it does
+            // not work at all on this build. The toggle leaves
+            // the menu; FalconPhaseSync and its wiring stay in
+            // the code, dormant, for when we come back to it.
+            ContentText(0f, -8f, 268f, 44f, 11, "RTX: realtime sun, shadows, reflections.\nNametags: names over players' heads.");
         }
         else if (tid == "settings" && FalconStaffRole.IsHeadAdmin)
         {
@@ -696,59 +795,90 @@ public class FalconStaffHandMenu : MonoBehaviour
         }
         else if (tid == "mods")
         {
-            // Round 85 (Sans): the mod checker. Every client
-            // publishes its own mod state + realtime FPS as the
-            // "falcon_mods" player property (FalconOptionsDriver);
-            // staff publish "discreet" - their mods never show.
-            // Rows are text-only inside the scroll root; Update
-            // rebuilds this tab once a second while it is open.
-            var mgo = new GameObject("SettingsScroll");
-            settingsRoot = mgo.AddComponent<RectTransform>();
-            settingsRoot.SetParent(contentRoot, false);
-            settingsRoot.anchorMin = new Vector2(0.5f, 0.5f);
-            settingsRoot.anchorMax = new Vector2(0.5f, 0.5f);
-            settingsRoot.pivot = new Vector2(0.5f, 0.5f);
-            settingsRoot.anchoredPosition = Vector2.zero;
-            settingsRoot.sizeDelta = new Vector2(PanelW, PanelH);
-            buildParent = settingsRoot;
-            buildingSettings = true;
-            ContentText(0f, 170f, 268f, 18f, 12, "MOD CHECKER - who has what on");
-            float y = 138f;
+            // Round 85: the mod checker - every client publishes
+            // its mod state + FPS as the "falcon_mods" player
+            // property (FalconOptionsDriver).
+            // Round 87 (Sans): "think of actual UI" - this is a
+            // LIST -> DETAIL tab now. The list is a scrollable
+            // column of player-name BUTTONS; tapping a name opens
+            // that player's detail page. Round 87 also removed
+            // the staff "discreet" string (it outed staff); staff
+            // publish the same string as everyone (see
+            // FalconPlayerOptions.ModStateString).
             var players = PhotonNetwork.PlayerList;
-            if (players == null || players.Length == 0)
-            {
-                ContentText(0f, y, 268f, 20f, 12, "YOU (not in a room)");
-                y -= 22f;
-                ContentText(0f, y, 268f, 18f, 11, FalconPlayerOptions.ModStateString(FalconOptionsDriver.CurrentFps));
-                y -= 30f;
-            }
-            else
+            Photon.Realtime.Player detail = null;
+            if (modsDetailActor >= 0 && players != null)
             {
                 foreach (var p in players)
+                    if (p != null && p.ActorNumber == modsDetailActor) { detail = p; break; }
+                if (detail == null) modsDetailActor = -1;
+            }
+            if (modsDetailActor == -7 || detail != null)
+            {
+                // ---- detail page ----
+                string nm; string mods;
+                if (modsDetailActor == -7)
                 {
-                    if (p == null) continue;
-                    string nm = string.IsNullOrEmpty(p.NickName) ? "???" : p.NickName;
-                    if (p.IsLocal) nm += " (you)";
-                    string mods = "no data yet";
+                    nm = "YOU (not in a room)";
+                    mods = FalconPlayerOptions.ModStateString(FalconOptionsDriver.CurrentFps);
+                }
+                else
+                {
+                    nm = string.IsNullOrEmpty(detail.NickName) ? "???" : detail.NickName;
+                    if (detail.IsLocal) nm += " (you)";
+                    mods = "no data yet - their client has not published (old build, or still loading)";
                     object v;
-                    if (p.CustomProperties != null && p.CustomProperties.TryGetValue("falcon_mods", out v))
+                    if (detail.CustomProperties != null && detail.CustomProperties.TryGetValue("falcon_mods", out v))
                     {
                         string sv = v as string;
                         if (!string.IsNullOrEmpty(sv)) mods = sv;
                     }
-                    ContentText(0f, y, 268f, 20f, 13, nm);
-                    y -= 22f;
-                    ContentText(0f, y, 268f, 18f, 11, mods);
-                    y -= 32f;
                 }
+                ContentButton(-75f, 84f, 118f, 24f, "< Back", () => { modsDetailActor = -1; RebuildContent(); }, () => 0);
+                ContentText(0f, 48f, 268f, 24f, 15, nm);
+                ContentText(0f, 6f, 268f, 40f, 12, mods);
+                ContentText(0f, -44f, 268f, 20f, 11, "Live - updates as their state changes.");
             }
-            curMaxScroll = Mathf.Max(0f, 190f - y);
-            buildParent = null;
-            buildingSettings = false;
-            MakeImage(contentRoot, 141f, -26f, 6f, 244f, new Color(1f, 1f, 1f, 0.15f));
-            var mThumbImg = MakeImage(contentRoot, 141f, 19.5f, 6f, 153f, new Color(1f, 1f, 1f, 0.55f));
-            settingsThumb = mThumbImg.rectTransform;
-            ApplySettingsScroll();
+            else
+            {
+                // ---- list page ----
+                var mgo = new GameObject("SettingsScroll");
+                settingsRoot = mgo.AddComponent<RectTransform>();
+                settingsRoot.SetParent(contentRoot, false);
+                settingsRoot.anchorMin = new Vector2(0.5f, 0.5f);
+                settingsRoot.anchorMax = new Vector2(0.5f, 0.5f);
+                settingsRoot.pivot = new Vector2(0.5f, 0.5f);
+                settingsRoot.anchoredPosition = Vector2.zero;
+                settingsRoot.sizeDelta = new Vector2(PanelW, PanelH);
+                buildParent = settingsRoot;
+                buildingSettings = true;
+                ContentText(0f, 170f, 268f, 18f, 12, "MOD CHECKER - tap a name");
+                float y = 138f;
+                if (players == null || players.Length == 0)
+                {
+                    ContentButton(0f, y, 268f, 24f, "YOU (not in a room)", () => { modsDetailActor = -7; RebuildContent(); }, () => 0);
+                    y -= 30f;
+                }
+                else
+                {
+                    foreach (var p in players)
+                    {
+                        if (p == null) continue;
+                        int actor = p.ActorNumber;
+                        string nm = string.IsNullOrEmpty(p.NickName) ? "???" : p.NickName;
+                        if (p.IsLocal) nm += " (you)";
+                        ContentButton(0f, y, 268f, 24f, nm, () => { modsDetailActor = actor; RebuildContent(); }, () => modsDetailActor == actor ? 1 : 0);
+                        y -= 27f;
+                    }
+                }
+                curMaxScroll = Mathf.Max(0f, 190f - y);
+                buildParent = null;
+                buildingSettings = false;
+                MakeImage(contentRoot, 141f, -26f, 6f, 244f, new Color(1f, 1f, 1f, 0.15f));
+                var mThumbImg = MakeImage(contentRoot, 141f, 19.5f, 6f, 153f, new Color(1f, 1f, 1f, 0.55f));
+                settingsThumb = mThumbImg.rectTransform;
+                ApplySettingsScroll();
+            }
         }
         else
         {

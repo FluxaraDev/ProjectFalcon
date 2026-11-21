@@ -291,6 +291,10 @@ namespace GorillaNetworking
                     FunctionParameter = new
                     {
                         CurrentVersion = PhotonNetworkController.Instance.GameVersionString,
+                        // Round 87 (Project Falcon): the build
+                        // signal for the CloudScript build gate
+                        // (rev 17+). Older builds never send it.
+                        BuildToken = PlayFabAuthenticator.BuildToken,
                         UpdatedSynchTest = includeUpdatedServerSynchTest
                     }
                 }, OnReturnCurrentVersion, OnErrorShared);

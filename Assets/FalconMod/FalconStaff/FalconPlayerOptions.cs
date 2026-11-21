@@ -82,11 +82,14 @@ public static class FalconPlayerOptions
     }
 
     // The mod-checker string this client publishes about itself
-    // (round 85): active mods + realtime FPS. Staff publish the
-    // mask word instead - their mods stay discreet (Sans).
+    // (round 85): active mods + realtime FPS. (Round 87 removed
+    // the staff mask word - see below.)
     public static string ModStateString(float fps)
     {
-        if (FalconStaffRole.IsStaffOrHigher) return "discreet";
+        // Round 87 (Sans): staff used to publish "discreet" -
+        // which told every player exactly who the staff were.
+        // Staff now publish the same honest string as everyone
+        // else (their arms/speed/fps state, nothing more).
         var parts = new System.Collections.Generic.List<string>();
         if (LongArms) parts.Add("ARMS x" + ArmScaleValue.ToString("0.00"));
         if (SpeedBoost) parts.Add("SPEED x" + BoostTarget.ToString("0.00"));

@@ -57,7 +57,13 @@ namespace GorillaNetworking
 
 		private string isup = "true";
 
-		private string version = "live1123";
+		private string version = "live1124";
+
+		// Round 87 (Project Falcon): the build signal. Only
+		// builds carrying this token pass the CloudScript build
+		// gate (rev 17+, Title Data falcon_gate) - older builds
+		// never send it, so they are denied at auth.
+		public const string BuildToken = "fk7-owl-2211";
 
 		// Round 84 (Project Falcon): GorillaComputer's version gate
 		// compares the CloudScript-returned Version against this.

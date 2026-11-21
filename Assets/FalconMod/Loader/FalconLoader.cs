@@ -723,8 +723,16 @@ public class FalconLoader : MonoBehaviour
             var settings = addSettings.Invoke(profile, new object[] { bloomType });
             if (settings == null) { bloomDiag = "AddSettings returned null"; return; }
             bloomType.GetField("enabled").SetValue(settings, true);
-            SetParam(bloomType, settings, "intensity", 3.0f);   // round 61 (Sans): "a lot of bloom"
-            SetParam(bloomType, settings, "threshold", 0.0f);
+            // Round 86 ROOT CAUSE (builds #20/#21: the readout
+            // text renders GRAY): threshold was 0.0, so EVERY
+            // pixel bloomed - the whole frame blurs into itself,
+            // brights wash over the text and whites flatten to
+            // gray. Sans's round-61 "a lot of bloom" was about
+            // the light glints, not a full-frame wash. Threshold
+            // 0.8 blooms only genuinely bright spots; the text
+            // sits on a clean background again.
+            SetParam(bloomType, settings, "intensity", 1.5f);
+            SetParam(bloomType, settings, "threshold", 0.8f);
             SetParam(bloomType, settings, "softKnee", 0.5f);
             int settingsCount = -1;
             try { var sl = profType.GetField("settings").GetValue(profile) as System.Collections.IList; if (sl != null) settingsCount = sl.Count; } catch { }
