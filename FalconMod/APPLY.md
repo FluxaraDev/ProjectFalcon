@@ -193,3 +193,29 @@ Sans chose bloom over the instancing speed: the project flips from Single Pass I
 - **Version live1124, everywhere it lives:** PlayFabAuthenticator.version (client gate compare), PhotonNetworkController minorVersion2 43->44 (GameVersionString "live1.1.1.44" = Photon AppVersion AND the CurrentVersion sent to the version check), CloudScript returns "live1124".
 - **Build gate (CloudScript rev 17, PUBLISH AFTER build #22 EXISTS - publishing changes the returned version and build #21's client gate will bounce it):** release builds send BuildToken (PlayFabAuthenticator.BuildToken, added to the version call in GorillaComputer) - a signal older builds never send. While Title Data falcon_gate = "1", ReturnCurrentVersionNew Fail:true's any caller whose CurrentVersion != "live1.1.1.44" or whose token is missing/wrong. Gate logic verified in a local node harness (8 cases: gate off passes all; gate on fails old/no-token/wrong-token, passes release client; gamedown still wins). RELEASE SEQUENCE: build #22 -> publish rev 17 -> at release, set falcon_gate "1" (older builds die at auth; #22 also matchmakes only with itself via the AppVersion bump).
 - **RTX lighting:** DynamicGI.UpdateEnvironment() every 5 s while applied (the sky ambient/reflections were frozen at toggle time - the lerped sky never relit the world); the sun's color/intensity now lerp on the same 10-phase clock as the sky instead of snapping between four buckets.
+
+## Round 88 addendum (2026-11-21, Sans's orders after build #22's lockout)
+- VERSION/REVISION FIX: CloudScript rev 17 is PUBLISHED and live (returns
+  live1124; verified by fixture ExecuteCloudScript). Build #22 (live1124)
+  can play; build #21 (live1123) now gets the update screen - expected.
+  falcon_gate stays OFF until Sans says "release".
+- RTX REMOVED ENTIRELY (Sans: "it's just ugly now and it never changes,
+  scrap it entirely - I'll redo that RTX later"): FalconRtx.cs DELETED;
+  bootstrap no longer adds it; the Visual tab's RTX row, the computer
+  ITEMS key 4 + screen line, FalconPlayerOptions.Rtx/ToggleRtx, the
+  checker's "RTX" string part, and FalconEnv's RTX branch are all gone.
+  FalconEnv drives BetterDayNightManager directly again.
+- PHASESYNC REMOVED ENTIRELY (was shelved in round 87; Sans: scrap it):
+  FalconPhaseSync.cs DELETED; TogglePhaseSync/PhaseSync0 and the
+  checker's "PHASESYNC 0" string part are gone.
+- LOADER: ALL BLOOM REMOVED (TryBloom + SetParam deleted; no post-
+  processing is built in the loader scene at all). Gray text, final fix:
+  each TextMesh readout gets its OWN material cloned from the font's
+  (atlas-rebuild tracked), so no other system can mute/retint it.
+- TAB BAR: tabs now live under a RectMask2D TabBar root and are CLIPPED
+  as they slide - no more SetActive pop at the edges (scrollHidden is
+  click-gating only, by center position). A real scrollbar (track +
+  thumb, width = visible fraction) sits under the bar and shows
+  whenever the bar overflows. The < > arrows are gone.
+- Push: 13 files in one call + 4 connector deletions (FalconRtx.cs and
+  FalconPhaseSync.cs, Assets + kit trees).

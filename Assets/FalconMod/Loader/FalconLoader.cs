@@ -63,7 +63,6 @@ public class FalconLoader : MonoBehaviour
     // Round 69: loader diagnostics, appended to anticheat_log via
     // FalconAntiCheat.AppendDiag - the file Sans actually sends.
     private readonly System.Collections.Generic.List<string> diag = new System.Collections.Generic.List<string>();
-    private string bloomDiag = "not run";
     private bool uiParked;
     private GameObject mapRoot;
     private Quaternion mapYaw = Quaternion.identity;
@@ -111,7 +110,6 @@ public class FalconLoader : MonoBehaviour
         // stages and the scene load down with it (silent, stuck).
         PlayMusic();
         try { BuildUi(); } catch (Exception e) { Debug.Log("FalconLoader: UI build failed: " + e.Message); diag.Add("UI EXCEPTION: " + e.Message); }
-        TryBloom();
 
         // ---- the ANTICHEAT STATION: staged checks, on screen --------
         // Round 58: stage SETUP is fail-open - if the stage list
@@ -142,7 +140,6 @@ public class FalconLoader : MonoBehaviour
         }
         if (stageText != null) stageText.text = StageLines(done, null);
         FalconAntiCheat.SaveResult(flags);
-        diag.Add("BLOOM: " + bloomDiag);
         try { FalconAntiCheat.AppendDiag(string.Join(" | ", diag.ToArray())); } catch { }
 
         if (flags.Count > 0)
@@ -610,7 +607,23 @@ public class FalconLoader : MonoBehaviour
         tm.alignment = align;
         tm.color = color;
         var mr = go.GetComponent<MeshRenderer>();
-        if (mr != null) mr.sharedMaterial = font.material;
+        if (mr != null && font.material != null)
+        {
+            // Round 88 (Sans: fix the gray text "for the last
+            // time"): each readout mesh gets its OWN material
+            // cloned from the font's, instead of sharing the
+            // font material with every other text user in the
+            // game - nothing else can mute or retint it now.
+            // The clone tracks the font atlas if it rebuilds.
+            var mat = new Material(font.material);
+            mr.sharedMaterial = mat;
+            var fnt = font;
+            fnt.textureRebuiltCallback += (Font rebuilt) =>
+            {
+                if (mat != null && fnt.material != null)
+                    mat.mainTexture = fnt.material.mainTexture;
+            };
+        }
         return tm;
     }
 
@@ -680,107 +693,13 @@ public class FalconLoader : MonoBehaviour
         if (barFill != null) barFill.anchorMax = new Vector2(p, 1f);
     }
 
-    private void TryBloom()
-    {
-        // Post Processing v2 via reflection - compiles and runs with
-        // or without the package; garnish only, all try/caught.
-        // Round 68: the volume is built FIRST and every camera is
-        // armed inside its own try - in the old order one throwing
-        // camera Init silently killed the volume creation below it,
-        // which fits "no bloom at all" in every build so far. Every
-        // step now logs, so the next logcat names the dead link.
-        try
-        {
-            var rig = GameObject.Find("OVRCameraRig");
-            if (rig == null) { bloomDiag = "no rig"; return; }
-            var cams = rig.GetComponentsInChildren<Camera>(true);
-            if (cams.Length == 0) { bloomDiag = "no cameras"; return; }
-
-            var layerType = Type.GetType("UnityEngine.Rendering.PostProcessing.PostProcessLayer, Unity.Postprocessing.Runtime");
-            var resType = Type.GetType("UnityEngine.Rendering.PostProcessing.PostProcessResources, Unity.Postprocessing.Runtime");
-            var volType = Type.GetType("UnityEngine.Rendering.PostProcessing.PostProcessVolume, Unity.Postprocessing.Runtime");
-            var profType = Type.GetType("UnityEngine.Rendering.PostProcessing.PostProcessProfile, Unity.Postprocessing.Runtime");
-            var bloomType = Type.GetType("UnityEngine.Rendering.PostProcessing.Bloom, Unity.Postprocessing.Runtime");
-            if (layerType == null || volType == null || profType == null || bloomType == null || resType == null)
-            {
-                bloomDiag = "post types missing (layer=" + (layerType != null) + " vol=" + (volType != null) + " prof=" + (profType != null) + " bloom=" + (bloomType != null) + " res=" + (resType != null) + ")";
-                return;
-            }
-
-            var profile = ScriptableObject.CreateInstance(profType);
-            // Round 71 ROOT CAUSE (found by reading this code after
-            // build #14's "still no bloom"): the old code reflected
-            // "AddSettings(ScriptableObject)" - an overload that
-            // does not exist on PostProcessProfile. GetMethod
-            // returned null, the guard skipped the call, and the
-            // Bloom settings were NEVER added: the volume ran an
-            // EMPTY profile in every build while the diag reported
-            // "armed". The real API is AddSettings(Type), which
-            // creates the settings inside the profile and returns
-            // it - configure THAT instance.
-            var addSettings = profType.GetMethod("AddSettings", new[] { typeof(Type) });
-            if (addSettings == null) { bloomDiag = "AddSettings(Type) missing"; return; }
-            var settings = addSettings.Invoke(profile, new object[] { bloomType });
-            if (settings == null) { bloomDiag = "AddSettings returned null"; return; }
-            bloomType.GetField("enabled").SetValue(settings, true);
-            // Round 86 ROOT CAUSE (builds #20/#21: the readout
-            // text renders GRAY): threshold was 0.0, so EVERY
-            // pixel bloomed - the whole frame blurs into itself,
-            // brights wash over the text and whites flatten to
-            // gray. Sans's round-61 "a lot of bloom" was about
-            // the light glints, not a full-frame wash. Threshold
-            // 0.8 blooms only genuinely bright spots; the text
-            // sits on a clean background again.
-            SetParam(bloomType, settings, "intensity", 1.5f);
-            SetParam(bloomType, settings, "threshold", 0.8f);
-            SetParam(bloomType, settings, "softKnee", 0.5f);
-            int settingsCount = -1;
-            try { var sl = profType.GetField("settings").GetValue(profile) as System.Collections.IList; if (sl != null) settingsCount = sl.Count; } catch { }
-
-            var volGo = new GameObject("FalconBloomVolume");
-            var vol = volGo.AddComponent(volType);
-            volType.GetField("isGlobal").SetValue(vol, true);
-            volType.GetField("sharedProfile").SetValue(vol, profile);
-
-            var resources = Resources.Load("PostProcessResources", resType);
-            string resTxt = resources != null ? "found" : "NULL";
-            int armed = 0;
-            foreach (var cam in cams)
-            {
-                try
-                {
-                    // Round 69: Quest rigs commonly ship allowHDR
-                    // off, and post bloom fed an LDR target has
-                    // almost nothing to bloom - a prime suspect for
-                    // "no bloom" on every build even if the layer
-                    // armed fine. Force HDR on the loader's cameras.
-                    cam.allowHDR = true;
-                    var layer = cam.gameObject.AddComponent(layerType);
-                    if (resources != null)
-                        layerType.GetMethod("Init", new[] { resType }).Invoke(layer, new object[] { resources });
-                    layerType.GetField("volumeLayer").SetValue(layer, (LayerMask)1);
-                    armed++;
-                }
-                catch (Exception ce) { Debug.Log("FalconLoader bloom: camera arm failed: " + ce.Message); }
-            }
-            bloomDiag = "armed " + armed + "/" + cams.Length + " resources " + resTxt + " hdr forced settings " + settingsCount;
-        }
-        catch (Exception e) { bloomDiag = "exception: " + e.Message; }
-    }
-
-    private void SetParam(Type bloomType, object settings, string field, float value)
-    {
-        try
-        {
-            var f = bloomType.GetField(field);
-            if (f == null) return;
-            var param = f.GetValue(settings);
-            if (param == null) return;
-            param.GetType().GetField("value").SetValue(param, value);
-            param.GetType().GetField("overrideState").SetValue(param, true);
-        }
-        catch { }
-    }
+    // Round 88 (Sans): ALL bloom is REMOVED from the loader -
+    // "remove all bloom, fix the gray text for the last time."
+    // Three rounds of threshold tuning never killed the wash;
+    // with no post-processing built in this scene at all,
+    // nothing sits between the readout's authored colors and
+    // the eye. The PostProcessResources asset stays in
+    // Resources untouched - the loader simply never loads it.
 
     private void PlayMusic()
     {

@@ -4,8 +4,7 @@ using UnityEngine;
 // changer and a time changer in the staff Settings tab. They
 // apply to THIS LOBBY only: the change is broadcast as a Falcon
 // event (EvEnv) to everyone in the room, every client applies
-// it locally, and leaving the room clears it. Not an RTX
-// feature - it works with RTX off.
+// it locally, and leaving the room clears it.
 //
 // Mechanism (from BetterDayNightManager's own code, read
 // 2026-11-19): the manager computes phase + weather from the
@@ -88,7 +87,6 @@ public class FalconEnv : MonoBehaviour
     // Leaving the room ends the override (it was lobby-scoped).
     public static void ClearLocal()
     {
-        try { FalconRtx.PhaseOverride = -1; } catch { }
         if (!AnyActive) return;
         TimeOverride = -1;
         WeatherOverride = -1;
@@ -102,20 +100,10 @@ public class FalconEnv : MonoBehaviour
         if (mgr == null) return;
         try
         {
-            // Round 85 (Sans, build #20 verdict): with RTX on, the
-            // two drivers fought - this class repainted the game's
-            // lightmaps via SetOverrideIndex while RTX repainted
-            // its sun/fog/sky off the same clock, snapping back
-            // and forth constantly. Single driver rule: while RTX
-            // is on, the override feeds RTX's phase directly and
-            // the lightmap system is left alone. The weather slot
-            // force still applies (it never repaints).
-            if (FalconRtx.IsOn)
-            {
-                FalconRtx.PhaseOverride = TimeOverride;
-                if (WeatherOverride >= 0) ForceWeatherSlot(mgr, WeatherOverride == 1);
-                return;
-            }
+            // Round 88: RTX is removed entirely (Sans: scrapped,
+            // to be redone later), so this driver is the only
+            // environment driver again - overrides always go
+            // through SetOverrideIndex, no RTX branch.
             if (TimeOverride >= 0)
             {
                 // SetOverrideIndex also writes the weather slot

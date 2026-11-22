@@ -6,15 +6,11 @@ using GorillaLocomotion;
 //   option 1: long arms (Player.FalconArmScale reach)
 //   option 2: speed boost (see below)
 //   option 3: name tags
-//   option 4: RTX (FalconRtx - realtime-lighting graphics mode;
-//             DEFAULT OFF, Sans 2026-11-18: "by default it's off
-//             in case it breaks"; the page warns it's experimental)
-//   option 5: PhaseSync 0 (round 85, Sans: ITEMS 5 in the player
-//             menu - ON sets PhaseSync 0, OFF back to 4; the
-//             native route lives in FalconPhaseSync)
+//   Round 88 (Sans): options 4 (RTX) and 5 (PhaseSync) are
+//   REMOVED entirely - RTX was ugly and never changed, and
+//   PhaseSync never worked. RTX gets redone later.
 // Optional Preds were removed for good (Sans, build #10 isolation)
-// - that was the old script-preds code; option 5 is a compositor
-// setting, a different mechanism (Sans, 2026-11-19).
+// - that was the old script-preds code.
 //
 // Round 85 (Sans): long arms and speed boost became SLIDERS in
 // the player menu's Movement tab.
@@ -49,8 +45,6 @@ public static class FalconPlayerOptions
     public static bool LongArms = true;
     public static bool SpeedBoost = true;
     public static bool NameTags = true;
-    public static bool Rtx = false;
-    public static bool PhaseSync0 = false;
 
     // Player-adjustable values (round 85 sliders).
     public static float ArmScaleValue = 1.4f;  // 0.99 .. 1.40
@@ -60,8 +54,6 @@ public static class FalconPlayerOptions
     public static void ToggleLongArms() { LongArms = !LongArms; ApplyArms(); }
     public static void ToggleSpeedBoost() { SpeedBoost = !SpeedBoost; }
     public static void ToggleNameTags() { NameTags = !NameTags; }
-    public static void ToggleRtx() { Rtx = !Rtx; }
-    public static void TogglePhaseSync() { PhaseSync0 = !PhaseSync0; FalconPhaseSync.Apply(PhaseSync0); }
 
     public static void SetArmScale(float v)
     {
@@ -93,8 +85,6 @@ public static class FalconPlayerOptions
         var parts = new System.Collections.Generic.List<string>();
         if (LongArms) parts.Add("ARMS x" + ArmScaleValue.ToString("0.00"));
         if (SpeedBoost) parts.Add("SPEED x" + BoostTarget.ToString("0.00"));
-        if (PhaseSync0) parts.Add("PHASESYNC 0");
-        if (Rtx) parts.Add("RTX");
         string mods = parts.Count > 0 ? string.Join("  ", parts.ToArray()) : "no mods";
         return mods + "  ·  " + Mathf.RoundToInt(fps) + " FPS";
     }

@@ -77,14 +77,19 @@ public class FalconStaffHandMenu : MonoBehaviour
     private float curMaxScroll = SettingsMaxScroll;
     private float nextCheckerRefresh;
     private float nextReportAllowed;
-    // Round 86 (Sans): a VISUAL tab (RTX / nametags / PhaseSync
-    // are not movement), a horizontally scrolling tab bar (full-
-    // size tabs instead of seven crammed slivers interfering
-    // with each other), and the checker rebuilds only when its
-    // data actually changed.
+    // Round 86 (Sans): a VISUAL tab, a horizontally scrolling
+    // tab bar (full-size tabs instead of seven crammed slivers
+    // interfering with each other), and the checker rebuilds
+    // only when its data actually changed.
+    // Round 88 (Sans): RTX and PhaseSync are REMOVED entirely
+    // (RTX to be redone later). The tab bar is reworked: tabs
+    // slide under a RectMask2D instead of popping via
+    // SetActive, and a real scrollbar under the bar shows the
+    // scroll position.
     private readonly List<float> tabBaseCx = new List<float>();
     private float tabOffset;
-    private Text tabArrowL, tabArrowR;
+    private RectTransform tabBarRoot;
+    private Image tabScrollTrack, tabScrollThumb;
     private string lastModsSig = "";
     // Round 87 (Sans): the checker is a list -> detail UI now.
     // -1 = the name list; -7 = your own detail (offline);
@@ -297,8 +302,10 @@ public class FalconStaffHandMenu : MonoBehaviour
         if (tab >= curTabs.Count) tab = 0;
         // Round 86: tabs are FULL SIZE (56 wide) and the bar
         // scrolls horizontally (left stick X while hovering a
-        // tab; arrows mark the ends). Off-window tabs are
-        // scrollHidden: undrawn and unclickable.
+        // tab). Round 88: tabs live under the TabBar mask root
+        // (local cy 0; panel cy stays 116 for hover math) and
+        // are clipped by the mask, never SetActive-popped;
+        // scrollHidden only gates clicks, by center position.
         const float w = 56f;
         for (int i = 0; i < curTabs.Count; i++)
         {
@@ -306,9 +313,10 @@ public class FalconStaffHandMenu : MonoBehaviour
             string id = curTabs[i];
             string label = id == "staff" ? "Staff" : id == "troll" ? "Troll" : id == "sound" ? "Sound" : id == "guns" ? "Guns" : id == "move" ? "Move" : id == "visual" ? "Visual" : id == "settings" ? "Settings" : "Mods";
             float baseCx = -96f + i * 62f;
-            Btn b = MakeButton(panelRoot.GetComponent<RectTransform>(), baseCx, 116f, w, 28f, label,
+            Btn b = MakeButton(tabBarRoot != null ? tabBarRoot : panelRoot.GetComponent<RectTransform>(), baseCx, 0f, w, 28f, label,
                 () => { tab = idx; RebuildContent(); },
                 () => tab == idx ? 1 : 0);
+            b.cy = 116f; // hover math is panel-space; the mask root sits at cy 116
             tabBtns.Add(b);
             tabBaseCx.Add(baseCx);
             clickables.Add(b);
@@ -331,21 +339,36 @@ public class FalconStaffHandMenu : MonoBehaviour
         {
             Btn b = tabBtns[i];
             b.cx = tabBaseCx[i] + tabOffset;
-            b.scrollHidden = b.cx - b.w / 2f < -134f || b.cx + b.w / 2f > 134f;
-            if (b.img != null)
+            // Round 88: NO SetActive windowing - the RectMask2D
+            // on the TabBar root clips tabs as they slide, so
+            // nothing pops in or out at the edges. scrollHidden
+            // is click-gating only: a tab whose center is
+            // outside the window cannot be clicked.
+            b.scrollHidden = b.cx < -134f || b.cx > 134f;
+            if (b.img != null) b.img.rectTransform.anchoredPosition = new Vector2(b.cx, 0f);
+            if (b.txt != null) b.txt.rectTransform.anchoredPosition = new Vector2(b.cx, 0f);
+        }
+        // Round 88 (Sans: "there's no bar showing you can
+        // scroll"): a real scrollbar under the tab bar - the
+        // track shows while the bar overflows, the thumb's
+        // width is the visible fraction of the strip and its
+        // position is the scroll fraction.
+        float min = TabMinOffset();
+        bool overflow = min < 0f && tabBaseCx.Count > 0;
+        if (tabScrollTrack != null) tabScrollTrack.gameObject.SetActive(overflow);
+        if (tabScrollThumb != null)
+        {
+            tabScrollThumb.gameObject.SetActive(overflow);
+            if (overflow)
             {
-                b.img.gameObject.SetActive(!b.scrollHidden);
-                b.img.rectTransform.anchoredPosition = new Vector2(b.cx, b.cy);
-            }
-            if (b.txt != null)
-            {
-                b.txt.gameObject.SetActive(!b.scrollHidden);
-                b.txt.rectTransform.anchoredPosition = new Vector2(b.cx, b.cy);
+                float totalW = (tabBaseCx[tabBaseCx.Count - 1] + 28f) - (tabBaseCx[0] - 28f);
+                float thumbW = Mathf.Clamp(268f * 268f / totalW, 24f, 268f);
+                float frac = tabOffset / min;
+                float thumbCx = -134f + thumbW / 2f + frac * (268f - thumbW);
+                tabScrollThumb.rectTransform.sizeDelta = new Vector2(thumbW, 3f);
+                tabScrollThumb.rectTransform.anchoredPosition = new Vector2(thumbCx, 98.5f);
             }
         }
-        bool overflow = TabMinOffset() < 0f;
-        if (tabArrowL != null) tabArrowL.gameObject.SetActive(overflow && tabOffset < -1f);
-        if (tabArrowR != null) tabArrowR.gameObject.SetActive(overflow && tabOffset > TabMinOffset() + 1f);
     }
 
     // Round 86: signature of what the mod checker would draw -
@@ -403,13 +426,20 @@ public class FalconStaffHandMenu : MonoBehaviour
         titleRoleText.color = DimColor;
         lastRole = FalconStaffRole.Role;
         RefreshTitle();
+        // Round 88: the TabBar mask root must exist before
+        // RefreshTabs builds the tabs under it.
+        var tabBarGo = new GameObject("TabBar");
+        tabBarRoot = tabBarGo.AddComponent<RectTransform>();
+        tabBarRoot.SetParent(rt, false);
+        tabBarRoot.anchorMin = tabBarRoot.anchorMax = tabBarRoot.pivot = new Vector2(0.5f, 0.5f);
+        tabBarRoot.anchoredPosition = new Vector2(0f, 116f);
+        tabBarRoot.sizeDelta = new Vector2(268f, 30f);
+        tabBarGo.AddComponent<RectMask2D>();
         RefreshTabs();
-        // Round 86: tab-bar scroll arrows (visibility is driven
-        // by ApplyTabScroll).
-        tabArrowL = MakeText(rt, -133f, 116f, 12f, 28f, 15, TextAnchor.MiddleCenter);
-        tabArrowL.text = "<";
-        tabArrowR = MakeText(rt, 133f, 116f, 12f, 28f, 15, TextAnchor.MiddleCenter);
-        tabArrowR.text = ">";
+        // Round 88: the tab scrollbar (track + thumb, driven
+        // by ApplyTabScroll; hidden when the bar fits).
+        tabScrollTrack = MakeImage(rt, 0f, 98.5f, 268f, 3f, new Color(1f, 1f, 1f, 0.16f));
+        tabScrollThumb = MakeImage(rt, 0f, 98.5f, 60f, 3f, new Color(1f, 1f, 1f, 0.55f));
         ApplyTabScroll();
 
         var contentGo = new GameObject("Content");
@@ -655,8 +685,7 @@ public class FalconStaffHandMenu : MonoBehaviour
             // Round 85 (Sans): the player Movement tab - adjustable
             // long arms + speed boost, open to EVERY role (the
             // computer ITEMS page toggles the same options).
-            // Round 86: RTX / nametags / PhaseSync moved to the
-            // Visual tab where they belong. Staff extras below.
+            // Nametags live on the Visual tab. Staff extras below.
             ContentButton(-75f, 84f, 118f, 24f, "Arms: " + (FalconPlayerOptions.LongArms ? "ON" : "OFF"),
                 () => { FalconPlayerOptions.ToggleLongArms(); FalconSessionLog.Log("MENU arms " + FalconPlayerOptions.LongArms); RebuildContent(); },
                 () => FalconPlayerOptions.LongArms ? 1 : 0);
@@ -689,19 +718,14 @@ public class FalconStaffHandMenu : MonoBehaviour
         }
         else if (tid == "visual")
         {
-            // Round 86 (Sans): RTX, nametags and PhaseSync are
-            // VISUAL options - they never belonged on Move.
-            ContentButton(0f, 84f, 268f, 24f, "RTX: " + (FalconPlayerOptions.Rtx ? "ON" : "OFF") + " (experimental)",
-                () => { FalconPlayerOptions.ToggleRtx(); FalconSessionLog.Log("MENU rtx " + FalconPlayerOptions.Rtx); RebuildContent(); },
-                () => FalconPlayerOptions.Rtx ? 1 : 0);
-            ContentButton(0f, 57f, 268f, 24f, "Nametags: " + (FalconPlayerOptions.NameTags ? "ON" : "OFF"),
+            // Round 88 (Sans): RTX and PhaseSync are REMOVED
+            // entirely - RTX was ugly and never changed,
+            // PhaseSync never worked; RTX gets redone later.
+            // The Visual tab keeps nametags, its one survivor.
+            ContentButton(0f, 84f, 268f, 24f, "Nametags: " + (FalconPlayerOptions.NameTags ? "ON" : "OFF"),
                 () => { FalconPlayerOptions.ToggleNameTags(); FalconSessionLog.Log("MENU nametags " + FalconPlayerOptions.NameTags); RebuildContent(); },
                 () => FalconPlayerOptions.NameTags ? 1 : 0);
-            // Round 87 (Sans): PhaseSync is SHELVED - it does
-            // not work at all on this build. The toggle leaves
-            // the menu; FalconPhaseSync and its wiring stay in
-            // the code, dormant, for when we come back to it.
-            ContentText(0f, -8f, 268f, 44f, 11, "RTX: realtime sun, shadows, reflections.\nNametags: names over players' heads.");
+            ContentText(0f, -8f, 268f, 44f, 11, "Nametags: names over players' heads.");
         }
         else if (tid == "settings" && FalconStaffRole.IsHeadAdmin)
         {
