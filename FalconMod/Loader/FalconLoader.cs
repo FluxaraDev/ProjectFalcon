@@ -109,6 +109,7 @@ public class FalconLoader : MonoBehaviour
         // stretch took the UI, the music, the bloom, the anticheat
         // stages and the scene load down with it (silent, stuck).
         PlayMusic();
+        diag.Add("PLATFORM: " + Application.platform); // round 91: the runtime platform detection the WebGL swap keys on
         try { BuildUi(); } catch (Exception e) { Debug.Log("FalconLoader: UI build failed: " + e.Message); diag.Add("UI EXCEPTION: " + e.Message); }
 
         // ---- the ANTICHEAT STATION: staged checks, on screen --------

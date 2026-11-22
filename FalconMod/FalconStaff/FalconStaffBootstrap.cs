@@ -24,6 +24,7 @@ public static class FalconStaffBootstrap
         go.AddComponent<FalconFly>();
         go.AddComponent<FalconFlight>();
         go.AddComponent<FalconPreds>();
+        go.AddComponent<FalconWebXRDriver>(); // round 91: self-disables off WebGL
         go.AddComponent<FalconStaffHandMenu>();
         go.AddComponent<FalconCoordCube>();
         // Game-wide pieces that ride the same bootstrap: the void guard

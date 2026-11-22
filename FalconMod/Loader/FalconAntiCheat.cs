@@ -63,6 +63,18 @@ public static class FalconAntiCheat
     private static List<string> CheckBuild()
     {
         var flags = new List<string>();
+        if (Application.platform == RuntimePlatform.WebGLPlayer)
+        {
+            // Round 91 (Sans): the WebGL build is an OFFICIAL
+            // platform - the parental-controls route, THIS
+            // project compiled with Unity's WebGL compiler and
+            // bridged to WebXR. Passing here passes the
+            // Android stages below too: they already defer to
+            // this stage on non-Android platforms, and there
+            // is no APK to fingerprint, no root and no Frida
+            // inside a browser. The Android path is unchanged.
+            return flags;
+        }
         if (Application.platform != RuntimePlatform.Android)
         {
             flags.Add("PC / non-Android platform (" + Application.platform + ") - Project Falcon is Quest-only");
