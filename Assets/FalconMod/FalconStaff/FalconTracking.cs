@@ -55,21 +55,17 @@ public static class FalconTracking
 // sees no change.
 public class QuestTrackingBridge : IXRTrackingBridge
 {
+    // OVRPlugin.GetNodePose in THIS SDK returns a Posef
+    // (verified in the project's own OVRPlugin.cs, line
+    // 3867 - the 4-argument out overload I first wrote
+    // does not exist here; build log 2026-11-21, CS1501).
     public Vector3 HeadPosition
     {
-        get
-        {
-            Vector3 p; Quaternion q;
-            return OVRPlugin.GetNodePose(OVRPlugin.Node.EyeCenter, OVRPlugin.Step.Render, out p, out q) ? p : Vector3.zero;
-        }
+        get { return OVRPlugin.GetNodePose(OVRPlugin.Node.EyeCenter, OVRPlugin.Step.Render).Position; }
     }
     public Quaternion HeadRotation
     {
-        get
-        {
-            Vector3 p; Quaternion q;
-            return OVRPlugin.GetNodePose(OVRPlugin.Node.EyeCenter, OVRPlugin.Step.Render, out p, out q) ? q : Quaternion.identity;
-        }
+        get { return OVRPlugin.GetNodePose(OVRPlugin.Node.EyeCenter, OVRPlugin.Step.Render).Orientation; }
     }
     public Vector3 LeftHandPosition { get { return OVRInput.GetLocalControllerPosition(OVRInput.Controller.LTouch); } }
     public Quaternion LeftHandRotation { get { return OVRInput.GetLocalControllerRotation(OVRInput.Controller.LTouch); } }

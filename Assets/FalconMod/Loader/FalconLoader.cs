@@ -63,6 +63,10 @@ public class FalconLoader : MonoBehaviour
     // Round 69: loader diagnostics, appended to anticheat_log via
     // FalconAntiCheat.AppendDiag - the file Sans actually sends.
     private readonly System.Collections.Generic.List<string> diag = new System.Collections.Generic.List<string>();
+    // Round 92: readout material clones + their fonts (the
+    // atlas-refresh pairs SyncTm maintains - see MakeTm).
+    private readonly System.Collections.Generic.List<Material> tmMats = new System.Collections.Generic.List<Material>();
+    private readonly System.Collections.Generic.List<Font> tmFonts = new System.Collections.Generic.List<Font>();
     private bool uiParked;
     private GameObject mapRoot;
     private Quaternion mapYaw = Quaternion.identity;
@@ -615,15 +619,20 @@ public class FalconLoader : MonoBehaviour
             // cloned from the font's, instead of sharing the
             // font material with every other text user in the
             // game - nothing else can mute or retint it now.
-            // The clone tracks the font atlas if it rebuilds.
+            // The clone tracks the font atlas if it rebuilds:
+            // the pair is registered here and SyncTm re-points
+            // the clone's texture on every text sync (new
+            // glyphs are the only thing that rebuilds the
+            // atlas, and they arrive with text changes).
+            // Round 92: round 88 hooked this with
+            // Font.textureRebuiltCallback, which does not
+            // exist in Unity 2021.3 - compiler-verified by
+            // the 2026-11-21 build log (CS1061). No event
+            // API is used now, so there is nothing to miss.
             var mat = new Material(font.material);
             mr.sharedMaterial = mat;
-            var fnt = font;
-            fnt.textureRebuiltCallback += (Font rebuilt) =>
-            {
-                if (mat != null && fnt.material != null)
-                    mat.mainTexture = fnt.material.mainTexture;
-            };
+            tmMats.Add(mat);
+            tmFonts.Add(font);
         }
         return tm;
     }
@@ -640,6 +649,13 @@ public class FalconLoader : MonoBehaviour
     private void SyncTm()
     {
         if (tmStatus == null) return;
+        // Round 92: keep every readout clone pointed at its
+        // font's CURRENT atlas texture (see MakeTm).
+        for (int i = 0; i < tmMats.Count; i++)
+        {
+            if (tmMats[i] != null && tmFonts[i] != null && tmFonts[i].material != null)
+                tmMats[i].mainTexture = tmFonts[i].material.mainTexture;
+        }
         if (statusText != null)
         {
             SetTmText(tmStatus, statusText.text, ref tmCacheStatus);
