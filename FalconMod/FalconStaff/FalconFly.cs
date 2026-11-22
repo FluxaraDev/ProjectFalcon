@@ -15,6 +15,14 @@ public class FalconFly : MonoBehaviour
 {
     public static bool Enabled;
 
+    // Round 90 (Sans): velocity fly - instead of freezing
+    // the rigidbody and writing position, movement is fed
+    // through velocity, so you can still run (arm locomotion
+    // keeps working) while it is on. Casual rooms only (the
+    // FalconFlight gate); outside casual it falls back to
+    // the normal position fly.
+    public static bool VelocityMode;
+
     private Rigidbody rb;
     private bool gravityOff;
 
@@ -29,11 +37,12 @@ public class FalconFly : MonoBehaviour
             if (gravityOff && rb != null) { rb.useGravity = true; gravityOff = false; }
             return;
         }
+        bool vel = VelocityMode && FalconFlight.CasualAllowed;
         if (rb != null)
         {
             rb.useGravity = false;
             gravityOff = true;
-            rb.velocity = Vector3.zero;
+            if (!vel) rb.velocity = Vector3.zero;
         }
 
         Vector2 left = ReadAxis(XRNode.LeftHand);
@@ -42,7 +51,10 @@ public class FalconFly : MonoBehaviour
         Vector3 wish = head.forward * left.y + head.right * left.x + Vector3.up * right.y;
         if (wish.sqrMagnitude > 1f) wish.Normalize();
         if (wish.sqrMagnitude > 0.0001f)
-            p.transform.position += wish * FalconStaffSettings.FlySpeed * Time.deltaTime;
+        {
+            if (vel && rb != null) rb.velocity = wish * FalconStaffSettings.FlySpeed;
+            else p.transform.position += wish * FalconStaffSettings.FlySpeed * Time.deltaTime;
+        }
     }
 
     private static Vector2 ReadAxis(XRNode node)

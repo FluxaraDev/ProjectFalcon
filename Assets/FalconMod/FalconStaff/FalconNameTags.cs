@@ -126,7 +126,7 @@ public class FalconNameTags : MonoBehaviour
         var tm = go.AddComponent<TextMesh>();
         tm.font = tagFont;
         tm.fontSize = 64;
-        tm.characterSize = 0.055f;
+        tm.characterSize = 0.06f; // round 90 (Sans): a tiny bit bigger
         tm.anchor = TextAnchor.MiddleCenter;
         tm.alignment = TextAlignment.Center;
         tm.color = Color.white;

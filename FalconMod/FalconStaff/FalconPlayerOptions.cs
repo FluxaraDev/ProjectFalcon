@@ -32,8 +32,7 @@ using GorillaLocomotion;
 // (which is also why it only "worked half the time").
 //
 // The boost is now RELATIVE and single-purpose: the driver runs
-// AFTER VRRig (execution order), reads the game's own live pair
-// from LocalPlayerSpeed(), and scales ONLY the multiplier by
+// AFTER VRRig (execution order) and scales ONLY the multiplier by
 // BoostTarget/1.1 - Sans's original boost (stock 1.1 -> 1.4)
 // expressed as a factor, so stock modes get exactly the target
 // and every other state keeps its proportions. maxJumpSpeed is
@@ -46,6 +45,14 @@ public static class FalconPlayerOptions
     public static bool SpeedBoost = true;
     public static bool NameTags = true;
 
+    // Round 90 (Sans): controller prediction (FalconPreds) -
+    // EXPERIMENTAL and DEFAULT OFF, session-only on purpose:
+    // a relaunch always comes back with preds off ("default
+    // is off so no rig troubles - you can relaunch and you
+    // can play").
+    public static bool Preds = false;
+    public static float PredsMs = 20f; // 0..75, step 5
+
     // Player-adjustable values (round 85 sliders).
     public static float ArmScaleValue = 1.4f;  // 0.99 .. 1.40
     public static float BoostTarget = 1.4f;    // 1.05 .. 1.82 (target jump multiplier at stock)
@@ -54,6 +61,8 @@ public static class FalconPlayerOptions
     public static void ToggleLongArms() { LongArms = !LongArms; ApplyArms(); }
     public static void ToggleSpeedBoost() { SpeedBoost = !SpeedBoost; }
     public static void ToggleNameTags() { NameTags = !NameTags; }
+    public static void TogglePreds() { Preds = !Preds; }
+    public static void SetPredsMs(float v) { PredsMs = Mathf.Clamp(v, 0f, 75f); }
 
     public static void SetArmScale(float v)
     {
@@ -64,6 +73,49 @@ public static class FalconPlayerOptions
     public static void SetBoostTarget(float v)
     {
         BoostTarget = Mathf.Clamp(v, 1.05f, 1.82f);
+        // Round 90 (Sans): the speed value PERSISTS now, like
+        // the Settings-tab values do (before, only settings
+        // persisted - the boost reset every launch). Flush on
+        // every change, same pattern as FalconStaffSettings.
+        PlayerPrefs.SetFloat("falcon_opt_boost", BoostTarget);
+        PlayerPrefs.Save();
+    }
+
+    public static void LoadPersisted()
+    {
+        BoostTarget = Mathf.Clamp(PlayerPrefs.GetFloat("falcon_opt_boost", BoostTarget), 1.05f, 1.82f);
+    }
+
+    // Round 90 (Sans): per-state caps on the FINAL boosted
+    // multiplier. Rock monkey maxes at 1.1, lava monkey at
+    // 1.3, everyone in hunt at 1.9; casual keeps the slider
+    // (no cap). Rock's 1.1 is a cap on the ADDED boost, not
+    // a set - setting it would make rock slower than stock.
+    // The cap only ever limits: under it, nothing changes.
+    // State reads: the local rig's material index (1 = rock,
+    // 2 = lava - the same index that drives the rock/lava
+    // particles) and the room's gameMode string for hunt.
+    public static float CurrentSpeedCap()
+    {
+        float cap = 0f;
+        try
+        {
+            var room = Photon.Pun.PhotonNetwork.CurrentRoom;
+            object gm;
+            if (room != null && room.CustomProperties != null
+                && room.CustomProperties.TryGetValue("gameMode", out gm) && gm != null
+                && gm.ToString().IndexOf("HUNT", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                cap = 1.9f;
+            var tagger = GorillaTagger.Instance;
+            VRRig rig = tagger != null ? (tagger.myVRRig != null ? tagger.myVRRig : tagger.offlineVRRig) : null;
+            if (rig != null)
+            {
+                if (rig.setMatIndex == 1) cap = cap > 0f ? Mathf.Min(cap, 1.1f) : 1.1f;
+                else if (rig.setMatIndex == 2) cap = cap > 0f ? Mathf.Min(cap, 1.3f) : 1.3f;
+            }
+        }
+        catch { }
+        return cap;
     }
 
     public static void ApplyAll() { ApplyArms(); }
@@ -85,6 +137,7 @@ public static class FalconPlayerOptions
         var parts = new System.Collections.Generic.List<string>();
         if (LongArms) parts.Add("ARMS x" + ArmScaleValue.ToString("0.00"));
         if (SpeedBoost) parts.Add("SPEED x" + BoostTarget.ToString("0.00"));
+        if (Preds) parts.Add("PREDS " + PredsMs.ToString("0") + "MS");
         string mods = parts.Count > 0 ? string.Join("  ", parts.ToArray()) : "no mods";
         return mods + "  ·  " + Mathf.RoundToInt(fps) + " FPS";
     }
@@ -104,6 +157,7 @@ public class FalconOptionsDriver : MonoBehaviour
 
     private void Start()
     {
+        FalconPlayerOptions.LoadPersisted(); // round 90: boost value survives relaunches
         FalconPlayerOptions.ApplyAll();
     }
 
@@ -139,12 +193,26 @@ public class FalconOptionsDriver : MonoBehaviour
         if (!FalconPlayerOptions.SpeedBoost || FalconRave.IsRaving) return;
         Player p = Player.Instance;
         if (p == null) return;
-        GorillaGameManager gm = GorillaGameManager.instance;
-        if (gm == null) return;
-        float[] raw = gm.LocalPlayerSpeed();
-        if (raw == null || raw.Length < 2) return;
-        float boosted = raw[1] * FalconPlayerOptions.BoostFactor;
+        // Round 90 (Sans: "speed boost doesn't work in casual"):
+        // scale the value VRRig JUST wrote this frame instead of
+        // re-querying the game manager. VRRig's LateUpdate runs
+        // earlier (default order vs this driver's 1000) and writes
+        // the mode's live multiplier - or its flat 1.1 fallback
+        // when no manager instance exists, which is the casual
+        // case: the old code re-queried the manager, got null,
+        // and returned without boosting at all. Reading the
+        // written value makes the boost follow the game's own
+        // choice in every mode, fallback included. VRRig
+        // rewrites it fresh every frame, so this never
+        // compounds. maxJumpSpeed untouched - the cap rules.
+        float boosted = p.jumpMultiplier * FalconPlayerOptions.BoostFactor;
+        // Round 90 (Sans): state caps (rock 1.1 / lava 1.3 /
+        // hunt 1.9; casual uncapped). Because this recomputes
+        // from VRRig's fresh write every frame, leaving the
+        // state restores the casual value on its own - the
+        // "uncap and set back" he asked for is automatic.
+        float cap = FalconPlayerOptions.CurrentSpeedCap();
+        if (cap > 0f && boosted > cap) boosted = cap;
         if (p.jumpMultiplier != boosted) p.jumpMultiplier = boosted;
-        // maxJumpSpeed deliberately untouched - the game's cap rules.
     }
 }

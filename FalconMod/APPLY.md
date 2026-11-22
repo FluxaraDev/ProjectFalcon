@@ -237,3 +237,32 @@ Sans chose bloom over the instancing speed: the project flips from Single Pass I
   swatch inside forestatlas.png. Dead CoC canvas-Image tint removed (no
   Image named CodeOfConduct exists in the scene).
 - Push: 3 files, one call.
+
+## Round 90 addendum (2026-11-21, Sans's spec burst)
+- SPEED CAPS (final boosted multiplier): rock monkey 1.1 (a CAP on the
+  added boost, not a set - setting would make rock slower than stock),
+  lava monkey 1.3, hunt everyone 1.9, casual uncapped (slider rules).
+  State = local rig setMatIndex (1 rock / 2 lava) + room gameMode for
+  hunt. Per-frame recompute means leaving the state restores the casual
+  value automatically; under the cap nothing changes.
+- CASUAL BOOST FIX: the driver scales the jumpMultiplier VRRig just
+  wrote (incl. its no-manager 1.1 fallback) instead of re-querying
+  GorillaGameManager and bailing on null - that was why casual got
+  no boost.
+- PERSISTENCE: BoostTarget now saves to PlayerPrefs on every change
+  (falcon_opt_boost) and loads at driver start - before, only the
+  Settings-tab values persisted.
+- PREDS (FalconPreds.cs, NEW): the OculusPreds mechanism from the
+  script Sans supplied (Ires Tag), hands only - the head target is
+  never written (the script's own notes say it breaks projects) -
+  LateUpdate, and only while on. Computer ITEMS 4 + Movement-tab
+  toggle/stepper (0-75 ms, step 5, default 20 ms). DEFAULT OFF,
+  session-only: relaunch always starts with preds off.
+- NAMETAGS: characterSize 0.055 -> 0.06 (a tiny bit bigger).
+- FLIGHT KIT (FalconFlight.cs, NEW; staff Move tab): hand platforms
+  (grip-held), noclip (head/body colliders off while flying), and
+  velocity fly (FalconFly.VelocityMode - movement via velocity, arm
+  locomotion keeps working). CASUAL ONLY (offline counts); any other
+  mode - infection above all - snaps everything off the same frame.
+  The round-45 staff fly itself is unchanged and ungated.
+- Push: 17 files, one call.

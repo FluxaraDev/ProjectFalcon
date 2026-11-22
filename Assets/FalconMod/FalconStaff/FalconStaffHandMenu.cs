@@ -700,20 +700,38 @@ public class FalconStaffHandMenu : MonoBehaviour
             ContentText(66f, 57f, 44f, 24f, 12, "x" + FalconPlayerOptions.BoostTarget.ToString("0.00"));
             ContentButton(104f, 57f, 36f, 24f, "+", () => { FalconPlayerOptions.SetBoostTarget(FalconPlayerOptions.BoostTarget + 0.05f); RebuildContent(); }, () => 0);
 
+            // Round 90 (Sans): preds - toggle + amount stepper
+            // (0-75 ms in 5 ms steps). Default OFF, session-only.
+            ContentButton(-75f, 30f, 118f, 24f, "Preds: " + (FalconPlayerOptions.Preds ? "ON" : "OFF"),
+                () => { FalconPlayerOptions.TogglePreds(); FalconSessionLog.Log("MENU preds " + FalconPlayerOptions.Preds); RebuildContent(); },
+                () => FalconPlayerOptions.Preds ? 1 : 0);
+            ContentButton(28f, 30f, 36f, 24f, "-", () => { FalconPlayerOptions.SetPredsMs(FalconPlayerOptions.PredsMs - 5f); RebuildContent(); }, () => 0);
+            ContentText(66f, 30f, 44f, 24f, 12, FalconPlayerOptions.PredsMs.ToString("0") + "MS");
+            ContentButton(104f, 30f, 36f, 24f, "+", () => { FalconPlayerOptions.SetPredsMs(FalconPlayerOptions.PredsMs + 5f); RebuildContent(); }, () => 0);
+
             if (FalconStaffRole.IsStaffOrHigher)
             {
-                ContentText(0f, -26f, 268f, 18f, 11, "- STAFF EXTRAS -");
-                ContentButton(0f, -53f, 268f, 24f, "Fly: " + (FalconFly.Enabled ? "ON" : "OFF"),
+ContentText(0f, -26f, 268f, 18f, 11, "- STAFF EXTRAS -");
+                ContentButton(-68f, -53f, 132f, 24f, "Fly: " + (FalconFly.Enabled ? "ON" : "OFF"),
                     () => { FalconFly.Enabled = !FalconFly.Enabled; FalconSessionLog.Log(FalconFly.Enabled ? "FLY ON" : "FLY OFF"); lastAction = FalconFly.Enabled ? "fly on" : "fly off"; RebuildContent(); },
                     () => FalconFly.Enabled ? 1 : 0);
-                ContentButton(0f, -80f, 268f, 24f, "Coord cube: " + (coordCube != null && coordCube.CubeEnabled ? "ON" : "OFF"),
+                ContentButton(68f, -53f, 132f, 24f, "Velocity: " + (FalconFly.VelocityMode ? "ON" : "OFF"),
+                    () => { FalconFly.VelocityMode = !FalconFly.VelocityMode; FalconSessionLog.Log("VELOCITY FLY " + FalconFly.VelocityMode); RebuildContent(); },
+                    () => FalconFly.VelocityMode ? 1 : 0);
+                ContentButton(-68f, -80f, 132f, 24f, "Platforms: " + (FalconFlight.PlatformsOn ? "ON" : "OFF"),
+                    () => { FalconFlight.PlatformsOn = !FalconFlight.PlatformsOn; FalconSessionLog.Log("PLATFORMS " + FalconFlight.PlatformsOn); RebuildContent(); },
+                    () => FalconFlight.PlatformsOn ? 1 : 0);
+                ContentButton(68f, -80f, 132f, 24f, "Noclip: " + (FalconFlight.NoclipOn ? "ON" : "OFF"),
+                    () => { FalconFlight.NoclipOn = !FalconFlight.NoclipOn; FalconSessionLog.Log("NOCLIP " + FalconFlight.NoclipOn); RebuildContent(); },
+                    () => FalconFlight.NoclipOn ? 1 : 0);
+                ContentButton(0f, -107f, 268f, 24f, "Coord cube: " + (coordCube != null && coordCube.CubeEnabled ? "ON" : "OFF"),
                     () => { if (coordCube != null) coordCube.SetEnabled(!coordCube.CubeEnabled); RebuildContent(); },
                     () => coordCube != null && coordCube.CubeEnabled ? 1 : 0);
-                ContentText(0f, -108f, 268f, 28f, 10, "Fly: left stick = head direction, right stick Y = up/down.\nCube rides the right hand; A = drop / pick up.");
+                ContentText(0f, -140f, 268f, 28f, 10, "Fly: left stick = head direction, right stick Y = up/down.\nPlatforms/noclip/velocity: casual only - infection snaps them off.");
             }
             else
             {
-                ContentText(0f, -40f, 268f, 44f, 11, "Arms: x0.99 (shorter than stock) to x1.40.\nSpeed: x1.05 (just under stock) to x1.82.");
+                ContentText(0f, -46f, 268f, 58f, 11, "Arms: x0.99 (shorter than stock) to x1.40.\nSpeed: x1.05 (just under stock) to x1.82.\nPreds: prediction 0-75 ms. Experimental, default OFF.");
             }
         }
         else if (tid == "visual")

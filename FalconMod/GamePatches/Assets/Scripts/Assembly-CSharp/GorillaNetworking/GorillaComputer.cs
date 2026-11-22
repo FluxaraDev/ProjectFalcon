@@ -914,6 +914,9 @@ namespace GorillaNetworking
                 case "3":
                     FalconPlayerOptions.ToggleNameTags();
                     break;
+                case "4":
+                    FalconPlayerOptions.TogglePreds();
+                    break;
             }
             UpdateScreen();
         }
@@ -1073,7 +1076,7 @@ namespace GorillaNetworking
                         screenText.Text = "USE THIS TO ENABLE OR DISABLE VOICE CHAT.\nPRESS OPTION 1 TO ENABLE VOICE CHAT.\nPRESS OPTION 2 TO DISABLE VOICE CHAT.\n\nVOICE CHAT ON: " + voiceChatOn;
                         break;
                     case ComputerState.Visuals:
-                        screenText.Text = "UPDATE ITEMS SETTINGS. THESE APPLY TO YOU ONLY. USE NUMBER KEYS TO TOGGLE THE ITEM MOD.\n\n1 LONG ARMS: " + (FalconPlayerOptions.LongArms ? "ON" : "OFF") + "\n2 SPEED BOOST: " + (FalconPlayerOptions.SpeedBoost ? "ON" : "OFF") + "\n3 NAME TAGS: " + (FalconPlayerOptions.NameTags ? "ON" : "OFF");
+                        screenText.Text = "UPDATE ITEMS SETTINGS. THESE APPLY TO YOU ONLY. USE NUMBER KEYS TO TOGGLE THE ITEM MOD.\n\n1 LONG ARMS: " + (FalconPlayerOptions.LongArms ? "ON" : "OFF") + "\n2 SPEED BOOST: " + (FalconPlayerOptions.SpeedBoost ? "ON" : "OFF") + "\n3 NAME TAGS: " + (FalconPlayerOptions.NameTags ? "ON" : "OFF") + "\n4 PREDS (EXPERIMENTAL): " + (FalconPlayerOptions.Preds ? "ON" : "OFF");
                         break;
                     case ComputerState.Credits:
                         screenText.Text = FalconRave.GetScreenText();
