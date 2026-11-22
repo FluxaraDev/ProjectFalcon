@@ -74,39 +74,54 @@ public class FalconBoardTexts : MonoBehaviour
         StartCoroutine(ApplyBoards());
     }
 
-    // Round 86 (VERIFIED from the scene file after two failed
-    // guesses): every wall monitor in the game - wallmonitor
-    // forest/city/cave/canyon/mountain/cosmetics/tutorial,
-    // motdscreen, the object named "screen", the forest
-    // computer monitors - renders through ONE shared material,
-    // forestatlas.mat (the screens are UV regions of the atlas
-    // texture). Only the canyon/cave monitors additionally
-    // carry the screen.mat asset, which is why the round-82
-    // file edit purpled those two and nothing else, and why
-    // the round-85 name match (materials NAMED "screen") hit
-    // nothing else. Tinting the shared atlas would purple
-    // half the forest, so: target renderers by GAMEOBJECT
-    // name (the monitor family), instance ONLY the atlas /
-    // screen material slots per renderer, and set the purple
-    // emission on the instance.
+    // Round 89 (Sans, build #23 verdict: "Boards are still
+    // green") - ROOT CAUSE, proven from the project files:
+    // forestatlas.mat and darkbrownpanel.mat render through
+    // the custom Gorilla/DayNightLerpUnlit shader, whose
+    // property list is ONLY _MainTex / _Lightmap1 /
+    // _Lightmap2 / _LerpValue. It has no _Color and no
+    // _EmissionColor - the round-86 emission tint wrote to
+    // properties the shader never reads, so it did nothing
+    // on ANY atlas surface (the _Color/_EmissionColor lines
+    // in the .mat files are stale Standard leftovers). The
+    // one proven purple in this game is screen.mat (the
+    // canyon/cave monitors, round 82): the Unity Standard
+    // shader + an emission color. So the reskin now:
+    // instance the slot, swap the copy's shader to Standard
+    // (the atlas texture binding carries over), multiply
+    // the green down via _Color, and add the purple
+    // emission on top. The custom day/night lightmap lerp
+    // is lost on reskinned faces - the tradeoff that makes
+    // any tint possible at all through this shader.
+    // Targets also widened: the physical boards are GOs
+    // named board / board (1) / REMOVE board carrying
+    // forestatlas or darkbrownpanel slots - round 86 only
+    // ever matched monitor-named objects, so the boards
+    // were never even candidates. (The green itself is a
+    // solid swatch painted into forestatlas.png.)
     private static readonly Color ScreenPurple = new Color(0.42f, 0.04f, 0.72f, 1f);
+    private static readonly Color ScreenTint = new Color(0.62f, 0.28f, 0.95f, 1f);
     private static readonly HashSet<int> reskinnedRenderers = new HashSet<int>();
 
-    private static bool IsMonitorObject(string n)
+    private static bool IsTargetObject(string n)
     {
         if (string.IsNullOrEmpty(n)) return false;
         n = n.ToLowerInvariant();
-        return n.Contains("monitor") || n == "motdscreen" || n == "screen";
+        if (n.Contains("monitor") || n == "motdscreen" || n == "screen") return true;
+        if (n.Contains("keyboard") || n.Contains("scoreboard") || n.Contains("cardboard")) return false;
+        return n == "board" || n.StartsWith("board ") || n.StartsWith("board(")
+            || n.EndsWith(" board") || n == "remove board";
     }
 
     private static void ReskinScreens()
     {
         try
         {
+            var standard = Shader.Find("Standard");
             foreach (Renderer r in Resources.FindObjectsOfTypeAll<Renderer>())
             {
                 if (r == null || !r.gameObject.scene.IsValid()) continue;
-                if (!IsMonitorObject(r.gameObject.name)) continue;
+                if (!IsTargetObject(r.gameObject.name)) continue;
                 int id = r.GetInstanceID();
                 if (reskinnedRenderers.Contains(id)) continue;
                 var mats = r.sharedMaterials;
@@ -119,11 +134,13 @@ public class FalconBoardTexts : MonoBehaviour
                     inst[i] = m;
                     if (m == null) continue;
                     string n = m.name;
-                    bool isAtlas = n == "forestatlas";
+                    bool isAtlas = n == "forestatlas" || n == "darkbrownpanel";
                     bool isScreen = (n == "screen" || n.StartsWith("screen ") || n.StartsWith("screen("))
                         && n.IndexOf("red", System.StringComparison.OrdinalIgnoreCase) < 0;
                     if (!isAtlas && !isScreen) continue;
                     var copy = new Material(m);
+                    if (standard != null && copy.shader != standard) copy.shader = standard;
+                    if (copy.HasProperty("_Color")) copy.SetColor("_Color", ScreenTint);
                     if (copy.HasProperty("_EmissionColor"))
                     {
                         copy.SetColor("_EmissionColor", ScreenPurple);
@@ -183,19 +200,12 @@ public class FalconBoardTexts : MonoBehaviour
             {
                 t.text = CodeOfConduct;
                 FitText(t);
-                // Round 86: the CoC board's green frame image
-                // goes Falcon purple as well - it is the board
-                // every player sees at spawn. The staff board
-                // clones this image, so it inherits the tint.
-                try
-                {
-                    var cv = t.GetComponentInParent<Canvas>();
-                    if (cv != null)
-                        foreach (Image img in cv.GetComponentsInChildren<Image>(true))
-                            if (img.gameObject.name == "CodeOfConduct")
-                                img.color = new Color(0.45f, 0.12f, 0.85f, 1f);
-                }
-                catch { }
+                // Round 89: the CoC board's green face is a
+                // MESH (a board GO with a forestatlas slot),
+                // not a UI image - there is no Image named
+                // CodeOfConduct anywhere in the scene, so the
+                // round-86 canvas tint here could never fire.
+                // The face is reskinned in ReskinScreens.
                 float dc = Vector3.Distance(t.transform.position, StaffCenter());
                 if (nearestCocText == null || dc < nearestCocDist)
                 {

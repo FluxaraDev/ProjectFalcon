@@ -219,3 +219,21 @@ Sans chose bloom over the instancing speed: the project flips from Single Pass I
   whenever the bar overflows. The < > arrows are gone.
 - Push: 13 files in one call + 4 connector deletions (FalconRtx.cs and
   FalconPhaseSync.cs, Assets + kit trees).
+
+## Round 89 addendum (2026-11-21, Sans: "Boards are still green")
+- ROOT CAUSE (from the project files): forestatlas.mat + darkbrownpanel.mat
+  use the custom Gorilla/DayNightLerpUnlit shader - properties ONLY
+  _MainTex/_Lightmap1/_Lightmap2/_LerpValue. NO _Color, NO _EmissionColor:
+  round 86's emission tint was a no-op on every atlas surface. The .mat
+  _Color/_EmissionColor entries are stale Standard leftovers. The one
+  proven purple is screen.mat (Standard shader + emission, round 82).
+- FIX: ReskinScreens instances the slot, swaps the copy's shader to
+  Standard (atlas texture carries over), sets _Color (0.62,0.28,0.95) to
+  multiply the green down + _EmissionColor purple. Day/night lerp is lost
+  on reskinned faces - the cost of any tint through that shader.
+- TARGETS WIDENED: board-family GOs (board, board (1), REMOVE board,
+  * board) with forestatlas/darkbrownpanel slots - round 86 only matched
+  monitor names, so boards were never candidates. The green is a solid
+  swatch inside forestatlas.png. Dead CoC canvas-Image tint removed (no
+  Image named CodeOfConduct exists in the scene).
+- Push: 3 files, one call.
