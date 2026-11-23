@@ -423,6 +423,7 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
         // its LocalFps fallback. Reset on join: the next 1 s tick
         // always publishes fresh into this room.
         publishedFps = -1;
+        FalconVoiceTap.ResetAll(); // round 94: voice rings are per-room too (actor numbers repeat)
         string rn = PhotonNetwork.CurrentRoom != null ? PhotonNetwork.CurrentRoom.Name : "?";
         int n = PhotonNetwork.PlayerList != null ? PhotonNetwork.PlayerList.Length : 0;
         FalconSessionLog.Log("JOINED ROOM " + rn + " (" + n + " players)");
@@ -435,6 +436,7 @@ public class FalconStaffNet : MonoBehaviour, IOnEventCallback, IMatchmakingCallb
         // Actor numbers are per-room: never carry loud/size state
         // into the next room, where the same number is a stranger.
         loudActor = -1;
+        FalconVoiceTap.ResetAll(); // round 94: same rule for the voice rings
         FalconEnv.ClearLocal(); // lobby env overrides end with the room
         if (sizeFx.Count > 0)
         {

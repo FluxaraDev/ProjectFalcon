@@ -121,14 +121,48 @@ public class FalconVoiceTap : MonoBehaviour
         return buffers.Count + " taps, " + total + " samples captured";
     }
 
-    // Mix every player's buffer onto one 25 s timeline ending now and
-    // encode 16-bit PCM WAV. Null when nobody actually said anything.
+    // Round 94: room changes reset every buffer. Actor
+    // numbers are per-room (FalconStaffNet says the same
+    // about its own per-room state) - without this, a
+    // reused actor number in a new lobby kept the previous
+    // room's ring, so a young lobby's clip could carry a
+    // stranger's last room, or the new player's writes
+    // interleaved into a full stale ring.
+    public static void ResetAll()
+    {
+        foreach (Buffer b in buffers.Values)
+        {
+            lock (b.gate) { b.totalWritten = 0; b.writePos = 0; b.lastWriteDsp = 0; }
+        }
+    }
+
+    // Mix every player's buffer onto one timeline and encode
+    // 16-bit PCM WAV. Null when nobody actually said anything.
+    //
+    // Round 94 (Sans: the 25 s clip was a coin flip, worst in
+    // young lobbies): the timeline is anchored at the LAST
+    // SPEECH captured, not at wall-clock now. The old anchor
+    // placed each buffer by (now - lastWriteDsp), so a quiet
+    // gap between the last words and the report/mod call
+    // pushed buffers off the canvas entirely (every dest
+    // < 0) and the clip came up empty. Rolling-buffer
+    // semantics instead: the clip is the last 25 s OF VOICE,
+    // ending at the most recent sample any tap wrote, and
+    // the silent head is trimmed - a lobby with 6 s of
+    // speech produces a ~6 s clip, not a failure.
     public static byte[] BuildClipWav()
     {
         int rate = StoreRate;
         int len = rate * ClipSeconds;
         float[] mix = new float[len];
-        double now = AudioSettings.dspTime;
+        double anchor = 0;
+        foreach (KeyValuePair<int, Buffer> kv in buffers)
+        {
+            Buffer b = kv.Value;
+            lock (b.gate) { if (b.totalWritten > 0 && b.lastWriteDsp > anchor) anchor = b.lastWriteDsp; }
+        }
+        if (anchor <= 0) return null;
+        int firstUsed = len;
         foreach (KeyValuePair<int, Buffer> kv in buffers)
         {
             Buffer b = kv.Value;
@@ -136,7 +170,7 @@ public class FalconVoiceTap : MonoBehaviour
             {
                 long avail = Math.Min(b.totalWritten, (long)b.ring.Length);
                 if (avail <= 0) continue;
-                int endPos = len - (int)((now - b.lastWriteDsp) * rate);
+                int endPos = len - (int)((anchor - b.lastWriteDsp) * rate);
                 for (long i = 0; i < avail; i++)
                 {
                     int dest = endPos - (int)avail + (int)i;
@@ -144,6 +178,7 @@ public class FalconVoiceTap : MonoBehaviour
                     int src = (int)((b.writePos - avail + i) % b.ring.Length);
                     if (src < 0) src += b.ring.Length;
                     mix[dest] += b.ring[src];
+                    if (dest < firstUsed) firstUsed = dest;
                 }
             }
         }
@@ -151,14 +186,16 @@ public class FalconVoiceTap : MonoBehaviour
         for (int i = 0; i < len; i++) peak = Mathf.Max(peak, Mathf.Abs(mix[i]));
         if (peak < 0.001f) return null;
         float gain = peak > 0.9f ? 0.9f / peak : 1f;
-        byte[] wav = new byte[44 + len * 2];
-        WriteStr(wav, 0, "RIFF"); WriteI32(wav, 4, 36 + len * 2); WriteStr(wav, 8, "WAVE");
+        int start = firstUsed < len ? firstUsed : 0;
+        int span = len - start;
+        byte[] wav = new byte[44 + span * 2];
+        WriteStr(wav, 0, "RIFF"); WriteI32(wav, 4, 36 + span * 2); WriteStr(wav, 8, "WAVE");
         WriteStr(wav, 12, "fmt "); WriteI32(wav, 16, 16); WriteI16(wav, 20, 1); WriteI16(wav, 22, 1);
         WriteI32(wav, 24, rate); WriteI32(wav, 28, rate * 2); WriteI16(wav, 32, 2); WriteI16(wav, 34, 16);
-        WriteStr(wav, 36, "data"); WriteI32(wav, 40, len * 2);
-        for (int i = 0; i < len; i++)
+        WriteStr(wav, 36, "data"); WriteI32(wav, 40, span * 2);
+        for (int i = 0; i < span; i++)
         {
-            short smp = (short)(Mathf.Clamp(mix[i] * gain, -1f, 1f) * 32767f);
+            short smp = (short)(Mathf.Clamp(mix[start + i] * gain, -1f, 1f) * 32767f);
             wav[44 + i * 2] = (byte)(smp & 0xff);
             wav[45 + i * 2] = (byte)((smp >> 8) & 0xff);
         }

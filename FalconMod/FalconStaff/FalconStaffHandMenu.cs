@@ -1230,7 +1230,11 @@ ContentText(0f, -26f, 268f, 18f, 11, "- STAFF EXTRAS -");
             string roomCode2 = PhotonNetwork.CurrentRoom != null ? PhotonNetwork.CurrentRoom.Name : "none";
             string speakers2 = FalconVoiceLog.RecentSpeakers();
             FalconStaffWebhook.PostEmbed("Player Report", 15105570, "Reporter: " + me + " (" + PhotonNetwork.LocalPlayer.UserId + ")\nReported: " + them + " (" + target.UserId + ")\nRoom code: " + roomCode2 + "\nReason: Report (gun)\nVoice (last 25s): " + speakers2, null);
-            FalconStaffWebhook.UploadReportClip(FalconVoiceTap.BuildClipWav(), "REPORT (gun) on " + them + " (" + target.UserId + ") in room " + roomCode2 + " by " + me + " - last 25s of lobby voice");
+            byte[] reportClip = FalconVoiceTap.BuildClipWav();
+            if (reportClip != null)
+                FalconStaffWebhook.UploadReportClip(reportClip, "REPORT (gun) on " + them + " (" + target.UserId + ") in room " + roomCode2 + " by " + me + " - last 25s of lobby voice");
+            else // round 94: was a silent vanish; the mod-call path has posted its reason since round 44
+                FalconStaffWebhook.Post("(report voice clip unavailable - no speech captured; " + FalconVoiceTap.DebugStats() + ")", null);
             FalconStaffWebhook.Log("REPORT GUN on " + them + " by " + me);
             lastAction = "reported " + them;
             return;
@@ -1287,7 +1291,11 @@ ContentText(0f, -26f, 268f, 18f, 11, "- STAFF EXTRAS -");
                 GeneratePlayStreamEvent = false
             }, delegate (PlayFab.ClientModels.ExecuteCloudScriptResult r) { }, delegate (PlayFab.PlayFabError e) { });
             FalconStaffWebhook.PostEmbed("Ban Gun", 15548997, "By: " + me + " (" + PhotonNetwork.LocalPlayer.UserId + ")\nPlayer: " + them + " (" + target.UserId + ")\nOffense: " + offense + "\nRoom code: " + roomCode + "\nVoice (last 25s): " + speakers, null);
-            FalconStaffWebhook.UploadReportClip(FalconVoiceTap.BuildClipWav(), "BAN GUN (" + offense + ") on " + them + " (" + target.UserId + ") in room " + roomCode + " - last 25s of lobby voice");
+            byte[] banClip = FalconVoiceTap.BuildClipWav();
+            if (banClip != null)
+                FalconStaffWebhook.UploadReportClip(banClip, "BAN GUN (" + offense + ") on " + them + " (" + target.UserId + ") in room " + roomCode + " - last 25s of lobby voice");
+            else // round 94: same - never silent
+                FalconStaffWebhook.Post("(ban voice clip unavailable - no speech captured; " + FalconVoiceTap.DebugStats() + ")", null);
             lastAction = "ban sent (" + offense + ")";
             return;
         }
