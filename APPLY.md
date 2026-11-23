@@ -44,3 +44,5 @@ mod-call flow.
 - FalconMod/FalconStaff/FalconVoiceTap.cs (edited)
 - FalconMod/FalconStaff/FalconStaffNet.cs (edited)
 - FalconMod/FalconStaff/FalconStaffHandMenu.cs (edited)
+
+ROUND 95 (2026-11-23): FalconTracking Quest head getters - manual Posef conversion. Both new-account builds (WebGL 2022 + Android 2021.3) failed at Execute scripts on the same two errors: FalconTracking.cs(64,22)/(68,22) CS0029 - this SDK's OVRPlugin.Vector3f/Quatf have NO implicit conversion to Unity Vector3/Quaternion and OVRPlugin.cs ships no ToVector3/ToQuaternion helper (verified in the project's own file). Head getters now convert manually via ToUnity helpers (position x,y,-z; quaternion -x,-y,z,w - the standard handedness flip; bridge is inert on Quest, flip compile-verified only). Clone step PASSED on the new org - the private repo connection works.

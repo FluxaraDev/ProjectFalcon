@@ -59,13 +59,29 @@ public class QuestTrackingBridge : IXRTrackingBridge
     // (verified in the project's own OVRPlugin.cs, line
     // 3867 - the 4-argument out overload I first wrote
     // does not exist here; build log 2026-11-21, CS1501).
+    // Posef's fields are OVRPlugin.Vector3f / Quatf, and
+    // this SDK ships NO implicit conversion to Unity types
+    // (build log 2026-11-23, CS0029 on both fields), so the
+    // conversion is manual, with the standard Oculus
+    // right-handed -> Unity left-handed flip (position z,
+    // quaternion x/y). The bridge is inert on Quest today
+    // (nothing consumes it at runtime), so the flip is
+    // compile-verified only, not device-verified.
+    static Vector3 ToUnity(OVRPlugin.Vector3f v)
+    {
+        return new Vector3(v.x, v.y, -v.z);
+    }
+    static Quaternion ToUnity(OVRPlugin.Quatf q)
+    {
+        return new Quaternion(-q.x, -q.y, q.z, q.w);
+    }
     public Vector3 HeadPosition
     {
-        get { return OVRPlugin.GetNodePose(OVRPlugin.Node.EyeCenter, OVRPlugin.Step.Render).Position; }
+        get { return ToUnity(OVRPlugin.GetNodePose(OVRPlugin.Node.EyeCenter, OVRPlugin.Step.Render).Position); }
     }
     public Quaternion HeadRotation
     {
-        get { return OVRPlugin.GetNodePose(OVRPlugin.Node.EyeCenter, OVRPlugin.Step.Render).Orientation; }
+        get { return ToUnity(OVRPlugin.GetNodePose(OVRPlugin.Node.EyeCenter, OVRPlugin.Step.Render).Orientation); }
     }
     public Vector3 LeftHandPosition { get { return OVRInput.GetLocalControllerPosition(OVRInput.Controller.LTouch); } }
     public Quaternion LeftHandRotation { get { return OVRInput.GetLocalControllerRotation(OVRInput.Controller.LTouch); } }
